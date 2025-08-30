@@ -1,0 +1,199 @@
+{% extends "base.html" %}
+
+{% block title %}Test Agent - CNA AI Agent{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-8">
+    <!-- Header -->
+    <div class="text-center">
+        <h1 class="text-3xl font-bold text-gray-900 mb-2">✉️ Test Agent Reply</h1>
+        <p class="text-gray-600">Test how your AI agent responds to different email scenarios</p>
+    </div>
+
+    <!-- Test Form -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <form method="post" class="space-y-6">
+            <div>
+                <label for="email_body" class="block text-sm font-medium text-gray-700 mb-2">
+                    Sample Email Content
+                </label>
+                <textarea 
+                    id="email_body"
+                    name="email_body" 
+                    rows="8" 
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                    placeholder="Paste a sample email here to test the AI agent's response..."
+                >{{ email_input }}</textarea>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <label for="test_subject" class="block text-sm font-medium text-gray-700 mb-2">Subject (for thread)</label>
+                    <input type="text" id="test_subject" name="test_subject" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Optional subject">
+                </div>
+                <div>
+                    <label for="test_from" class="block text-sm font-medium text-gray-700 mb-2">From (for thread)</label>
+                    <input type="email" id="test_from" name="test_from" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="test@example.com" value="test@example.com">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="space-y-3">
+                    <label class="inline-flex items-center">
+                        <input type="checkbox" name="use_thread" id="use_thread" class="h-4 w-4 text-blue-600 border-gray-300 rounded" onchange="toggleThreadSelect(this)">
+                        <span class="ml-2 text-sm text-gray-700">Use existing conversation (threaded)</span>
+                    </label>
+                    <div id="thread_select_container" class="hidden">
+                        <label for="thread_key" class="block text-sm font-medium text-gray-700 mb-2">Select a thread</label>
+                        <select id="thread_key" name="thread_key" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            <option value="">-- Choose a thread --</option>
+                            {% for t in threads %}
+                            <option value="{{ t.key }}" {% if selected_thread_key == t.key %}selected{% endif %}>{{ t.label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Conversation Preview</label>
+                    <div class="h-40 overflow-auto bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm">
+                        {% if history_preview and history_preview|length %}
+                            {% for m in history_preview %}
+                                <div class="mb-2">
+                                    <span class="font-semibold text-gray-800">{% if m.role == 'user' %}User{% else %}Assistant{% endif %}:</span>
+                                    <span class="text-gray-700">{{ m.content }}</span>
+                                </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="text-gray-500">No conversation selected.</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex justify-center">
+                <button 
+                    type="submit" 
+                    class="inline-flex items-center px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 focus:ring-4 focus:ring-blue-200 transition-colors"
+                >
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                    </svg>
+                    Generate Reply
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Response Output -->
+    {% if reply_output %}
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div class="flex items-center mb-4">
+            <div class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center mr-3">
+                <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+                </svg>
+            </div>
+            <h3 class="text-lg font-semibold text-gray-900">AI Agent Response</h3>
+        </div>
+        
+        <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
+            <pre class="whitespace-pre-wrap text-sm text-gray-800 font-mono">{{ reply_output }}</pre>
+        </div>
+        
+        <div class="mt-4 flex items-center justify-between">
+            <div class="text-sm text-gray-500">
+                Generated using GPT-4 with knowledge base integration
+            </div>
+            <button 
+                onclick="navigator.clipboard.writeText('{{ reply_output|replace('\n', '\\n')|replace('"', '\\"') }}')"
+                class="inline-flex items-center px-3 py-1 text-sm text-blue-600 hover:text-blue-700 font-medium"
+            >
+                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                </svg>
+                Copy Response
+            </button>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Sample Emails -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">💡 Sample Test Emails</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <h4 class="font-medium text-blue-900 mb-2">Course Information</h4>
+                <p class="text-sm text-blue-700 mb-3">
+                    "Hi, I'm interested in the CNA class. I live in Long Island. How long is the program and what's the cost?"
+                </p>
+                <button 
+                    onclick="document.getElementById('email_body').value='Hi, I\\'m interested in the CNA class. I live in Long Island. How long is the program and what\\'s the cost?'"
+                    class="text-xs text-blue-600 hover:text-blue-700 font-medium"
+                >
+                    Use this sample
+                </button>
+            </div>
+            
+            <div class="p-4 bg-green-50 rounded-lg border border-green-200">
+                <h4 class="font-medium text-green-900 mb-2">Schedule Request</h4>
+                <p class="text-sm text-green-700 mb-3">
+                    "I need to know the upcoming class schedules for Manhattan. Do you have any weekend classes available?"
+                </p>
+                <button 
+                    onclick="document.getElementById('email_body').value='I need to know the upcoming class schedules for Manhattan. Do you have any weekend classes available?'"
+                    class="text-xs text-green-600 hover:text-green-700 font-medium"
+                >
+                    Use this sample
+                </button>
+            </div>
+            
+            <div class="p-4 bg-purple-50 rounded-lg border border-purple-200">
+                <h4 class="font-medium text-purple-900 mb-2">Eligibility Question</h4>
+                <p class="text-sm text-purple-700 mb-3">
+                    "I don't have a high school diploma. Am I still eligible for the CNA training program?"
+                </p>
+                <button 
+                    onclick="document.getElementById('email_body').value='I don\\'t have a high school diploma. Am I still eligible for the CNA training program?'"
+                    class="text-xs text-purple-600 hover:text-purple-700 font-medium"
+                >
+                    Use this sample
+                </button>
+            </div>
+            
+            <div class="p-4 bg-orange-50 rounded-lg border border-orange-200">
+                <h4 class="font-medium text-orange-900 mb-2">Refund Request</h4>
+                <p class="text-sm text-orange-700 mb-3">
+                    "I need to request a refund for my course. What's the process and who should I contact?"
+                </p>
+                <button 
+                    onclick="document.getElementById('email_body').value='I need to request a refund for my course. What\\'s the process and who should I contact?'"
+                    class="text-xs text-orange-600 hover:text-orange-700 font-medium"
+                >
+                    Use this sample
+                </button>
+            </div>
+        </div>
+    </div>
+    </div>
+
+    <script>
+        function toggleThreadSelect(cb) {
+            var container = document.getElementById('thread_select_container');
+            if (cb.checked) {
+                container.classList.remove('hidden');
+            } else {
+                container.classList.add('hidden');
+            }
+        }
+        (function() {
+            const useThread = document.getElementById('use_thread');
+            const threadKey = '{{ selected_thread_key or '' }}';
+            if (threadKey) {
+                useThread.checked = true;
+                toggleThreadSelect(useThread);
+            }
+        })();
+    </script>
+</div>
+{% endblock %}

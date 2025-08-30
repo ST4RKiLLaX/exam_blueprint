@@ -1,0 +1,20 @@
+{
+  "accounts": {
+    "1b1305a0-9673-4dc2-9133-9c1d22437f75": {
+      "account_id": "1b1305a0-9673-4dc2-9133-9c1d22437f75",
+      "name": "CNA Assistant",
+      "email_address": "cna_assistant@tiamedical.com",
+      "imap_host": "imap.ionos.com",
+      "imap_port": 993,
+      "imap_ssl": true,
+      "smtp_host": "smtp.ionos.com",
+      "smtp_port": 465,
+      "smtp_ssl": true,
+      "username": "cna_assistant@tiamedical.com",
+      "status": "active",
+      "created_at": "2025-08-29T16:52:01.575564",
+      "updated_at": "2025-08-29T17:12:51.542352",
+      "password": "Z0FBQUFBQm9zaGZUbmowbW9CVGZxY0kyMmQ1MEtYS0p3aWdSeFZvLUNmYTFTOHJLU0Jqa0lDLXNhSlJoUmJIajFNNG50a3NfRkg5ZldINmNnMTVjYTloaVE1QzI4MW9UT0ZKVmZUM2FGVk10QWhVWEtxLUE0ZkhzR2xlM0FRanV6Y212QS0ycEJyTjQ="
+    }
+  }
+}

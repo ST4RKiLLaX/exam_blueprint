@@ -1,0 +1,49 @@
+{
+  "knowledge_bases": [
+    {
+      "id": "kb_1_1756510613",
+      "title": "CNA Course Dates in Long Island",
+      "description": "This includes areas like Mineola, West Hempstead, Franklin Square, Uniondale, New Hyde Park, Westbury, North New Hyde Park, Floral Park, Hempstead, Garden City South, Garden City Park, East Garden City, Williston Park, East Williston, Carle Place, Stewart Manor, Herricks, Hillside Manor, Baldwin, North Merrick, Elmont",
+      "type": "url",
+      "source": "https://tiamedical.com/cna_li.json",
+      "chunks_path": null,
+      "created_at": "2025-08-29T19:36:53.782984",
+      "status": "active",
+      "is_events": true,
+      "event_category": "Classes",
+      "access_type": "shared",
+      "category": "Classes",
+      "embedding_status": "completed"
+    },
+    {
+      "id": "kb_2_1756515046",
+      "title": "CNA Course Dates in Manhattan",
+      "description": "Manhattan, The Bronx, Brooklyn, Queens, Staten Island, Jersey City, Hoboken, Weehawken, Union City, West New York, Fort Lee, Edgewater, Long Island City, Astoria, Harlem, Williamsburg, Greenpoint, Bushwick, Park Slope, Flushing, Forest Hills, Jackson Heights, Bay Ridge, Sunnyside, Upper East Side, Upper West Side, Midtown, SoHo, Tribeca, Chinatown, Lower East Side, East Village, Greenwich Village",
+      "type": "url",
+      "source": "https://tiamedical.com/cna_midtown_dates.json",
+      "chunks_path": null,
+      "created_at": "2025-08-29T20:50:46.984132",
+      "status": "active",
+      "is_events": true,
+      "event_category": "Classes",
+      "access_type": "shared",
+      "category": "Classes",
+      "embedding_status": "completed"
+    },
+    {
+      "id": "kb_2_1756518942",
+      "title": "CNA Student Handbook",
+      "description": "Handbook for all students of any location. Contains refund policies, payment plans, requirements, testing, and other useful information for students.",
+      "type": "document",
+      "source": "C:\\Users\\Juan\\Desktop\\ai_agent\\app\\web\\..\\knowledge_bases\\CNA_Student_Handbook.docx",
+      "chunks_path": null,
+      "created_at": "2025-08-29T21:55:42.209464",
+      "status": "active",
+      "is_events": false,
+      "event_category": null,
+      "access_type": "shared",
+      "category": "Document",
+      "embedding_status": "completed"
+    }
+  ]
+}

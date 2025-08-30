@@ -1,0 +1,419 @@
+{% extends "base.html" %}
+
+{% block title %}Agent Management{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto">
+    <div class="flex justify-between items-center mb-8">
+        <h1 class="text-3xl font-bold text-gray-900">🤖 Agent Management</h1>
+        <button onclick="showCreateModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
+            ➕ Create New Agent
+        </button>
+    </div>
+
+    <!-- Agents Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% for agent in agents %}
+        <div class="bg-white rounded-lg shadow-md card-hover {% if agent.status != 'active' %}opacity-75{% endif %}">
+            <div class="p-6">
+                <div class="flex justify-between items-start mb-4">
+                    <h3 class="text-lg font-semibold text-gray-900 truncate">{{ agent.name }}</h3>
+                    <span class="px-2 py-1 text-xs font-medium rounded-full {% if agent.status == 'active' %}bg-green-100 text-green-800{% else %}bg-gray-100 text-gray-800{% endif %}">
+                        {{ agent.status }}
+                    </span>
+                </div>
+                
+                <div class="space-y-3 mb-6">
+                    <div>
+                        <p class="text-xs text-gray-500">ID: {{ agent.agent_id[:8] }}...</p>
+                    </div>
+                    
+                    {% if agent.personality %}
+                    <div>
+                        <p class="text-sm font-medium text-gray-700">Personality:</p>
+                        <p class="text-sm text-gray-600">{{ (agent.personality[:100] + '...') if agent.personality|length > 100 else agent.personality }}</p>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="flex justify-between text-xs text-gray-500">
+                        <span>Created: {{ agent.created_at[:10] }}</span>
+                        <span>📚 Knowledge Bases: {{ agent.knowledge_bases|length }}</span>
+                    </div>
+                </div>
+                
+                <div class="flex space-x-2">
+                    <button onclick="editAgentSafe('{{ agent.agent_id }}')" 
+                            class="flex-1 bg-blue-50 hover:bg-blue-100 text-blue-700 px-3 py-2 rounded text-sm font-medium transition-colors"
+                            data-agent='{{ agent|tojson }}'>
+                        ✏️ Edit
+                    </button>
+                    <button onclick="cloneAgent('{{ agent.agent_id }}', '{{ agent.name }}')" 
+                            class="flex-1 bg-green-50 hover:bg-green-100 text-green-700 px-3 py-2 rounded text-sm font-medium transition-colors">
+                        📋 Clone
+                    </button>
+                    {% if agents|length > 1 or agent.status != 'active' %}
+                    <button onclick="deleteAgent('{{ agent.agent_id }}', '{{ agent.name }}')" 
+                            class="flex-1 bg-red-50 hover:bg-red-100 text-red-700 px-3 py-2 rounded text-sm font-medium transition-colors">
+                        🗑️ Delete
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+        
+        {% if not agents %}
+        <div class="col-span-full">
+            <div class="text-center py-12 bg-white rounded-lg shadow-md">
+                <div class="text-6xl mb-4">🤖</div>
+                <h3 class="text-lg font-semibold text-gray-900 mb-2">No agents found</h3>
+                <p class="text-gray-600 mb-4">Create your first agent to get started!</p>
+                <button onclick="showCreateModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors">
+                    Create Agent
+                </button>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Create Agent Modal -->
+<div id="createAgentModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-screen overflow-y-auto">
+        <div class="p-6 border-b">
+            <h3 class="text-lg font-semibold text-gray-900">Create New Agent</h3>
+        </div>
+        <form method="POST">
+            <div class="p-6 space-y-4">
+                <input type="hidden" name="action" value="create">
+                
+                <div>
+                    <label for="createName" class="block text-sm font-medium text-gray-700 mb-1">Agent Name *</label>
+                    <input type="text" id="createName" name="name" required 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                
+                <div>
+                    <label for="createPersonality" class="block text-sm font-medium text-gray-700 mb-1">Personality</label>
+                    <textarea id="createPersonality" name="personality" rows="4" 
+                              placeholder="Describe the agent's personality and behavior..."
+                              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                </div>
+                
+                <div>
+                    <label for="createStyle" class="block text-sm font-medium text-gray-700 mb-1">Communication Style</label>
+                    <textarea id="createStyle" name="style" rows="3" 
+                              placeholder="How should the agent communicate?"
+                              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                </div>
+                
+                <div>
+                    <label for="createPrompt" class="block text-sm font-medium text-gray-700 mb-1">Special Instructions</label>
+                    <textarea id="createPrompt" name="prompt" rows="4" 
+                              placeholder="Any specific instructions or rules for this agent..."
+                              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                </div>
+                
+                <!-- Knowledge Base Access -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-3">📚 Knowledge Base Access</label>
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <p class="text-sm text-gray-600 mb-3">Select which knowledge bases this agent can access. Shared knowledge bases are available to all agents.</p>
+                        
+                        {% if knowledge_bases %}
+                        <div class="space-y-2 max-h-40 overflow-y-auto">
+                            {% for kb in knowledge_bases %}
+                            <label class="flex items-start space-x-3 p-2 hover:bg-gray-100 rounded">
+                                <input type="checkbox" name="knowledge_bases" value="{{ kb.id }}" 
+                                       class="mt-1 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                <div class="flex-1">
+                                    <div class="flex items-center space-x-2">
+                                        <span class="text-sm font-medium text-gray-900">{{ kb.title }}</span>
+                                        {% if kb.get('access_type', 'shared') == 'shared' %}
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                            🌐 Shared
+                                        </span>
+                                        {% else %}
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                            🔒 Exclusive
+                                        </span>
+                                        {% endif %}
+                                        {% if kb.get('category') %}
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                            {{ kb.category.title() }}
+                                        </span>
+                                        {% endif %}
+                                    </div>
+                                    {% if kb.description %}
+                                    <p class="text-xs text-gray-500 mt-1">{{ kb.description }}</p>
+                                    {% endif %}
+                                </div>
+                            </label>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <p class="text-sm text-gray-500 italic">No knowledge bases available. Create some in the Knowledge section first.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <div class="p-6 border-t flex justify-end space-x-3">
+                <button type="button" onclick="hideCreateModal()" class="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors">Cancel</button>
+                <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors">Create Agent</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Agent Modal -->
+<div id="editAgentModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-screen overflow-y-auto">
+        <div class="p-6 border-b">
+            <h3 class="text-lg font-semibold text-gray-900">Edit Agent</h3>
+        </div>
+        <form method="POST">
+            <div class="p-6 space-y-4">
+                <input type="hidden" name="action" value="update">
+                <input type="hidden" name="agent_id" id="editAgentId">
+                
+                <div>
+                    <label for="editName" class="block text-sm font-medium text-gray-700 mb-1">Agent Name *</label>
+                    <input type="text" id="editName" name="name" required 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                
+                <div>
+                    <label for="editStatus" class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                    <select id="editStatus" name="status" 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                        <option value="archived">Archived</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label for="editPersonality" class="block text-sm font-medium text-gray-700 mb-1">Personality</label>
+                    <textarea id="editPersonality" name="personality" rows="4"
+                              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                </div>
+                
+                <div>
+                    <label for="editStyle" class="block text-sm font-medium text-gray-700 mb-1">Communication Style</label>
+                    <textarea id="editStyle" name="style" rows="3"
+                              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                </div>
+                
+                <div>
+                    <label for="editPrompt" class="block text-sm font-medium text-gray-700 mb-1">Special Instructions</label>
+                    <textarea id="editPrompt" name="prompt" rows="4"
+                              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                </div>
+                
+                <!-- Knowledge Base Access -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-3">📚 Knowledge Base Access</label>
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <p class="text-sm text-gray-600 mb-3">Select which knowledge bases this agent can access. Shared knowledge bases are available to all agents.</p>
+                        
+                        {% if knowledge_bases %}
+                        <div class="space-y-2 max-h-40 overflow-y-auto">
+                            {% for kb in knowledge_bases %}
+                            <label class="flex items-start space-x-3 p-2 hover:bg-gray-100 rounded">
+                                <input type="checkbox" name="knowledge_bases" value="{{ kb.id }}" id="editKb{{ kb.id }}"
+                                       class="mt-1 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                <div class="flex-1">
+                                    <div class="flex items-center space-x-2">
+                                        <span class="text-sm font-medium text-gray-900">{{ kb.title }}</span>
+                                        {% if kb.get('access_type', 'shared') == 'shared' %}
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                            🌐 Shared
+                                        </span>
+                                        {% else %}
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                            🔒 Exclusive
+                                        </span>
+                                        {% endif %}
+                                        {% if kb.get('category') %}
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                            {{ kb.category.title() }}
+                                        </span>
+                                        {% endif %}
+                                    </div>
+                                    {% if kb.description %}
+                                    <p class="text-xs text-gray-500 mt-1">{{ kb.description }}</p>
+                                    {% endif %}
+                                </div>
+                            </label>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <p class="text-sm text-gray-500 italic">No knowledge bases available. Create some in the Knowledge section first.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <div class="p-6 border-t flex justify-end space-x-3">
+                <button type="button" onclick="hideEditModal()" class="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors">Cancel</button>
+                <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors">Update Agent</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Clone Agent Modal -->
+<div id="cloneAgentModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+        <div class="p-6 border-b">
+            <h3 class="text-lg font-semibold text-gray-900">Clone Agent</h3>
+        </div>
+        <form method="POST">
+            <div class="p-6 space-y-4">
+                <input type="hidden" name="action" value="clone">
+                <input type="hidden" name="agent_id" id="cloneAgentId">
+                
+                <p class="text-gray-600">Clone agent: <strong id="cloneAgentName"></strong></p>
+                
+                <div>
+                    <label for="cloneNewName" class="block text-sm font-medium text-gray-700 mb-1">New Agent Name *</label>
+                    <input type="text" id="cloneNewName" name="new_name" required 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+            </div>
+            <div class="p-6 border-t flex justify-end space-x-3">
+                <button type="button" onclick="hideCloneModal()" class="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors">Cancel</button>
+                <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors">Clone Agent</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function showCreateModal() {
+    document.getElementById('createAgentModal').classList.remove('hidden');
+    document.getElementById('createAgentModal').classList.add('flex');
+}
+
+function hideCreateModal() {
+    document.getElementById('createAgentModal').classList.add('hidden');
+    document.getElementById('createAgentModal').classList.remove('flex');
+}
+
+function editAgentSafe(agentId) {
+    // Find the button that was clicked to get the agent data
+    const button = document.querySelector(`button[onclick="editAgentSafe('${agentId}')"]`);
+    if (!button) {
+        console.error('Could not find edit button for agent:', agentId);
+        return;
+    }
+    
+    // Parse the agent data from the data attribute
+    let agentData;
+    try {
+        agentData = JSON.parse(button.getAttribute('data-agent'));
+    } catch (e) {
+        console.error('Failed to parse agent data:', e);
+        return;
+    }
+    
+    // Populate the edit form
+    document.getElementById('editAgentId').value = agentData.agent_id;
+    document.getElementById('editName').value = agentData.name || '';
+    document.getElementById('editPersonality').value = agentData.personality || '';
+    document.getElementById('editStyle').value = agentData.style || '';
+    document.getElementById('editPrompt').value = agentData.prompt || '';
+    document.getElementById('editStatus').value = agentData.status || 'active';
+    
+    // Clear all knowledge base checkboxes first
+    const kbCheckboxes = document.querySelectorAll('#editAgentModal input[name="knowledge_bases"]');
+    kbCheckboxes.forEach(checkbox => {
+        checkbox.checked = false;
+    });
+    
+    // Check the knowledge bases assigned to this agent
+    if (agentData.knowledge_bases && Array.isArray(agentData.knowledge_bases)) {
+        agentData.knowledge_bases.forEach(kbId => {
+            const checkbox = document.getElementById('editKb' + kbId);
+            if (checkbox) {
+                checkbox.checked = true;
+            }
+        });
+    }
+    
+    document.getElementById('editAgentModal').classList.remove('hidden');
+    document.getElementById('editAgentModal').classList.add('flex');
+}
+
+function editAgent(agentId, name, personality, style, prompt, status, knowledgeBases) {
+    document.getElementById('editAgentId').value = agentId;
+    document.getElementById('editName').value = name;
+    document.getElementById('editPersonality').value = personality;
+    document.getElementById('editStyle').value = style;
+    document.getElementById('editPrompt').value = prompt;
+    document.getElementById('editStatus').value = status;
+    
+    // Clear all knowledge base checkboxes first
+    const kbCheckboxes = document.querySelectorAll('input[name="knowledge_bases"]');
+    kbCheckboxes.forEach(checkbox => {
+        checkbox.checked = false;
+    });
+    
+    // Check the knowledge bases assigned to this agent
+    if (knowledgeBases && Array.isArray(knowledgeBases)) {
+        knowledgeBases.forEach(kbId => {
+            const checkbox = document.getElementById('editKb' + kbId);
+            if (checkbox) {
+                checkbox.checked = true;
+            }
+        });
+    }
+    
+    document.getElementById('editAgentModal').classList.remove('hidden');
+    document.getElementById('editAgentModal').classList.add('flex');
+}
+
+function hideEditModal() {
+    document.getElementById('editAgentModal').classList.add('hidden');
+    document.getElementById('editAgentModal').classList.remove('flex');
+}
+
+function cloneAgent(agentId, name) {
+    document.getElementById('cloneAgentId').value = agentId;
+    document.getElementById('cloneAgentName').textContent = name;
+    document.getElementById('cloneNewName').value = name + ' (Copy)';
+    
+    document.getElementById('cloneAgentModal').classList.remove('hidden');
+    document.getElementById('cloneAgentModal').classList.add('flex');
+}
+
+function hideCloneModal() {
+    document.getElementById('cloneAgentModal').classList.add('hidden');
+    document.getElementById('cloneAgentModal').classList.remove('flex');
+}
+
+function deleteAgent(agentId, name) {
+    if (confirm(`Are you sure you want to delete agent "${name}"? This action cannot be undone.`)) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.innerHTML = `
+            <input type="hidden" name="action" value="delete">
+            <input type="hidden" name="agent_id" value="${agentId}">
+        `;
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+// Close modals when clicking outside
+document.addEventListener('click', function(event) {
+    const modals = ['createAgentModal', 'editAgentModal', 'cloneAgentModal'];
+    modals.forEach(modalId => {
+        const modal = document.getElementById(modalId);
+        if (event.target === modal) {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+    });
+});
+</script>
+{% endblock %}
