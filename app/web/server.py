@@ -1077,7 +1077,11 @@ def scheduler_status():
 
 if __name__ == "__main__":
     try:
-        app.run(debug=True, host='0.0.0.0', port=5000)
+        # Use environment variables or default to 0.0.0.0 for network access
+        host = os.environ.get('FLASK_RUN_HOST', '0.0.0.0')
+        port = int(os.environ.get('FLASK_RUN_PORT', 5000))
+        debug = os.environ.get('FLASK_DEBUG', 'True').lower() == 'true'
+        app.run(debug=debug, host=host, port=port)
     except KeyboardInterrupt:
         print("\n⏹️ Shutting down...")
         stop_scheduler()
