@@ -146,7 +146,6 @@ class AgentAPI:
                 personality=original_agent.personality,
                 style=original_agent.style,
                 prompt=original_agent.prompt,
-                email_accounts=original_agent.email_accounts.copy(),
                 knowledge_bases=original_agent.knowledge_bases.copy()
             )
             

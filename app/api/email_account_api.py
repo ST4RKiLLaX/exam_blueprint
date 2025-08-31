@@ -127,12 +127,9 @@ class EmailAccountAPI:
             if not account:
                 return {"success": False, "error": "Email account not found"}
             
-            # Remove account from all agents first
-            agents = agent_manager.get_all_agents()
-            for agent in agents:
-                if account_id in agent.email_accounts:
-                    agent.email_accounts.remove(account_id)
-                    agent_manager.update_agent(agent.agent_id, email_accounts=agent.email_accounts)
+            # Note: Email accounts are not directly linked to agents in the current model
+            # Agents use knowledge bases, not email accounts directly
+            # This is a placeholder for future functionality if needed
             
             success = email_account_manager.delete_account(account_id)
             if success:
