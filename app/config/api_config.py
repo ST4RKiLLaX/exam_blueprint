@@ -127,14 +127,13 @@ def test_openai_api_key(api_key: Optional[str] = None) -> Dict[str, Any]:
         # Make a minimal test request
         response = client.models.list()
         
-        # Update test status if using current key
-        if not api_key:
-            config = load_api_config()
-            config.update({
-                "last_tested": datetime.now().isoformat(),
-                "test_status": "valid"
-            })
-            save_api_config(config)
+        # Update test status in config
+        config = load_api_config()
+        config.update({
+            "last_tested": datetime.now().isoformat(),
+            "test_status": "valid"
+        })
+        save_api_config(config)
         
         return {
             "success": True,
@@ -145,14 +144,13 @@ def test_openai_api_key(api_key: Optional[str] = None) -> Dict[str, Any]:
     except Exception as e:
         error_msg = str(e)
         
-        # Update test status if using current key
-        if not api_key:
-            config = load_api_config()
-            config.update({
-                "last_tested": datetime.now().isoformat(),
-                "test_status": "invalid"
-            })
-            save_api_config(config)
+        # Update test status in config
+        config = load_api_config()
+        config.update({
+            "last_tested": datetime.now().isoformat(),
+            "test_status": "invalid"
+        })
+        save_api_config(config)
         
         return {
             "success": False,

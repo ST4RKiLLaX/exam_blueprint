@@ -10,6 +10,8 @@ from app.email.email_reader import fetch_unread_emails, mark_emails_as_read
 from app.email.email_sender import send_email
 from app.agents.email_agent import generate_reply
 from app.email.thread_store import add_inbound, add_outbound, get_history
+from app.config.knowledge_config import get_knowledge_bases_due_for_refresh, mark_knowledge_base_refreshed
+from app.utils.knowledge_processor import process_knowledge_base
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -24,6 +26,7 @@ class TaskExecutor:
             TaskType.GENERATE_REPORT.value: self._execute_generate_report,
             TaskType.CLEANUP.value: self._execute_cleanup,
             TaskType.SYNC.value: self._execute_sync,
+            "url_refresh": self._execute_url_refresh,
         }
     
     def execute_task(self, task) -> Dict[str, Any]:
@@ -46,10 +49,13 @@ class TaskExecutor:
     
     def _execute_email_check(self, task) -> Dict[str, Any]:
         """Execute email checking task"""
-        # Get agent and email account
+        # Get agent and email account (reload to ensure fresh data)
+        agent_manager.load_agents()  # Force reload of agent data
         agent = agent_manager.get_agent(task.agent_id)
         if not agent:
             raise ValueError(f"Agent not found: {task.agent_id}")
+        
+
         
         email_account = email_account_manager.get_account(task.email_account_id)
         if not email_account:
@@ -178,6 +184,55 @@ class TaskExecutor:
         # Placeholder for sync operations
         logger.info("Running sync (placeholder)")
         return {"synced_items": 0, "status": "completed"}
+    
+    def _execute_url_refresh(self, task) -> Dict[str, Any]:
+        """Execute URL knowledge base refresh task"""
+        refreshed_count = 0
+        failed_count = 0
+        
+        try:
+            # Get knowledge bases that are due for refresh
+            due_kbs = get_knowledge_bases_due_for_refresh()
+            logger.info(f"Found {len(due_kbs)} knowledge bases due for refresh")
+            
+            for kb in due_kbs:
+                try:
+                    kb_id = kb['id']
+                    kb_title = kb['title']
+                    source_url = kb['source']
+                    
+                    logger.info(f"Refreshing knowledge base: {kb_title} ({kb_id})")
+                    
+                    # Reprocess the knowledge base with fresh content
+                    success, _ = process_knowledge_base(kb_id, "url", source_url)
+                    if success:
+                        # Mark as refreshed and calculate next refresh time
+                        mark_knowledge_base_refreshed(kb_id)
+                        refreshed_count += 1
+                        logger.info(f"Successfully refreshed: {kb_title}")
+                    else:
+                        failed_count += 1
+                        logger.error(f"Failed to refresh: {kb_title}")
+                        
+                except Exception as e:
+                    failed_count += 1
+                    logger.error(f"Error refreshing knowledge base {kb.get('title', 'Unknown')}: {e}")
+            
+            return {
+                "refreshed_count": refreshed_count,
+                "failed_count": failed_count,
+                "total_checked": len(due_kbs),
+                "status": "completed"
+            }
+            
+        except Exception as e:
+            logger.error(f"Error in URL refresh task: {e}")
+            return {
+                "refreshed_count": refreshed_count,
+                "failed_count": failed_count,
+                "error": str(e),
+                "status": "failed"
+            }
 
 
 class TaskScheduler:
@@ -221,6 +276,9 @@ class TaskScheduler:
     def _check_and_run_tasks(self):
         """Check for due tasks and execute them"""
         due_tasks = task_manager.get_due_tasks()
+        
+        # Also check for URL refresh tasks
+        self._check_url_refresh_tasks()
         
         if not due_tasks:
             return
@@ -274,6 +332,34 @@ class TaskScheduler:
             task.update_after_run(success=False, error_message=error_msg)
             task_manager.save_tasks()
             return {"success": False, "error": error_msg}
+    
+    def _check_url_refresh_tasks(self):
+        """Check for URL knowledge bases that need refreshing"""
+        try:
+            due_kbs = get_knowledge_bases_due_for_refresh()
+            
+            if due_kbs:
+                logger.info(f"Found {len(due_kbs)} knowledge bases due for refresh")
+                
+                # Create a temporary task for URL refresh
+                from app.models.task import Task
+                refresh_task = Task(
+                    task_id="system_url_refresh",
+                    name="System URL Refresh",
+                    task_type="url_refresh",
+                    agent_id="system",
+                    email_account_id="system",
+                    schedule_type="system",
+                    interval_minutes=0,
+                    is_active=True
+                )
+                
+                # Execute the refresh task
+                result = self.executor.execute_task(refresh_task)
+                logger.info(f"URL refresh completed: {result}")
+                
+        except Exception as e:
+            logger.error(f"Error checking URL refresh tasks: {e}")
 
 
 # Global task scheduler instance

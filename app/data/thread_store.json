@@ -1,80 +1,34 @@
 {
   "threads": {
-    "cna q|juan@tia.edu": {
+    "dates in da bronx?|godkillax@gmail.com": {
       "messages": [
         {
           "role": "user",
-          "from": "juan@tia.edu",
-          "subject": "CNA Q",
-          "content": "Hi what is CNA?",
-          "message_id": "<175470320109.9792.13458478843206544337@zenbook14x>",
+          "from": "godkillax@gmail.com",
+          "subject": "Dates in Da Bronx?",
+          "content": "You got some class going on in Da Bronx?\r\n\r\n-Jboxy\r\n",
+          "message_id": null,
           "in_reply_to": null,
           "references": []
         },
         {
           "role": "assistant",
-          "to": "juan@tia.edu",
-          "subject": "CNA Q",
-          "content": "Hello!\n\nThank you for reaching out to us. A Certified Nursing Assistant (CNA) plays a vital role in the healthcare field, providing essential care and support to patients in various settings such as nursing homes, hospitals, and healthcare agencies. This career is not only rewarding but also serves as a stepping-stone to more advanced nursing or healthcare positions.\n\nAt the Technical Institute of America, we offer comprehensive CNA training programs in both New York City and Garden City, Long Island. Here are the details for each location:\n\n**New York City**\n- Tuition: $1999.00 (with a $300 down payment to get started)\n- Conveniently located in Midtown Manhattan, a few blocks from Times Square.\n- For more information, visit: https://tiamedical.com/cna_training_course_manhattan.html\n\n**Garden City, Long Island**\n- Tuition: $1499.00 (with a $300 down payment to get started)\n- Located in Garden City, Long Island, with free parking for all students.\n- For more information, visit: https://tiamedical.com/cna_training_course_long_island.html\n\nOur programs include unlimited practice time in our labs, job placement assistance upon passing the state board exam, and access to an e-learning portal with training videos and practice exams.\n\nIf you have any questions or need further assistance, please don't hesitate to ask. We're here to help!\n\nWarm regards,\n\nCNA Allie",
-          "message_id": "<175470320781.9792.17090387439992554004@zenbook14x>",
-          "in_reply_to": "<175470320109.9792.13458478843206544337@zenbook14x>",
-          "references": [
-            "<175470320109.9792.13458478843206544337@zenbook14x>"
-          ]
-        },
-        {
-          "role": "user",
-          "from": "test@example.com",
-          "subject": "what about externships?",
-          "content": "what about externships?",
-          "message_id": "<175470326801.9792.5572959931571926144@zenbook14x>",
-          "in_reply_to": "<175470320781.9792.17090387439992554004@zenbook14x>",
-          "references": [
-            "<175470320781.9792.17090387439992554004@zenbook14x>"
-          ]
-        },
-        {
-          "role": "assistant",
-          "to": "test@example.com",
-          "subject": "what about externships?",
-          "content": "Hello!\n\nThank you for your inquiry about externships. At the Technical Institute of America, we include an externship program as part of our CNA training course. This hands-on experience allows students to apply their classroom skills in a real-world healthcare setting.\n\nTo be eligible for the externship, students must have a balance of $0.00 and submit all required documentation. Externships are scheduled on a first-come, first-served basis, and you will receive a confirmation email with details two days prior to your start date.\n\nExternships are scheduled as follows:\n- **Monday-Thursday, Saturdays** at Oceanview Nursing Home (7am – 2:30pm) or Rebekah Rehab Extended Care Center (7am – 3pm)\n- **Saturday & Sunday** at Isabella Center for Rehabilitation and Nursing Care (7:30am – 3:30pm)\n\nStudents must attend all 30 hours and adhere to the dress code, including wearing a clean TIA uniform and solid white shoes.\n\nFor more details about our CNA programs, you can visit:\n- New York City: https://tiamedical.com/cna_training_course_manhattan.html\n- Garden City, Long Island: https://tiamedical.com/cna_training_course_long_island.html\n\nLet us know if you have any questions — we're here to help!\n\nWarm regards,\n\nCNA Allie",
-          "message_id": "<175470327363.9792.4727278113230068250@zenbook14x>",
-          "in_reply_to": "<175470326801.9792.5572959931571926144@zenbook14x>",
-          "references": [
-            "<175470326801.9792.5572959931571926144@zenbook14x>"
-          ]
-        },
-        {
-          "role": "user",
-          "from": "test@example.com",
-          "subject": "Test Thread",
-          "content": "",
-          "message_id": "<175470363934.9792.521724371125639910@zenbook14x>",
-          "in_reply_to": "<175470327363.9792.4727278113230068250@zenbook14x>",
-          "references": [
-            "<175470327363.9792.4727278113230068250@zenbook14x>"
-          ]
-        },
-        {
-          "role": "assistant",
-          "to": "test@example.com",
-          "subject": "Test Thread",
-          "content": "Hello!\n\nThank you for reaching out. I'd be happy to provide you with the schedule options for our CNA training courses at both our New York City and Garden City locations.\n\n**New York City:**\n- 📆 Aug 11, 2025 – Oct 6, 2025\n  📋 Monday - Thursday\n  ⏱️ 6pm - 9:30pm\n- 📆 Sep 8, 2025 – Oct 16, 2025\n  📋 Monday - Thursday\n  ⏱️ 9am - 1:30pm\n- 📆 Sep 15, 2025 – Nov 6, 2025\n  📋 Monday - Thursday\n  ⏱️ 6pm - 9:30pm\n- 📆 Sep 22, 2025 – Oct 30, 2025\n  📋 Monday - Thursday\n  ⏱️ 9am - 1:30pm\n- 📆 Oct 4, 2025 – Nov 16, 2025\n  📋 Saturday & Sunday\n  ⏱️ 10am - 6pm\n\n**Garden City:**\n- 📆 Aug 16, 2025 – Sep 28, 2025\n  📋 Saturday & Sunday\n  ⏱️ 10am - 6pm\n- 📆 Aug 18, 2025 – Oct 9, 2025\n  📋 Monday - Thursday\n  ⏱️ 6pm - 9:30pm\n- 📆 Aug 25, 2025 – Oct 16, 2025\n  📋 Monday - Thursday\n  ⏱️ 6pm - 9:30pm\n- 📆 Sep 2, 2025 – Oct 9, 2025\n  📋 Monday - Thursday\n  ⏱️ 9am - 1:30pm\n- 📆 Sep 6, 2025 – Oct 19, 2025\n  📋 Saturday & Sunday\n  ⏱️ 10am - 6pm\n\nFor more details about our programs, you can visit the following links:\n- New York City: https://tiamedical.com/cna_training_course_manhattan.html\n- Garden City, Long Island: https://tiamedical.com/cna_training_course_long_island.html\n\nLet us know if you have any questions — we're here to help!\n\nWarm regards,\n\nCNA Allie",
-          "message_id": "<175470364636.9792.12610336517463752071@zenbook14x>",
-          "in_reply_to": "<175470363934.9792.521724371125639910@zenbook14x>",
-          "references": [
-            "<175470363934.9792.521724371125639910@zenbook14x>"
-          ]
+          "to": "godkillax@gmail.com",
+          "subject": "Dates in Da Bronx?",
+          "content": "Hello Jboxy,\n\nThanks for reaching out! It looks like you're interested in classes in the Bronx. Currently, we don't have any classes scheduled directly in the Bronx, but we do offer externships there. Specifically, you can attend an externship at Rebekah Rehab Extended Care Center located at 1070 Havenmeyer Ave, Bronx, NY 10462. The externships are held from 7am – 3pm.\n\nIf you're looking to attend classes, we have several options available in New York City. Here are the upcoming schedules:\n\n📌 New York City\n📆 Sep 15, 2025 – Nov 6, 2025\n📋 Monday - Thursday\n⏱️ 6pm - 9:30pm\n\n📆 Sep 22, 2025 – Oct 30, 2025\n📋 Monday - Thursday\n⏱️ 9am - 1:30pm\n\n📆 Oct 4, 2025 – Nov 16, 2025\n📋 Saturday & Sunday\n⏱️ 10am - 6pm\n\n📆 Oct 18, 2025 – Nov 30, 2025\n📋 Saturday & Sunday\n⏱️ 10am - 6pm\n\n📆 Oct 20, 2025 – Nov 27, 2025\n📋 Monday - Thursday\n⏱️ 9am - 1:30pm\n\n📆 Nov 1, 2025 – Dec 14, 2025\n📋 Saturday & Sunday\n⏱️ 10am - 6pm\n\n📆 Nov 10, 2025 – Jan 8, 2026\n📋 Monday - Thursday\n⏱️ 6pm - 9:30pm\n\nPlease let us know if any of these options work for you or if you need any more information. We're here to help!\n\nBest regards,\n\nCNA Allie\nLet us know if you have any questions — we're here to help!",
+          "message_id": "<175660762884.29976.13857654545908019952@zenbook14x.localdomain.lan>",
+          "in_reply_to": null,
+          "references": []
         }
       ]
     },
-    "cna questions|jestrella1007@gmail.com": {
+    "cna dates|jestrella1007@gmail.com": {
       "messages": [
         {
           "role": "user",
           "from": "jestrella1007@gmail.com",
-          "subject": "CNA Questions",
-          "content": "What do i need to start CNA?\r\n",
+          "subject": "CNa Dates",
+          "content": "Can I get course dates near Brooklyn?\r\n",
           "message_id": null,
           "in_reply_to": null,
           "references": []
@@ -82,332 +36,43 @@
         {
           "role": "assistant",
           "to": "jestrella1007@gmail.com",
-          "subject": "CNA Questions",
-          "content": "Hello!\n\nThank you for reaching out about starting your journey to become a Certified Nurse Aide (CNA) with us. To start the CNA program, you'll need a High School Diploma or GED. Our course is designed to prepare you thoroughly for the CNA State exam, ensuring you pass on the first try. We provide a comprehensive training package that includes live in-person training, procedure videos, and a certification exam simulator.\n\nOur CNA course is offered at two locations:\n\n1. **Midtown Manhattan**: \n   - Tuition: $1999.00\n   - Learn more and register here: https://tiamedical.com/cna_training_course_manhattan.html\n\n2. **Garden City, Long Island**: \n   - Tuition: $1499.00\n   - Learn more and register here: https://tiamedical.com/cna_training_course_long_island.html\n\nHere are the available schedules:\n\n**New York City**\n- 📆 Aug 11, 2025 – Oct 6, 2025: Monday - Thursday, 6pm - 9:30pm\n- 📆 Sep 8, 2025 – Oct 16, 2025: Monday - Thursday, 9am - 1:30pm\n- 📆 Sep 15, 2025 – Nov 6, 2025: Monday - Thursday, 6pm - 9:30pm\n- 📆 Sep 22, 2025 – Oct 30, 2025: Monday - Thursday, 9am - 1:30pm\n- 📆 Oct 4, 2025 – Nov 16, 2025: Saturday & Sunday, 10am - 6pm\n\n**Garden City**\n- 📆 Aug 16, 2025 – Sep 28, 2025: Saturday & Sunday, 10am - 6pm\n- 📆 Aug 18, 2025 – Oct 9, 2025: Monday - Thursday, 6pm - 9:30pm\n- 📆 Aug 25, 2025 – Oct 16, 2025: Monday - Thursday, 6pm - 9:30pm\n- 📆 Sep 2, 2025 – Oct 9, 2025: Monday - Thursday, 9am - 1:30pm\n- 📆 Sep 6, 2025 – Oct 19, 2025: Saturday & Sunday, 10am - 6pm\n\nLet us know if you have any questions — we're here to help!\n\nWarm regards,\nCNA Allie",
-          "message_id": "<175470444253.28332.17409391313941192784@zenbook14x>",
+          "subject": "CNa Dates",
+          "content": "Hello!\n\nThank you for your interest in our Nurse Aide - CNA courses near Brooklyn. Here are the upcoming course dates available in New York City:\n\n=== CLASSES ===\n📌 New York City\n📆 Sep 15, 2025 – Nov 6, 2025\n📋 Monday - Thursday\n⏱️ 6pm - 9:30pm\n\n📆 Sep 22, 2025 – Oct 30, 2025\n📋 Monday - Thursday\n⏱️ 9am - 1:30pm\n\n📆 Oct 4, 2025 – Nov 16, 2025\n📋 Saturday & Sunday\n⏱️ 10am - 6pm\n\n📆 Oct 18, 2025 – Nov 30, 2025\n📋 Saturday & Sunday\n⏱️ 10am - 6pm\n\n📆 Oct 20, 2025 – Nov 27, 2025\n📋 Monday - Thursday\n⏱️ 9am - 1:30pm\n\n📆 Nov 1, 2025 – Dec 14, 2025\n📋 Saturday & Sunday\n⏱️ 10am - 6pm\n\n📆 Nov 10, 2025 – Jan 8, 2026\n📋 Monday - Thursday\n⏱️ 6pm - 9:30pm\n\nPlease let us know if any of these dates work for you or if you need any further information. We're here to help!\n\nBest regards,\nCNA Allie\nLet us know if you have any questions — we're here to help!",
+          "message_id": "<175660763771.29976.1570217416221072019@zenbook14x.localdomain.lan>",
           "in_reply_to": null,
           "references": []
-        },
+        }
+      ]
+    },
+    "cna|jestrella1007@gmail.com": {
+      "messages": [
         {
           "role": "user",
           "from": "jestrella1007@gmail.com",
-          "subject": "Re: CNA Questions",
-          "content": "Are there payment plans?\r\n\r\nOn Fri, Aug 8, 2025 at 9:54 PM <site@tiamedicalcourses.com> wrote:\r\n\r\n> Hello!\r\n>\r\n> Thank you for reaching out about starting your journey to become a\r\n> Certified Nurse Aide (CNA) with us. To start the CNA program, you'll need a\r\n> High School Diploma or GED. Our course is designed to prepare you\r\n> thoroughly for the CNA State exam, ensuring you pass on the first try. We\r\n> provide a comprehensive training package that includes live in-person\r\n> training, procedure videos, and a certification exam simulator.\r\n>\r\n> Our CNA course is offered at two locations:\r\n>\r\n> 1. **Midtown Manhattan**:\r\n>    - Tuition: $1999.00\r\n>    - Learn more and register here:\r\n> https://tiamedical.com/cna_training_course_manhattan.html\r\n>\r\n> 2. **Garden City, Long Island**:\r\n>    - Tuition: $1499.00\r\n>    - Learn more and register here:\r\n> https://tiamedical.com/cna_training_course_long_island.html\r\n>\r\n> Here are the available schedules:\r\n>\r\n> **New York City**\r\n> - 📆 Aug 11, 2025 – Oct 6, 2025: Monday - Thursday, 6pm - 9:30pm\r\n> - 📆 Sep 8, 2025 – Oct 16, 2025: Monday - Thursday, 9am - 1:30pm\r\n> - 📆 Sep 15, 2025 – Nov 6, 2025: Monday - Thursday, 6pm - 9:30pm\r\n> - 📆 Sep 22, 2025 – Oct 30, 2025: Monday - Thursday, 9am - 1:30pm\r\n> - 📆 Oct 4, 2025 – Nov 16, 2025: Saturday & Sunday, 10am - 6pm\r\n>\r\n> **Garden City**\r\n> - 📆 Aug 16, 2025 – Sep 28, 2025: Saturday & Sunday, 10am - 6pm\r\n> - 📆 Aug 18, 2025 – Oct 9, 2025: Monday - Thursday, 6pm - 9:30pm\r\n> - 📆 Aug 25, 2025 – Oct 16, 2025: Monday - Thursday, 6pm - 9:30pm\r\n> - 📆 Sep 2, 2025 – Oct 9, 2025: Monday - Thursday, 9am - 1:30pm\r\n> - 📆 Sep 6, 2025 – Oct 19, 2025: Saturday & Sunday, 10am - 6pm\r\n>\r\n> Let us know if you have any questions — we're here to help!\r\n>\r\n> Warm regards,\r\n> CNA Allie\r\n>\r\n",
+          "subject": "cna",
+          "content": "I need a refund. This isn't for me.\r\n\r\n_Jilcky\r\n",
           "message_id": null,
-          "in_reply_to": [
-            "<175470444253.28332.17409391313941192784@zenbook14x>"
-          ],
+          "in_reply_to": null,
           "references": []
         },
         {
           "role": "assistant",
           "to": "jestrella1007@gmail.com",
-          "subject": "Re: CNA Questions",
-          "content": "Hello!\n\nGreat question! Yes, we do offer flexible payment plans to fit any budget. You can start the program with as little as $300 down. This makes it easy for you to begin your journey towards becoming a Certified Nurse Aide without financial stress.\n\nIf you’re interested in our Midtown Manhattan location, you can find more details and register here: https://tiamedical.com/cna_training_course_manhattan.html\n\nFor those considering our Garden City, Long Island location, please visit: https://tiamedical.com/cna_training_course_long_island.html\n\nLet us know if you have any more questions — we're here to help!\n\nWarm regards,\nCNA Allie",
-          "message_id": "<175470453279.28592.13185492459491665879@zenbook14x>",
+          "subject": "cna",
+          "content": "Hello Jilcky,\n\nThank you for reaching out. I understand that you wish to request a refund. To proceed, please complete the form available at this link: https://tiamedical.com/refund.\n\nAs per our policy, if you cancel within 7 days of signing the enrollment agreement but before instruction begins, you will receive a refund of all monies paid except for the non-refundable registration fee. After this period, the refund amount will be adjusted based on the tuition liability as of your last date of physical attendance and any textbooks or supplies accepted.\n\nIf you need any further assistance or have additional questions, please don't hesitate to ask. We're here to help!\n\nBest regards,\n\nCNA Allie\nLet us know if you have any questions — we're here to help!",
+          "message_id": "<175660764220.29976.7641282576003258930@zenbook14x.localdomain.lan>",
           "in_reply_to": null,
           "references": []
         }
       ]
     },
-    "welcome to mail basic|support@ionos.com": {
-      "messages": [
-        {
-          "role": "user",
-          "from": "support@ionos.com",
-          "subject": "Welcome to Mail Basic",
-          "content": "Welcome to Mail Basic\r\n\r\nDear Customer,\r\n\r\nThank you for choosing IONOS. We have now set up a Mail Basic mailbox for you.\r\n\r\nTo use Mail Basic, simply log in to Webmail with your email address and password.\r\n\r\nTo Webmail\r\nhttps://my.ionos.com\r\n\r\nTo manage your Mail Basic account, please log in to IONOS (https://my.ionos.com/email-overview).\r\n\r\nFurther information about Mail Basic (https://www.ionos.com/help/index.php?id=2497)\r\n\r\nBest wishes,\r\n\r\nJens Reich\r\nCCO IONOS\r\n\r\n\r\n© 2025 IONOS Inc. All rights reserved. IONOS and the IONOS logo are trademarks of IONOS SE, all other trademarks are the property of their respective owners. IONOS Inc., Two Logan Square, 100 N 18th St., Suite 400, Philadelphia, PA 19103",
-          "message_id": null,
-          "in_reply_to": null,
-          "references": []
-        }
-      ]
-    },
-    "test|juan@tiaedu.com": {
-      "messages": [
-        {
-          "role": "user",
-          "from": "juan@tiaedu.com",
-          "subject": "Test",
-          "content": "Is this working\r\n\r\n",
-          "message_id": null,
-          "in_reply_to": null,
-          "references": []
-        }
-      ]
-    },
-    "cna dates|juan@tiaedu.com": {
-      "messages": [
-        {
-          "role": "user",
-          "from": "juan@tiaedu.com",
-          "subject": "CNA dates",
-          "content": "What do class start in the Manhattan location?\r\n\r\n \r\n\r\nJuan\r\n\r\n",
-          "message_id": null,
-          "in_reply_to": null,
-          "references": []
-        },
-        {
-          "role": "user",
-          "from": "juan@tiaedu.com",
-          "subject": "CNA dates",
-          "content": "What do class start in the Manhattan location?\r\n\r\n \r\n\r\nJuan\r\n\r\n",
-          "message_id": null,
-          "in_reply_to": null,
-          "references": []
-        },
-        {
-          "role": "user",
-          "from": "juan@tiaedu.com",
-          "subject": "CNA dates",
-          "content": "What do class start in the Manhattan location?\r\n\r\n \r\n\r\nJuan\r\n\r\n",
-          "message_id": null,
-          "in_reply_to": null,
-          "references": []
-        },
-        {
-          "role": "assistant",
-          "to": "juan@tiaedu.com",
-          "subject": "CNA dates",
-          "content": "Hello Juan,\n\nThank you for reaching out! Our CNA classes at the Manhattan location have several upcoming start dates. Here are the available schedules:\n\n📌 New York City  \n📆 Sep 15, 2025 – Nov 6, 2025  \n📋 Monday - Thursday  \n⏱️ 6pm - 9:30pm  \n\n📆 Sep 22, 2025 – Oct 30, 2025  \n📋 Monday - Thursday  \n⏱️ 9am - 1:30pm  \n\n📆 Oct 4, 2025 – Nov 16, 2025  \n📋 Saturday & Sunday  \n⏱️ 10am - 6pm  \n\n📆 Oct 18, 2025 – Nov 30, 2025  \n📋 Saturday & Sunday  \n⏱️ 10am - 6pm  \n\n📆 Oct 20, 2025 – Nov 27, 2025  \n📋 Monday - Thursday  \n⏱️ 9am - 1:30pm  \n\nYou can find more information and register for the classes here: https://tiamedical.com/cna_training_course_manhattan.html\n\nLet us know if you have any questions — we're here to help!\n\nWarm regards,  \nCNA Allie",
-          "message_id": "<175650595058.8004.108157228227212024@zenbook14x.localdomain.lan>",
-          "in_reply_to": null,
-          "references": []
-        },
-        {
-          "role": "user",
-          "from": "juan@tiaedu.com",
-          "subject": "CNA dates",
-          "content": "What do class start in the Manhattan location?\r\n\r\n \r\n\r\nJuan\r\n\r\n",
-          "message_id": null,
-          "in_reply_to": null,
-          "references": []
-        },
-        {
-          "role": "assistant",
-          "to": "juan@tiaedu.com",
-          "subject": "CNA dates",
-          "content": "Hello Juan,\n\nThank you for your inquiry about CNA classes at our Manhattan location. Here are the upcoming schedules:\n\n📆 Sep 15, 2025 – Nov 6, 2025  \n📋 Monday - Thursday  \n⏱️ 6pm - 9:30pm  \n\n📆 Sep 22, 2025 – Oct 30, 2025  \n📋 Monday - Thursday  \n⏱️ 9am - 1:30pm  \n\n📆 Oct 4, 2025 – Nov 16, 2025  \n📋 Saturday & Sunday  \n⏱️ 10am - 6pm  \n\n📆 Oct 18, 2025 – Nov 30, 2025  \n📋 Saturday & Sunday  \n⏱️ 10am - 6pm  \n\n📆 Oct 20, 2025 – Nov 27, 2025  \n📋 Monday - Thursday  \n⏱️ 9am - 1:30pm  \n\nFor more details and to register, please visit our course page: https://tiamedical.com/cna_training_course_manhattan.html\n\nLet us know if you have any questions — we're here to help!\n\nWarm regards,  \nCNA Allie",
-          "message_id": "<175651805203.8340.17092550716306897051@zenbook14x.localdomain.lan>",
-          "in_reply_to": null,
-          "references": []
-        }
-      ]
-    },
-    "course dates|juan@tiaedu.com": {
-      "messages": [
-        {
-          "role": "user",
-          "from": "juan@tiaedu.com",
-          "subject": "Course dates",
-          "content": "What dates are coming up for Garden city CNA courses?\r\n\r\n \r\n\r\n*\tJuan\r\n\r\n",
-          "message_id": null,
-          "in_reply_to": null,
-          "references": []
-        },
-        {
-          "role": "user",
-          "from": "juan@tiaedu.com",
-          "subject": "Course dates",
-          "content": "What dates are coming up for Garden city CNA courses?\r\n\r\n \r\n\r\n*\tJuan\r\n\r\n",
-          "message_id": null,
-          "in_reply_to": null,
-          "references": []
-        },
-        {
-          "role": "assistant",
-          "to": "juan@tiaedu.com",
-          "subject": "Course dates",
-          "content": "Hi Juan,\n\nThank you for reaching out about our upcoming CNA courses in Garden City! Here are the available schedules:\n\n📌 Garden City  \n📆 Sep 2, 2025 – Oct 9, 2025  \n📋 Monday - Thursday  \n⏱️ 9am - 1:30pm  \n\n📆 Sep 6, 2025 – Oct 19, 2025  \n📋 Saturday & Sunday  \n⏱️ 10am - 6pm  \n\n📆 Sep 15, 2025 – Nov 6, 2025  \n📋 Monday - Thursday  \n⏱️ 6pm - 9:30pm  \n\n📆 Oct 18, 2025 – Nov 30, 2025  \n📋 Saturday & Sunday  \n⏱️ 10am - 6pm  \n\n📆 Oct 20, 2025 – Dec 11, 2025  \n📋 Monday - Thursday  \n⏱️ 6pm - 9:30pm  \n\nIf you need more details or wish to register, please visit our Garden City CNA course page: https://tiamedical.com/cna_training_course_long_island.html\n\nLet us know if you have any questions — we're here to help!\n\nWarm regards,  \nCNA Allie",
-          "message_id": "<175650594023.8004.5231680286538396937@zenbook14x.localdomain.lan>",
-          "in_reply_to": null,
-          "references": []
-        },
-        {
-          "role": "user",
-          "from": "juan@tiaedu.com",
-          "subject": "Course dates",
-          "content": "What dates are coming up for Garden city CNA courses?\r\n\r\n \r\n\r\n*\tJuan\r\n\r\n",
-          "message_id": null,
-          "in_reply_to": null,
-          "references": []
-        },
-        {
-          "role": "assistant",
-          "to": "juan@tiaedu.com",
-          "subject": "Course dates",
-          "content": "Hi Juan,\n\nThank you for reaching out again about our upcoming CNA courses in Garden City! Here are the available schedules:\n\n📌 Garden City  \n📆 Sep 2, 2025 – Oct 9, 2025  \n📋 Monday - Thursday  \n⏱️ 9am - 1:30pm  \n\n📆 Sep 6, 2025 – Oct 19, 2025  \n📋 Saturday & Sunday  \n⏱️ 10am - 6pm  \n\n📆 Sep 15, 2025 – Nov 6, 2025  \n📋 Monday - Thursday  \n⏱️ 6pm - 9:30pm  \n\n📆 Oct 18, 2025 – Nov 30, 2025  \n📋 Saturday & Sunday  \n⏱️ 10am - 6pm  \n\n📆 Oct 20, 2025 – Dec 11, 2025  \n📋 Monday - Thursday  \n⏱️ 6pm - 9:30pm  \n\nIf you need more details or wish to register, please visit our Garden City CNA course page: https://tiamedical.com/cna_training_course_long_island.html\n\nLet us know if you have any questions — we're here to help!\n\nWarm regards,  \nCNA Allie",
-          "message_id": "<175651068611.25796.3213342758721760666@zenbook14x.localdomain.lan>",
-          "in_reply_to": null,
-          "references": []
-        },
-        {
-          "role": "user",
-          "from": "juan@tiaedu.com",
-          "subject": "RE: Course dates",
-          "content": "Do you have any dates in November?\r\n\r\n-----Original Message-----\r\nFrom: cna_assistant@tiamedical.com <cna_assistant@tiamedical.com> \r\nSent: Friday, August 29, 2025 7:38 PM\r\nTo: juan@tiaedu.com\r\nSubject: Re: Course dates\r\n\r\nHi Juan,\r\n\r\nThank you for reaching out again about our upcoming CNA courses in Garden City! Here are the available schedules:\r\n\r\n📌 Garden City  \r\n📆 Sep 2, 2025 – Oct 9, 2025  \r\n📋 Monday - Thursday  \r\n⏱️ 9am - 1:30pm  \r\n\r\n📆 Sep 6, 2025 – Oct 19, 2025  \r\n📋 Saturday & Sunday  \r\n⏱️ 10am - 6pm  \r\n\r\n📆 Sep 15, 2025 – Nov 6, 2025  \r\n📋 Monday - Thursday  \r\n⏱️ 6pm - 9:30pm  \r\n\r\n📆 Oct 18, 2025 – Nov 30, 2025  \r\n📋 Saturday & Sunday  \r\n⏱️ 10am - 6pm  \r\n\r\n📆 Oct 20, 2025 – Dec 11, 2025  \r\n📋 Monday - Thursday  \r\n⏱️ 6pm - 9:30pm  \r\n\r\nIf you need more details or wish to register, please visit our Garden City CNA course page: https://tiamedical.com/cna_training_course_long_island.html\r\n\r\nLet us know if you have any questions — we're here to help!\r\n\r\nWarm regards,  \r\nCNA Allie\r\n\r\n",
-          "message_id": null,
-          "in_reply_to": [
-            "<175651068611.25796.3213342758721760666@zenbook14x.localdomain.lan>"
-          ],
-          "references": []
-        },
-        {
-          "role": "assistant",
-          "to": "juan@tiaedu.com",
-          "subject": "RE: Course dates",
-          "content": "Hi Juan,\n\nThank you for your inquiry about our CNA courses in Garden City. We do have courses that extend into November:\n\n📌 Garden City  \n📆 Sep 15, 2025 – Nov 6, 2025  \n📋 Monday - Thursday  \n⏱️ 6pm - 9:30pm  \n\n📆 Oct 18, 2025 – Nov 30, 2025  \n📋 Saturday & Sunday  \n⏱️ 10am - 6pm  \n\n📆 Oct 20, 2025 – Dec 11, 2025  \n📋 Monday - Thursday  \n⏱️ 6pm - 9:30pm  \n\nFor more information and to register, please visit our Garden City CNA course page: https://tiamedical.com/cna_training_course_long_island.html\n\nLet us know if you have any questions — we're here to help!\n\nWarm regards,  \nCNA Allie",
-          "message_id": "<175651077267.25796.16617897877281139652@zenbook14x.localdomain.lan>",
-          "in_reply_to": null,
-          "references": []
-        }
-      ]
-    },
-    "garden city dates|juan@tiaedu.com": {
-      "messages": [
-        {
-          "role": "user",
-          "from": "juan@tiaedu.com",
-          "subject": "Garden city dates",
-          "content": "Can you share all the dates that are upcoming?\r\n\r\n \r\n\r\nJill\r\n\r\n",
-          "message_id": null,
-          "in_reply_to": null,
-          "references": []
-        },
-        {
-          "role": "assistant",
-          "to": "juan@tiaedu.com",
-          "subject": "Garden city dates",
-          "content": "Hello Jill,\n\nThank you for reaching out! Currently, there are no event schedules available at this time. If you're interested in our courses, you can find more information on our CNA course pages:\n\n- Midtown CNA course: https://tiamedical.com/cna_training_course_manhattan.html\n- Garden City CNA course: https://tiamedical.com/cna_training_course_long_island.html\n\nPlease feel free to explore these links for the latest updates on course offerings. Let us know if you have any questions — we're here to help!\n\nWarm regards,\nCNA Allie",
-          "message_id": "<175651155475.33928.16853924918820674325@zenbook14x.localdomain.lan>",
-          "in_reply_to": null,
-          "references": []
-        },
-        {
-          "role": "user",
-          "from": "juan@tiaedu.com",
-          "subject": "Garden city dates",
-          "content": "Can you share all the dates that are upcoming?\r\n\r\n \r\n\r\nJill\r\n\r\n",
-          "message_id": null,
-          "in_reply_to": null,
-          "references": []
-        },
-        {
-          "role": "assistant",
-          "to": "juan@tiaedu.com",
-          "subject": "Garden city dates",
-          "content": "Hello Jill,\n\nThanks for reaching out again! Currently, there are no event schedules available at this time. If you're interested in our courses, you can find more information on our CNA course pages:\n\n- Midtown CNA course: https://tiamedical.com/cna_training_course_manhattan.html\n- Garden City CNA course: https://tiamedical.com/cna_training_course_long_island.html\n\nPlease feel free to explore these links for the latest updates on course offerings. Let us know if you have any questions — we're here to help!\n\nWarm regards,\nCNA Allie",
-          "message_id": "<175651159164.33928.10123489626158844825@zenbook14x.localdomain.lan>",
-          "in_reply_to": null,
-          "references": []
-        },
-        {
-          "role": "user",
-          "from": "juan@tiaedu.com",
-          "subject": "Garden city dates",
-          "content": "Can you share all the dates that are upcoming?\r\n\r\n \r\n\r\nJill\r\n\r\n",
-          "message_id": null,
-          "in_reply_to": null,
-          "references": []
-        },
-        {
-          "role": "assistant",
-          "to": "juan@tiaedu.com",
-          "subject": "Garden city dates",
-          "content": "Hello Jill,\n\nThank you for your patience! I'm excited to share the upcoming class schedules with you. Here they are:\n\n=== CLASSES ===\n📌 Garden City\n📆 Sep 2, 2025 – Oct 9, 2025\n📋 Monday - Thursday\n⏱️ 9am - 1:30pm\n📆 Sep 6, 2025 – Oct 19, 2025\n📋 Saturday & Sunday\n⏱️ 10am - 6pm\n📆 Sep 15, 2025 – Nov 6, 2025\n📋 Monday - Thursday\n⏱️ 6pm - 9:30pm\n📆 Oct 18, 2025 – Nov 30, 2025\n📋 Saturday & Sunday\n⏱️ 10am - 6pm\n📆 Oct 20, 2025 – Dec 11, 2025\n📋 Monday - Thursday\n⏱️ 6pm - 9:30pm\n📆 Oct 27, 2025 – Dec 4, 2025\n📋 Monday - Thursday\n⏱️ 9am - 1:30pm\n📆 Oct 27, 2025 – Dec 18, 2025\n📋 Monday - Thursday\n⏱️ 6pm - 9:30pm\n📆 Nov 1, 2025 – Dec 14, 2025\n📋 Saturday & Sunday\n⏱️ 10am - 6pm\n\nIf you need more details or wish to register, please visit our course pages:\n- Midtown CNA course: https://tiamedical.com/cna_training_course_manhattan.html\n- Garden City CNA course: https://tiamedical.com/cna_training_course_long_island.html\n\nLet us know if you have any questions — we're here to help!\n\nWarm regards,\nCNA Allie",
-          "message_id": "<175651176883.33928.1072621169477426502@zenbook14x.localdomain.lan>",
-          "in_reply_to": null,
-          "references": []
-        },
-        {
-          "role": "user",
-          "from": "juan@tiaedu.com",
-          "subject": "RE: Garden city dates",
-          "content": "Thanks for the quick response. What's required to start the class?\r\n\r\n-----Original Message-----\r\nFrom: cna_assistant@tiamedical.com <cna_assistant@tiamedical.com> \r\nSent: Friday, August 29, 2025 7:56 PM\r\nTo: juan@tiaedu.com\r\nSubject: Re: Garden city dates\r\n\r\nHello Jill,\r\n\r\nThank you for your patience! I'm excited to share the upcoming class schedules with you. Here they are:\r\n\r\n=== CLASSES ===\r\n📌 Garden City\r\n📆 Sep 2, 2025 – Oct 9, 2025\r\n📋 Monday - Thursday\r\n⏱️ 9am - 1:30pm\r\n📆 Sep 6, 2025 – Oct 19, 2025\r\n📋 Saturday & Sunday\r\n⏱️ 10am - 6pm\r\n📆 Sep 15, 2025 – Nov 6, 2025\r\n📋 Monday - Thursday\r\n⏱️ 6pm - 9:30pm\r\n📆 Oct 18, 2025 – Nov 30, 2025\r\n📋 Saturday & Sunday\r\n⏱️ 10am - 6pm\r\n📆 Oct 20, 2025 – Dec 11, 2025\r\n📋 Monday - Thursday\r\n⏱️ 6pm - 9:30pm\r\n📆 Oct 27, 2025 – Dec 4, 2025\r\n📋 Monday - Thursday\r\n⏱️ 9am - 1:30pm\r\n📆 Oct 27, 2025 – Dec 18, 2025\r\n📋 Monday - Thursday\r\n⏱️ 6pm - 9:30pm\r\n📆 Nov 1, 2025 – Dec 14, 2025\r\n📋 Saturday & Sunday\r\n⏱️ 10am - 6pm\r\n\r\nIf you need more details or wish to register, please visit our course pages:\r\n- Midtown CNA course: https://tiamedical.com/cna_training_course_manhattan.html\r\n- Garden City CNA course: https://tiamedical.com/cna_training_course_long_island.html\r\n\r\nLet us know if you have any questions — we're here to help!\r\n\r\nWarm regards,\r\nCNA Allie\r\n\r\n",
-          "message_id": null,
-          "in_reply_to": [
-            "<175651176883.33928.1072621169477426502@zenbook14x.localdomain.lan>"
-          ],
-          "references": []
-        },
-        {
-          "role": "assistant",
-          "to": "juan@tiaedu.com",
-          "subject": "RE: Garden city dates",
-          "content": "Hello Jill,\n\nThank you for your interest in starting our CNA class! To get started, you'll need to meet the following requirements:\n\n1. **Education**: You must have a high school diploma or GED. This must be submitted by the end of the first week of your class schedule.\n\n2. **Tuition**: Ensure that all tuition fees are paid by the payment deadline to maintain your enrollment.\n\n3. **Exam Preparation**: After completing the course, you'll need to apply for the Prometric exam. You can print the application from the Student Portal at https://tiamedicalcourses.com or from the Prometric site here: https://www.prometric.com/nurseaide/ny. Submit the application and a money order for $115, payable to \"NY Commissioner of Health, NYNA\", to your instructor.\n\nFor more details or to register, please visit our course pages:\n- Midtown CNA course: https://tiamedical.com/cna_training_course_manhattan.html\n- Garden City CNA course: https://tiamedical.com/cna_training_course_long_island.html\n\nLet us know if you have any questions — we're here to help!\n\nWarm regards,\nCNA Allie",
-          "message_id": "<175651195483.33928.111545268364273256@zenbook14x.localdomain.lan>",
-          "in_reply_to": null,
-          "references": []
-        }
-      ]
-    },
-    "cna classes|juan@tiaedu.com": {
-      "messages": [
-        {
-          "role": "user",
-          "from": "juan@tiaedu.com",
-          "subject": "CNA classes",
-          "content": "I live in the Bronx and I'm looking for CNA courses. What dates do you have?\r\n\r\n \r\n\r\n*\tJack\r\n\r\n",
-          "message_id": null,
-          "in_reply_to": null,
-          "references": []
-        },
-        {
-          "role": "assistant",
-          "to": "juan@tiaedu.com",
-          "subject": "CNA classes",
-          "content": "Hello Jack,\n\nThank you for reaching out about our CNA courses! We have several upcoming sessions available for you to consider. Here are the schedules:\n\n=== CLASSES ===\n📌 Garden City\n📆 Sep 2, 2025 – Oct 9, 2025\n📋 Monday - Thursday\n⏱️ 9am - 1:30pm\n📆 Sep 6, 2025 – Oct 19, 2025\n📋 Saturday & Sunday\n⏱️ 10am - 6pm\n📆 Sep 15, 2025 – Nov 6, 2025\n📋 Monday - Thursday\n⏱️ 6pm - 9:30pm\n📆 Oct 18, 2025 – Nov 30, 2025\n📋 Saturday & Sunday\n⏱️ 10am - 6pm\n📆 Oct 20, 2025 – Dec 11, 2025\n📋 Monday - Thursday\n⏱️ 6pm - 9:30pm\n📆 Oct 27, 2025 – Dec 4, 2025\n📋 Monday - Thursday\n⏱️ 9am - 1:30pm\n📆 Oct 27, 2025 – Dec 18, 2025\n📋 Monday - Thursday\n⏱️ 6pm - 9:30pm\n📆 Nov 1, 2025 – Dec 14, 2025\n📋 Saturday & Sunday\n⏱️ 10am - 6pm\n\nFor more details, you can visit our course pages:\n- Manhattan: https://tiamedical.com/cna_training_course_manhattan.html\n- Garden City: https://tiamedical.com/cna_training_course_long_island.html\n\nIf you have any questions or need further assistance, feel free to reach out — we're here to help!\n\nWarm regards,\n\nCNA Allie",
-          "message_id": "<175651607927.35748.10287892215620097651@zenbook14x.localdomain.lan>",
-          "in_reply_to": null,
-          "references": []
-        },
-        {
-          "role": "user",
-          "from": "juan@tiaedu.com",
-          "subject": "RE: CNA classes",
-          "content": "What dates do you have in Manhattan?\r\n\r\n\r\n\r\n-----Original Message-----\r\nFrom: cna_assistant@tiamedical.com <cna_assistant@tiamedical.com> \r\nSent: Friday, August 29, 2025 9:08 PM\r\nTo: juan@tiaedu.com\r\nSubject: Re: CNA classes\r\n\r\nHello Jack,\r\n\r\nThank you for reaching out about our CNA courses! We have several upcoming sessions available for you to consider. Here are the schedules:\r\n\r\n=== CLASSES ===\r\n📌 Garden City\r\n📆 Sep 2, 2025 – Oct 9, 2025\r\n📋 Monday - Thursday\r\n⏱️ 9am - 1:30pm\r\n📆 Sep 6, 2025 – Oct 19, 2025\r\n📋 Saturday & Sunday\r\n⏱️ 10am - 6pm\r\n📆 Sep 15, 2025 – Nov 6, 2025\r\n📋 Monday - Thursday\r\n⏱️ 6pm - 9:30pm\r\n📆 Oct 18, 2025 – Nov 30, 2025\r\n📋 Saturday & Sunday\r\n⏱️ 10am - 6pm\r\n📆 Oct 20, 2025 – Dec 11, 2025\r\n📋 Monday - Thursday\r\n⏱️ 6pm - 9:30pm\r\n📆 Oct 27, 2025 – Dec 4, 2025\r\n📋 Monday - Thursday\r\n⏱️ 9am - 1:30pm\r\n📆 Oct 27, 2025 – Dec 18, 2025\r\n📋 Monday - Thursday\r\n⏱️ 6pm - 9:30pm\r\n📆 Nov 1, 2025 – Dec 14, 2025\r\n📋 Saturday & Sunday\r\n⏱️ 10am - 6pm\r\n\r\nFor more details, you can visit our course pages:\r\n- Manhattan: https://tiamedical.com/cna_training_course_manhattan.html\r\n- Garden City: https://tiamedical.com/cna_training_course_long_island.html\r\n\r\nIf you have any questions or need further assistance, feel free to reach out — we're here to help!\r\n\r\nWarm regards,\r\n\r\nCNA Allie\r\n\r\n",
-          "message_id": null,
-          "in_reply_to": [
-            "<175651607927.35748.10287892215620097651@zenbook14x.localdomain.lan>"
-          ],
-          "references": []
-        },
-        {
-          "role": "assistant",
-          "to": "juan@tiaedu.com",
-          "subject": "RE: CNA classes",
-          "content": "Hello Jack,\n\nThank you for your interest in our CNA courses in Manhattan! Here are the upcoming schedules for the Manhattan location:\n\n=== CLASSES ===\n📌 Manhattan\n📆 Sep 15, 2025 – Nov 6, 2025\n📋 Monday - Thursday\n⏱️ 6pm - 9:30pm\n📆 Sep 22, 2025 – Oct 30, 2025\n📋 Monday - Thursday\n⏱️ 9am - 1:30pm\n📆 Oct 4, 2025 – Nov 16, 2025\n📋 Saturday & Sunday\n⏱️ 10am - 6pm\n📆 Oct 18, 2025 – Nov 30, 2025\n📋 Saturday & Sunday\n⏱️ 10am - 6pm\n📆 Oct 20, 2025 – Nov 27, 2025\n📋 Monday - Thursday\n⏱️ 9am - 1:30pm\n\nFor more details, including pricing and enrollment, please visit our Manhattan course page: https://tiamedical.com/cna_training_course_manhattan.html\n\nLet us know if you have any questions — we're here to help!\n\nWarm regards,\n\nCNA Allie",
-          "message_id": "<175651613472.35748.12051089385327020624@zenbook14x.localdomain.lan>",
-          "in_reply_to": null,
-          "references": []
-        },
-        {
-          "role": "user",
-          "from": "juan@tiaedu.com",
-          "subject": "CNA classes",
-          "content": "I live in the Bronx and I'm looking for CNA courses. What dates do you have?\r\n\r\n \r\n\r\n*\tJack\r\n\r\n",
-          "message_id": null,
-          "in_reply_to": null,
-          "references": []
-        },
-        {
-          "role": "assistant",
-          "to": "juan@tiaedu.com",
-          "subject": "CNA classes",
-          "content": "Hello Jack,\n\nThank you for your interest in our CNA courses! Since you're in the Bronx, you might find our Manhattan location convenient. Here are the upcoming schedules for CNA classes in Manhattan:\n\n=== CLASSES ===\n📌 Manhattan\n📆 Sep 15, 2025 – Nov 6, 2025\n📋 Monday - Thursday\n⏱️ 6pm - 9:30pm\n📆 Sep 22, 2025 – Oct 30, 2025\n📋 Monday - Thursday\n⏱️ 9am - 1:30pm\n📆 Oct 4, 2025 – Nov 16, 2025\n📋 Saturday & Sunday\n⏱️ 10am - 6pm\n📆 Oct 18, 2025 – Nov 30, 2025\n📋 Saturday & Sunday\n⏱️ 10am - 6pm\n📆 Oct 20, 2025 – Nov 27, 2025\n📋 Monday - Thursday\n⏱️ 9am - 1:30pm\n\nFor more details, including pricing and enrollment, please visit our Manhattan course page: https://tiamedical.com/cna_training_course_manhattan.html\n\nLet us know if you have any questions — we're here to help!\n\nWarm regards,\n\nCNA Allie",
-          "message_id": "<175651659373.4760.5011122065104425631@zenbook14x.localdomain.lan>",
-          "in_reply_to": null,
-          "references": []
-        }
-      ]
-    },
-    "sucks|godkillax@gmail.com": {
+    "cna dates?|godkillax@gmail.com": {
       "messages": [
         {
           "role": "user",
           "from": "godkillax@gmail.com",
-          "subject": "Sucks",
-          "content": "Give me my money back. I want a refund. NOW!!!\r\n\r\n- Slutknocker\r\n",
+          "subject": "CNA Dates?",
+          "content": "What classes do you have near Hempstead?\r\n\r\nJalenky\r\n",
           "message_id": null,
           "in_reply_to": null,
           "references": []
@@ -415,252 +80,9 @@
         {
           "role": "assistant",
           "to": "godkillax@gmail.com",
-          "subject": "Sucks",
-          "content": "Hello Slutknocker,\n\nI understand your concern about requesting a refund. To initiate the refund process, please complete the refund request form using the following link: https://archive.tiaedu.com/refund_request.html. Our refund policy states that a student who cancels within 7 days of signing the enrollment agreement but before instruction begins can receive a full refund, excluding the non-refundable registration fee.\n\nIf you have any questions or need further assistance with the refund process, feel free to reach out. We're here to help!\n\nWarm regards,\n\nCNA Allie\n\nLet us know if you have any questions — we're here to help!",
-          "message_id": "<175651842076.8340.5100692433931527783@zenbook14x.localdomain.lan>",
-          "in_reply_to": null,
-          "references": []
-        },
-        {
-          "role": "user",
-          "from": "godkillax@gmail.com",
-          "subject": "Sucks",
-          "content": "Give me my money back. I want a refund. NOW!!!\r\n\r\n- Slutknocker\r\n",
-          "message_id": null,
-          "in_reply_to": null,
-          "references": []
-        },
-        {
-          "role": "assistant",
-          "to": "godkillax@gmail.com",
-          "subject": "Sucks",
-          "content": "Hello Slutknocker,\n\nI understand your urgency in requesting a refund. To initiate the refund process, please complete the refund request form using the following link: https://archive.tiaedu.com/refund_request.html. Our refund policy states that a student who cancels within 7 days of signing the enrollment agreement but before instruction begins can receive a full refund, excluding the non-refundable registration fee.\n\nIf you have any questions or need further assistance with the refund process, feel free to reach out. We're here to help!\n\nWarm regards,\n\nCNA Allie\n\nLet us know if you have any questions — we're here to help!",
-          "message_id": "<175651898421.8340.6432597012348455658@zenbook14x.localdomain.lan>",
-          "in_reply_to": null,
-          "references": []
-        },
-        {
-          "role": "user",
-          "from": "godkillax@gmail.com",
-          "subject": "Sucks",
-          "content": "Give me my money back. I want a refund. NOW!!!\r\n\r\n- Slutknocker\r\n",
-          "message_id": null,
-          "in_reply_to": null,
-          "references": []
-        },
-        {
-          "role": "assistant",
-          "to": "godkillax@gmail.com",
-          "subject": "Sucks",
-          "content": "Hello Slutknocker,\n\nI understand your urgency regarding a refund. To start the refund process, please fill out the refund request form at this link: https://tiamedical.com/refund_request.html.\n\nOur refund policy states that a student who cancels within 7 days of signing the enrollment agreement but before instruction begins can receive a full refund, excluding the non-refundable registration fee. If you have any questions or need further assistance, please let us know.\n\nWarm regards,\n\nCNA Allie\n\nLet us know if you have any questions — we're here to help!",
-          "message_id": "<175651980699.35108.5662183779742946756@zenbook14x.localdomain.lan>",
-          "in_reply_to": null,
-          "references": []
-        },
-        {
-          "role": "user",
-          "from": "godkillax@gmail.com",
-          "subject": "Sucks",
-          "content": "Give me my money back. I want a refund. NOW!!!\r\n\r\n- Slutknocker\r\n",
-          "message_id": null,
-          "in_reply_to": null,
-          "references": []
-        },
-        {
-          "role": "assistant",
-          "to": "godkillax@gmail.com",
-          "subject": "Sucks",
-          "content": "Hello Slutknocker,\n\nI understand your urgency regarding a refund. To start the refund process, please fill out the refund request form at this link: https://tiamedical.com/refund_request.html.\n\nOur refund policy states that a student who cancels within 7 days of signing the enrollment agreement but before instruction begins can receive a full refund, excluding the non-refundable registration fee. If you have any questions or need further assistance, please let us know.\n\nWarm regards,\n\nCNA Allie\n\nLet us know if you have any questions — we're here to help!",
-          "message_id": "<175652326275.39580.14653207343954427835@zenbook14x.localdomain.lan>",
-          "in_reply_to": null,
-          "references": []
-        }
-      ]
-    },
-    "payment plans|godkillax@gmail.com": {
-      "messages": [
-        {
-          "role": "user",
-          "from": "godkillax@gmail.com",
-          "subject": "payment plans",
-          "content": "can you give me details on payment plans?\r\n\r\n- Jordan\r\n",
-          "message_id": null,
-          "in_reply_to": null,
-          "references": []
-        },
-        {
-          "role": "assistant",
-          "to": "godkillax@gmail.com",
-          "subject": "payment plans",
-          "content": "Hi Jordan,\n\nThank you for your interest in our Nurse Aide - CNA program. Our current payment plan for the course is $1499.\n\nFor more details on the course schedule and to explore payment options, please visit the CNA Garden City course page: https://tiamedical.com/cna_training_course_long_island.html\n\nLet us know if you have any questions — we're here to help!\n\nCNA Allie",
-          "message_id": "<175652342578.39580.12036396869732098520@zenbook14x.localdomain.lan>",
-          "in_reply_to": null,
-          "references": []
-        },
-        {
-          "role": "user",
-          "from": "godkillax@gmail.com",
-          "subject": "payment plans",
-          "content": "can you give me details on payment plans?\r\n\r\n- Jordan\r\n",
-          "message_id": null,
-          "in_reply_to": null,
-          "references": []
-        },
-        {
-          "role": "assistant",
-          "to": "godkillax@gmail.com",
-          "subject": "payment plans",
-          "content": "Hi Jordan,\n\nThank you for reaching out about payment plans for our Nurse Aide - CNA program. Our current payment plan for the course is structured as follows:\n- First day of class: $340\n- Second week: $339.80\n- Third week: $339.80\n- Fourth week: $339.80\n- Fifth week: Remaining balance\n\nFor more information on the course schedule and payment options, please visit the CNA Garden City course page: https://tiamedical.com/cna_training_course_long_island.html\n\nLet us know if you have any questions — we're here to help!\n\nCNA Allie",
-          "message_id": "<175652357824.39580.662323121731196125@zenbook14x.localdomain.lan>",
-          "in_reply_to": null,
-          "references": []
-        },
-        {
-          "role": "user",
-          "from": "godkillax@gmail.com",
-          "subject": "payment plans",
-          "content": "I need details on your CNA course payment plans.\r\n\r\n- Dexter\r\n",
-          "message_id": null,
-          "in_reply_to": null,
-          "references": []
-        },
-        {
-          "role": "assistant",
-          "to": "godkillax@gmail.com",
-          "subject": "payment plans",
-          "content": "Hi Dexter,\n\nThank you for your inquiry about the payment plans for our Nurse Aide - CNA program. The payment plan for the course is structured as follows:\n- First day of class: $340\n- Second week: $339.80\n- Third week: $339.80\n- Fourth week: $339.80\n- Fifth week: Remaining balance\n\nFor more information on the course schedule and payment options, please visit the CNA Garden City course page: https://tiamedical.com/cna_training_course_long_island.html\n\nLet us know if you have any questions — we're here to help!\n\nCNA Allie",
-          "message_id": "<175652563034.2460.1329441779997199253@zenbook14x.localdomain.lan>",
-          "in_reply_to": null,
-          "references": []
-        },
-        {
-          "role": "user",
-          "from": "godkillax@gmail.com",
-          "subject": "Re: payment plans",
-          "content": "What about exam requirements? can you give me a list?\r\n\r\nOn Fri, Aug 29, 2025 at 11:47 PM <cna_assistant@tiamedical.com> wrote:\r\n\r\n> Hi Dexter,\r\n>\r\n> Thank you for your inquiry about the payment plans for our Nurse Aide -\r\n> CNA program. The payment plan for the course is structured as follows:\r\n> - First day of class: $340\r\n> - Second week: $339.80\r\n> - Third week: $339.80\r\n> - Fourth week: $339.80\r\n> - Fifth week: Remaining balance\r\n>\r\n> For more information on the course schedule and payment options, please\r\n> visit the CNA Garden City course page:\r\n> https://tiamedical.com/cna_training_course_long_island.html\r\n>\r\n> Let us know if you have any questions — we're here to help!\r\n>\r\n> CNA Allie\r\n>\r\n",
-          "message_id": null,
-          "in_reply_to": [
-            "<175652563034.2460.1329441779997199253@zenbook14x.localdomain.lan>"
-          ],
-          "references": []
-        },
-        {
-          "role": "assistant",
-          "to": "godkillax@gmail.com",
-          "subject": "Re: payment plans",
-          "content": "Hi Dexter,\n\nThank you for your interest in our Nurse Aide - CNA program. When it comes to exam requirements, here is a list of what you'll need to prepare for:\n- Complete the Prometric application and exam fees, totaling $115 for first-time testers.\n- Submit the application and money order to your instructor at TIA for exam scheduling.\n- Check the available exam dates at https://cna.tiamedical.com/ and note that requests are confirmed on a first-come, first-served basis.\n\nFor more detailed instructions and information, please visit the Prometric application page at https://www.prometric.com/nurseaide/ny.\n\nIf you have any further questions or need assistance, feel free to reach out. We're here to help!\n\nCNA Allie",
-          "message_id": "<175652569066.2460.8691411510068355320@zenbook14x.localdomain.lan>",
-          "in_reply_to": null,
-          "references": []
-        },
-        {
-          "role": "user",
-          "from": "godkillax@gmail.com",
-          "subject": "Re: payment plans",
-          "content": "What dates do you have for externships?\r\n\r\nOn Fri, Aug 29, 2025 at 11:48 PM <cna_assistant@tiamedical.com> wrote:\r\n\r\n> Hi Dexter,\r\n>\r\n> Thank you for your interest in our Nurse Aide - CNA program. When it comes\r\n> to exam requirements, here is a list of what you'll need to prepare for:\r\n> - Complete the Prometric application and exam fees, totaling $115 for\r\n> first-time testers.\r\n> - Submit the application and money order to your instructor at TIA for\r\n> exam scheduling.\r\n> - Check the available exam dates at https://cna.tiamedical.com/ and note\r\n> that requests are confirmed on a first-come, first-served basis.\r\n>\r\n> For more detailed instructions and information, please visit the Prometric\r\n> application page at https://www.prometric.com/nurseaide/ny.\r\n>\r\n> If you have any further questions or need assistance, feel free to reach\r\n> out. We're here to help!\r\n>\r\n> CNA Allie\r\n>\r\n",
-          "message_id": null,
-          "in_reply_to": [
-            "<175652569066.2460.8691411510068355320@zenbook14x.localdomain.lan>"
-          ],
-          "references": []
-        },
-        {
-          "role": "assistant",
-          "to": "godkillax@gmail.com",
-          "subject": "Re: payment plans",
-          "content": "Hi Dexter,\n\nThank you for your interest in our Nurse Aide - CNA program. When it comes to externships, we do not offer externships as part of our program. However, we do provide hands-on training and clinical experience during the course to prepare you for your future career as a Certified Nurse Aide.\n\nIf you have any more questions or need further assistance, please don't hesitate to reach out. We're here to help!\n\nCNA Allie",
-          "message_id": "<175652585552.2460.8023458575242155612@zenbook14x.localdomain.lan>",
-          "in_reply_to": null,
-          "references": []
-        },
-        {
-          "role": "user",
-          "from": "godkillax@gmail.com",
-          "subject": "Re: payment plans",
-          "content": "Are you sure? can you check the handbook?\r\n\r\nOn Fri, Aug 29, 2025 at 11:50 PM <cna_assistant@tiamedical.com> wrote:\r\n\r\n> Hi Dexter,\r\n>\r\n> Thank you for your interest in our Nurse Aide - CNA program. When it comes\r\n> to externships, we do not offer externships as part of our program.\r\n> However, we do provide hands-on training and clinical experience during the\r\n> course to prepare you for your future career as a Certified Nurse Aide.\r\n>\r\n> If you have any more questions or need further assistance, please don't\r\n> hesitate to reach out. We're here to help!\r\n>\r\n> CNA Allie\r\n>\r\n",
-          "message_id": null,
-          "in_reply_to": [
-            "<175652585552.2460.8023458575242155612@zenbook14x.localdomain.lan>"
-          ],
-          "references": []
-        },
-        {
-          "role": "assistant",
-          "to": "godkillax@gmail.com",
-          "subject": "Re: payment plans",
-          "content": "Hi Dexter,\n\nThank you for your inquiry about externships. I understand your interest in this aspect of the program. After checking our handbook and program details, I can confirm that we do not offer externships as part of our Nurse Aide - CNA program. However, rest assured that we provide comprehensive hands-on training and clinical experience during the course to equip you for your future career as a Certified Nurse Aide.\n\nIf you have any more questions or need further clarification, please feel free to reach out. We're here to support you every step of the way!\n\nWarm regards,\n\nCNA Allie",
-          "message_id": "<175652592029.2460.13826220463966923263@zenbook14x.localdomain.lan>",
-          "in_reply_to": null,
-          "references": []
-        },
-        {
-          "role": "user",
-          "from": "godkillax@gmail.com",
-          "subject": "payment plans",
-          "content": "I need details on your CNA course payment plans.\r\n\r\n- Dexter\r\n",
-          "message_id": null,
-          "in_reply_to": null,
-          "references": []
-        }
-      ]
-    },
-    "exam questions|godkillax@gmail.com": {
-      "messages": [
-        {
-          "role": "user",
-          "from": "godkillax@gmail.com",
-          "subject": "Exam questions",
-          "content": "What do i need to take the exam?\r\n\r\nSonic\r\n",
-          "message_id": null,
-          "in_reply_to": null,
-          "references": []
-        },
-        {
-          "role": "assistant",
-          "to": "godkillax@gmail.com",
-          "subject": "Exam questions",
-          "content": "To take the State Certification Exam after completing your course and externship, you'll need to apply for the exam. The exam consists of written and clinical skills parts and is proctored by Prometric at the school.\n\nYou can find the exam application details and fees on our website at https://cna.tiamedical.com/. Remember, exam dates are subject to change, so it's essential to stay updated.\n\nIf you have any questions or need assistance with the exam application process, feel free to reach out. We're here to help!\n\nCNA Allie\n\nLet us know if you have any questions — we're here to help!",
-          "message_id": "<175652445416.2460.2127833219731724684@zenbook14x.localdomain.lan>",
-          "in_reply_to": null,
-          "references": []
-        },
-        {
-          "role": "user",
-          "from": "godkillax@gmail.com",
-          "subject": "Re: Exam questions",
-          "content": "Can you give me more details on the requirements, please?\r\n\r\nOn Fri, Aug 29, 2025 at 11:27 PM <cna_assistant@tiamedical.com> wrote:\r\n\r\n> To take the State Certification Exam after completing your course and\r\n> externship, you'll need to apply for the exam. The exam consists of written\r\n> and clinical skills parts and is proctored by Prometric at the school.\r\n>\r\n> You can find the exam application details and fees on our website at\r\n> https://cna.tiamedical.com/. Remember, exam dates are subject to change,\r\n> so it's essential to stay updated.\r\n>\r\n> If you have any questions or need assistance with the exam application\r\n> process, feel free to reach out. We're here to help!\r\n>\r\n> CNA Allie\r\n>\r\n> Let us know if you have any questions — we're here to help!\r\n>\r\n",
-          "message_id": null,
-          "in_reply_to": [
-            "<175652445416.2460.2127833219731724684@zenbook14x.localdomain.lan>"
-          ],
-          "references": []
-        },
-        {
-          "role": "assistant",
-          "to": "godkillax@gmail.com",
-          "subject": "Re: Exam questions",
-          "content": "To meet the requirements for the State Certification Exam, you must complete your course and externship first. The exam has written and clinical skills parts and is proctored by Prometric at our school.\n\nFor more detailed information on the exam application process, including fees and application details, please visit our website at https://cna.tiamedical.com/. Remember to stay updated on any changes to exam dates.\n\nIf you have any further questions or need assistance with the exam application, don't hesitate to reach out. We're here to support you every step of the way!\n\nCNA Allie\n\nLet us know if you have any questions — we're here to help!",
-          "message_id": "<175652478215.2460.11933190930019463781@zenbook14x.localdomain.lan>",
-          "in_reply_to": null,
-          "references": []
-        },
-        {
-          "role": "user",
-          "from": "godkillax@gmail.com",
-          "subject": "Re: Exam questions",
-          "content": "What are the payment plan options?\r\n\r\nOn Fri, Aug 29, 2025 at 11:33 PM <cna_assistant@tiamedical.com> wrote:\r\n\r\n> To meet the requirements for the State Certification Exam, you must\r\n> complete your course and externship first. The exam has written and\r\n> clinical skills parts and is proctored by Prometric at our school.\r\n>\r\n> For more detailed information on the exam application process, including\r\n> fees and application details, please visit our website at\r\n> https://cna.tiamedical.com/. Remember to stay updated on any changes to\r\n> exam dates.\r\n>\r\n> If you have any further questions or need assistance with the exam\r\n> application, don't hesitate to reach out. We're here to support you every\r\n> step of the way!\r\n>\r\n> CNA Allie\r\n>\r\n> Let us know if you have any questions — we're here to help!\r\n>\r\n",
-          "message_id": null,
-          "in_reply_to": [
-            "<175652478215.2460.11933190930019463781@zenbook14x.localdomain.lan>"
-          ],
-          "references": []
-        },
-        {
-          "role": "assistant",
-          "to": "godkillax@gmail.com",
-          "subject": "Re: Exam questions",
-          "content": "To learn about the payment plan options for our Nurse Aide - CNA courses, please visit our website at https://cna.tiamedical.com/. You'll find detailed information on payment plans and any available options there.\n\nIf you have any questions or need further assistance regarding the payment plans, feel free to reach out. We're here to help you navigate through the process smoothly!\n\nCNA Allie\n\nLet us know if you have any questions — we're here to help!",
-          "message_id": "<175652535498.2460.7218833869871763369@zenbook14x.localdomain.lan>",
+          "subject": "CNA Dates?",
+          "content": "Hello Jalenky,\n\nThank you for your interest in our Nurse Aide - CNA courses near Hempstead! Here are the available classes in Garden City:\n\n📌 Garden City\n📆 Sep 2, 2025 – Oct 9, 2025\n📋 Monday - Thursday\n⏱️ 9am - 1:30pm\n\n📆 Sep 6, 2025 – Oct 19, 2025\n📋 Saturday & Sunday\n⏱️ 10am - 6pm\n\n📆 Sep 15, 2025 – Nov 6, 2025\n📋 Monday - Thursday\n⏱️ 6pm - 9:30pm\n\n📆 Oct 18, 2025 – Nov 30, 2025\n📋 Saturday & Sunday\n⏱️ 10am - 6pm\n\n📆 Oct 20, 2025 – Dec 11, 2025\n📋 Monday - Thursday\n⏱️ 6pm - 9:30pm\n\nI hope this helps you plan your schedule. Let us know if you have any questions — we're here to help!\n\nBest Regards,\nCNA Allie",
+          "message_id": "<175660806659.29976.8064314651423194268@zenbook14x.localdomain.lan>",
           "in_reply_to": null,
           "references": []
         }
@@ -668,38 +90,9 @@
     }
   },
   "message_index": {
-    "<175470320109.9792.13458478843206544337@zenbook14x>": "cna q|juan@tia.edu",
-    "<175470320781.9792.17090387439992554004@zenbook14x>": "cna q|juan@tia.edu",
-    "<175470326801.9792.5572959931571926144@zenbook14x>": "cna q|juan@tia.edu",
-    "<175470327363.9792.4727278113230068250@zenbook14x>": "cna q|juan@tia.edu",
-    "<175470363934.9792.521724371125639910@zenbook14x>": "cna q|juan@tia.edu",
-    "<175470364636.9792.12610336517463752071@zenbook14x>": "cna q|juan@tia.edu",
-    "<175470444253.28332.17409391313941192784@zenbook14x>": "cna questions|jestrella1007@gmail.com",
-    "<175470453279.28592.13185492459491665879@zenbook14x>": "cna questions|jestrella1007@gmail.com",
-    "<175650594023.8004.5231680286538396937@zenbook14x.localdomain.lan>": "course dates|juan@tiaedu.com",
-    "<175650595058.8004.108157228227212024@zenbook14x.localdomain.lan>": "cna dates|juan@tiaedu.com",
-    "<175651068611.25796.3213342758721760666@zenbook14x.localdomain.lan>": "course dates|juan@tiaedu.com",
-    "<175651077267.25796.16617897877281139652@zenbook14x.localdomain.lan>": "course dates|juan@tiaedu.com",
-    "<175651155475.33928.16853924918820674325@zenbook14x.localdomain.lan>": "garden city dates|juan@tiaedu.com",
-    "<175651159164.33928.10123489626158844825@zenbook14x.localdomain.lan>": "garden city dates|juan@tiaedu.com",
-    "<175651176883.33928.1072621169477426502@zenbook14x.localdomain.lan>": "garden city dates|juan@tiaedu.com",
-    "<175651195483.33928.111545268364273256@zenbook14x.localdomain.lan>": "garden city dates|juan@tiaedu.com",
-    "<175651607927.35748.10287892215620097651@zenbook14x.localdomain.lan>": "cna classes|juan@tiaedu.com",
-    "<175651613472.35748.12051089385327020624@zenbook14x.localdomain.lan>": "cna classes|juan@tiaedu.com",
-    "<175651659373.4760.5011122065104425631@zenbook14x.localdomain.lan>": "cna classes|juan@tiaedu.com",
-    "<175651805203.8340.17092550716306897051@zenbook14x.localdomain.lan>": "cna dates|juan@tiaedu.com",
-    "<175651842076.8340.5100692433931527783@zenbook14x.localdomain.lan>": "sucks|godkillax@gmail.com",
-    "<175651898421.8340.6432597012348455658@zenbook14x.localdomain.lan>": "sucks|godkillax@gmail.com",
-    "<175651980699.35108.5662183779742946756@zenbook14x.localdomain.lan>": "sucks|godkillax@gmail.com",
-    "<175652326275.39580.14653207343954427835@zenbook14x.localdomain.lan>": "sucks|godkillax@gmail.com",
-    "<175652342578.39580.12036396869732098520@zenbook14x.localdomain.lan>": "payment plans|godkillax@gmail.com",
-    "<175652357824.39580.662323121731196125@zenbook14x.localdomain.lan>": "payment plans|godkillax@gmail.com",
-    "<175652445416.2460.2127833219731724684@zenbook14x.localdomain.lan>": "exam questions|godkillax@gmail.com",
-    "<175652478215.2460.11933190930019463781@zenbook14x.localdomain.lan>": "exam questions|godkillax@gmail.com",
-    "<175652535498.2460.7218833869871763369@zenbook14x.localdomain.lan>": "exam questions|godkillax@gmail.com",
-    "<175652563034.2460.1329441779997199253@zenbook14x.localdomain.lan>": "payment plans|godkillax@gmail.com",
-    "<175652569066.2460.8691411510068355320@zenbook14x.localdomain.lan>": "payment plans|godkillax@gmail.com",
-    "<175652585552.2460.8023458575242155612@zenbook14x.localdomain.lan>": "payment plans|godkillax@gmail.com",
-    "<175652592029.2460.13826220463966923263@zenbook14x.localdomain.lan>": "payment plans|godkillax@gmail.com"
+    "<175660762884.29976.13857654545908019952@zenbook14x.localdomain.lan>": "dates in da bronx?|godkillax@gmail.com",
+    "<175660763771.29976.1570217416221072019@zenbook14x.localdomain.lan>": "cna dates|jestrella1007@gmail.com",
+    "<175660764220.29976.7641282576003258930@zenbook14x.localdomain.lan>": "cna|jestrella1007@gmail.com",
+    "<175660806659.29976.8064314651423194268@zenbook14x.localdomain.lan>": "cna dates?|godkillax@gmail.com"
   }
 }

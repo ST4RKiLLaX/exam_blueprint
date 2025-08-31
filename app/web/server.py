@@ -29,7 +29,29 @@ def allowed_file(filename):
 
 @app.route("/")
 def home():
-    return render_template("dashboard.html")
+    # Ensure task scheduler is started
+    ensure_scheduler_started()
+    
+    # Get dynamic stats for dashboard
+    from app.config.model_config import get_current_model
+    from app.config.knowledge_config import load_knowledge_config
+    from app.models.event_category import load_event_categories
+    
+    # Get current model
+    current_model = get_current_model()
+    
+    # Count knowledge bases
+    kb_config = load_knowledge_config()
+    kb_count = len([kb for kb in kb_config.get('knowledge_bases', []) if kb.get('status') == 'active'])
+    
+    # Count event categories
+    event_categories = load_event_categories()
+    event_count = len([cat for cat in event_categories if cat.is_event])
+    
+    return render_template("dashboard.html", 
+                         current_model=current_model,
+                         kb_count=kb_count,
+                         event_count=event_count)
 
 @app.route("/agents", methods=["GET", "POST"])
 def agents():
@@ -105,6 +127,91 @@ def agents():
     knowledge_bases = get_active_knowledge_bases()
     
     return render_template("agents.html", agents=agents_data, knowledge_bases=knowledge_bases)
+
+@app.route("/api/threads", methods=["GET"])
+def get_threads():
+    """Get all email threads"""
+    from app.email.thread_store import load_store
+    
+    store = load_store()
+    threads = store.get("threads", {})
+    
+    # Format threads for display
+    thread_list = []
+    for thread_key, thread_data in threads.items():
+        messages = thread_data.get("messages", [])
+        if messages:
+            # Get the latest message for preview
+            latest_msg = messages[-1]
+            first_msg = messages[0]
+            
+            thread_list.append({
+                "thread_key": thread_key,
+                "participant": first_msg.get("from", "Unknown"),
+                "subject": first_msg.get("subject", "No Subject"),
+                "message_count": len(messages),
+                "last_activity": latest_msg.get("content", "")[:100] + "..." if len(latest_msg.get("content", "")) > 100 else latest_msg.get("content", ""),
+                "last_role": latest_msg.get("role", "unknown")
+            })
+    
+    # Sort by message count (most active first)
+    thread_list.sort(key=lambda x: x["message_count"], reverse=True)
+    
+    return jsonify({"success": True, "threads": thread_list})
+
+@app.route("/api/threads/<thread_key>", methods=["GET"])
+def get_thread_details(thread_key):
+    """Get detailed view of a specific thread"""
+    from app.email.thread_store import load_store
+    
+    store = load_store()
+    thread = store.get("threads", {}).get(thread_key)
+    
+    if not thread:
+        return jsonify({"success": False, "error": "Thread not found"}), 404
+    
+    return jsonify({"success": True, "thread": thread})
+
+@app.route("/api/threads/<thread_key>", methods=["DELETE"])
+def delete_thread(thread_key):
+    """Delete a specific thread"""
+    from app.email.thread_store import load_store, save_store
+    
+    store = load_store()
+    threads = store.get("threads", {})
+    msg_index = store.get("message_index", {})
+    
+    if thread_key not in threads:
+        return jsonify({"success": False, "error": "Thread not found"}), 404
+    
+    # Remove thread
+    thread_data = threads.pop(thread_key)
+    
+    # Remove message IDs from index
+    for message in thread_data.get("messages", []):
+        msg_id = message.get("message_id")
+        if msg_id and msg_id in msg_index:
+            del msg_index[msg_id]
+    
+    save_store(store)
+    
+    return jsonify({"success": True, "message": "Thread deleted successfully"})
+
+@app.route("/api/threads", methods=["DELETE"])
+def clear_all_threads():
+    """Clear all email threads"""
+    from app.email.thread_store import load_store, save_store
+    
+    store = load_store()
+    thread_count = len(store.get("threads", {}))
+    
+    # Clear all threads and message index
+    store["threads"] = {}
+    store["message_index"] = {}
+    
+    save_store(store)
+    
+    return jsonify({"success": True, "message": f"Cleared {thread_count} threads successfully"})
 
 @app.route("/email_accounts", methods=["GET", "POST"])
 def email_accounts():
@@ -397,6 +504,7 @@ def knowledge_bases():
                 if source_type == 'url':
                     # Handle URL source
                     source_url = request.form.get('source_url', '').strip()
+                    refresh_schedule = request.form.get('refresh_schedule', 'manual')
                     if not source_url:
                         flash('Source URL is required', 'error')
                         return redirect(request.url)
@@ -410,14 +518,30 @@ def knowledge_bases():
                         access_type=access_type,
                         category=category,
                         is_events=is_events,
-                        event_category=category if is_events else None
+                        event_category=category if is_events else None,
+                        refresh_schedule=refresh_schedule
                     )
                     
                     # Process the knowledge base
                     from app.utils.knowledge_processor import process_knowledge_base
                     update_embedding_status(kb_id, "processing")
-                    if process_knowledge_base(kb_id, "url", source_url):
+                    
+                    # Generate AI summary if description is empty
+                    generate_summary = not description.strip()
+                    success, ai_summary = process_knowledge_base(kb_id, "url", source_url, generate_summary=generate_summary)
+                    
+                    if success:
                         update_embedding_status(kb_id, "completed")
+                        
+                        # Update description with AI summary if generated
+                        if ai_summary and generate_summary:
+                            config = load_knowledge_config()
+                            for kb in config.get('knowledge_bases', []):
+                                if kb.get('id') == kb_id:
+                                    kb['description'] = ai_summary
+                                    break
+                            save_knowledge_config(config)
+                        
                         flash(f'Knowledge base "{title}" added and processed successfully!', 'success')
                     else:
                         update_embedding_status(kb_id, "failed")
@@ -449,14 +573,30 @@ def knowledge_bases():
                         access_type=access_type,
                         category=category,
                         is_events=is_events,
-                        event_category=category if is_events else None
+                        event_category=category if is_events else None,
+                        refresh_schedule="manual"  # Files don't have refresh schedules
                     )
                     
                     # Process the knowledge base
                     from app.utils.knowledge_processor import process_knowledge_base
                     update_embedding_status(kb_id, "processing")
-                    if process_knowledge_base(kb_id, "file", upload_path):
+                    
+                    # Generate AI summary if description is empty
+                    generate_summary = not description.strip()
+                    success, ai_summary = process_knowledge_base(kb_id, "file", upload_path, generate_summary=generate_summary)
+                    
+                    if success:
                         update_embedding_status(kb_id, "completed")
+                        
+                        # Update description with AI summary if generated
+                        if ai_summary and generate_summary:
+                            config = load_knowledge_config()
+                            for kb in config.get('knowledge_bases', []):
+                                if kb.get('id') == kb_id:
+                                    kb['description'] = ai_summary
+                                    break
+                            save_knowledge_config(config)
+                        
                         flash(f'Knowledge base "{title}" uploaded and processed successfully!', 'success')
                     else:
                         update_embedding_status(kb_id, "failed")
@@ -473,6 +613,7 @@ def knowledge_bases():
             category = request.form.get('category', 'general')
             access_type = request.form.get('access_type', 'shared')
             is_events = request.form.get('is_events') == 'on'  # Checkbox value
+            refresh_schedule = request.form.get('refresh_schedule', 'manual')
             
             if kb_id and title:
                 # Update knowledge base properties
@@ -480,14 +621,23 @@ def knowledge_bases():
                 kb_found = False
                 for kb in config.get('knowledge_bases', []):
                     if kb.get('id') == kb_id:
-                        kb.update({
+                        # Only update refresh_schedule for URL knowledge bases
+                        update_data = {
                             'title': title,
                             'description': description,
                             'category': category,
                             'access_type': access_type,
                             'is_events': is_events,
                             'event_category': category if is_events else None
-                        })
+                        }
+                        
+                        # Add refresh schedule for URL knowledge bases
+                        if kb.get('type') == 'url':
+                            from app.config.knowledge_config import calculate_next_refresh
+                            update_data['refresh_schedule'] = refresh_schedule
+                            update_data['next_refresh'] = calculate_next_refresh(refresh_schedule, kb.get('last_refreshed'))
+                        
+                        kb.update(update_data)
                         kb_found = True
                         break
                 
@@ -525,12 +675,81 @@ def knowledge_bases():
                         kb_type = kb_info.get('type', 'document')
                         # Convert 'document' to 'file' for the processor
                         processor_type = "file" if kb_type == "document" else kb_type
-                        process_knowledge_base(kb_id, processor_type, kb_info['source'])
-                        flash('Knowledge base reprocessing started!', 'success')
+                        success, _ = process_knowledge_base(kb_id, processor_type, kb_info['source'])
+                        if success:
+                            flash('Knowledge base reprocessed successfully!', 'success')
+                        else:
+                            flash('Knowledge base reprocessing failed!', 'error')
                     except Exception as e:
                         flash(f'Error reprocessing knowledge base: {str(e)}', 'error')
                 else:
                     flash('Knowledge base not found', 'error')
+        
+        elif action == "refresh":
+            # Handle URL knowledge base refresh
+            kb_id = request.form.get('kb_id')
+            if kb_id:
+                config = load_knowledge_config()
+                kb_info = None
+                for kb in config.get('knowledge_bases', []):
+                    if kb.get('id') == kb_id:
+                        kb_info = kb
+                        break
+                
+                if kb_info and kb_info.get('type') == 'url':
+                    try:
+                        from app.utils.knowledge_processor import process_knowledge_base
+                        from app.config.knowledge_config import mark_knowledge_base_refreshed
+                        
+                        # Refresh the URL knowledge base
+                        update_embedding_status(kb_id, "processing")
+                        success, _ = process_knowledge_base(kb_id, "url", kb_info['source'])
+                        if success:
+                            # Mark as refreshed and update next refresh time
+                            mark_knowledge_base_refreshed(kb_id)
+                            update_embedding_status(kb_id, "completed")
+                            flash(f'Knowledge base "{kb_info["title"]}" refreshed successfully!', 'success')
+                        else:
+                            update_embedding_status(kb_id, "failed")
+                            flash(f'Failed to refresh knowledge base "{kb_info["title"]}"', 'error')
+                    except Exception as e:
+                        update_embedding_status(kb_id, "failed")
+                        flash(f'Error refreshing knowledge base: {str(e)}', 'error')
+                elif kb_info:
+                    flash('Only URL knowledge bases can be refreshed', 'error')
+                else:
+                    flash('Knowledge base not found', 'error')
+        
+        elif action == "discover_locations":
+            # Handle location discovery for event knowledge bases
+            kb_id = request.form.get('kb_id')
+            if kb_id:
+                try:
+                    from app.utils.knowledge_processor import discover_locations_for_event_kb
+                    
+                    success = discover_locations_for_event_kb(kb_id)
+                    
+                    if success:
+                        return jsonify({
+                            "success": True,
+                            "message": "Location discovery completed! Knowledge base description updated with nearby areas."
+                        })
+                    else:
+                        return jsonify({
+                            "success": False,
+                            "error": "Failed to discover locations. Check if this is an event knowledge base with valid location data."
+                        })
+                        
+                except Exception as e:
+                    return jsonify({
+                        "success": False,
+                        "error": f"Error during location discovery: {str(e)}"
+                    })
+            else:
+                return jsonify({
+                    "success": False,
+                    "error": "Knowledge base ID not provided"
+                })
         
         elif action == "add_category":
             # Handle adding new category
@@ -597,6 +816,9 @@ def knowledge_bases():
             'status': kb_info.get('status', 'active'),
             'kb_type': kb_info.get('type', 'document'),  # Note: 'type' not 'kb_type' in the config
             'created_at': kb_info.get('created_at', ''),
+            'refresh_schedule': kb_info.get('refresh_schedule', 'manual'),
+            'last_refreshed': kb_info.get('last_refreshed'),
+            'next_refresh': kb_info.get('next_refresh'),
             'assigned_agents': assigned_agents,
             'chunks_count': chunks_count,
             'is_events': kb_info.get('is_events', False)
@@ -649,7 +871,8 @@ def knowledge():
                 
                 # Process the knowledge base
                 update_embedding_status(kb_id, "processing")
-                if process_knowledge_base(kb_id, "file", filepath):
+                success, _ = process_knowledge_base(kb_id, "file", filepath)
+                if success:
                     update_embedding_status(kb_id, "completed")
                     flash(f'Knowledge base "{title}" added and processed successfully!', 'success')
                 else:
@@ -685,7 +908,8 @@ def knowledge():
             else:
                 # Process the knowledge base for non-event URLs
                 update_embedding_status(kb_id, "processing")
-                if process_knowledge_base(kb_id, "url", url):
+                success, _ = process_knowledge_base(kb_id, "url", url)
+                if success:
                     update_embedding_status(kb_id, "completed")
                     flash(f'Knowledge base "{title}" added and processed successfully!', 'success')
                 else:
@@ -794,14 +1018,66 @@ def settings():
                          api_key_status=api_info.get('test_status'),
                          api_key_source=api_info.get('source'))
 
-if __name__ == "__main__":
-    # Start the task scheduler in the background
-    task_scheduler.start()
-    print("🚀 Task scheduler started - automated tasks are now running!")
+# Initialize task scheduler when module is imported
+# This ensures it starts regardless of how the Flask app is run
+import atexit
+import os
+
+def start_scheduler():
+    """Start the task scheduler if not already running"""
+    # Only start scheduler in the main process (not in Flask's reloader process)
+    # In debug mode, only start in the reloaded process (WERKZEUG_RUN_MAIN=true)
+    should_start = (
+        not app.debug or  # Always start in production
+        os.environ.get('WERKZEUG_RUN_MAIN') == 'true'  # Only in main process in debug mode
+    )
     
+    if should_start and not task_scheduler.running:
+        task_scheduler.start()
+        print("🚀 Task scheduler started - automated tasks are now running!")
+        return True
+    return False
+
+def stop_scheduler():
+    """Stop the task scheduler"""
+    if task_scheduler.running:
+        task_scheduler.stop()
+        print("✅ Task scheduler stopped")
+
+# Register cleanup function
+atexit.register(stop_scheduler)
+
+# Initialize scheduler after app setup
+# Use a flag to ensure it only starts once
+_scheduler_initialized = False
+
+def ensure_scheduler_started():
+    """Ensure the task scheduler is started (call this from routes)"""
+    global _scheduler_initialized
+    if not _scheduler_initialized:
+        start_scheduler()
+        _scheduler_initialized = True
+
+# Start scheduler immediately when not in debug mode
+if not app.debug:
+    start_scheduler()
+    _scheduler_initialized = True
+
+@app.route("/api/scheduler/status")
+def scheduler_status():
+    """Get scheduler status for debugging"""
+    return jsonify({
+        "running": task_scheduler.running,
+        "thread_alive": task_scheduler.thread.is_alive() if task_scheduler.thread else False,
+        "check_interval": task_scheduler.check_interval,
+        "werkzeug_run_main": os.environ.get('WERKZEUG_RUN_MAIN'),
+        "debug_mode": app.debug
+    })
+
+
+if __name__ == "__main__":
     try:
         app.run(debug=True)
     except KeyboardInterrupt:
         print("\n⏹️ Shutting down...")
-        task_scheduler.stop()
-        print("✅ Task scheduler stopped")
+        stop_scheduler()

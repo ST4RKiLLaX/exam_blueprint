@@ -75,6 +75,52 @@
         </div>
         {% endif %}
     </div>
+
+    <!-- Thread Management Section -->
+    <div class="mt-12">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-bold text-gray-900">💬 Email Threads</h2>
+            <div class="flex gap-3">
+                <button onclick="loadThreads()" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
+                    🔄 Refresh
+                </button>
+                <button onclick="clearAllThreads()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
+                    🗑️ Clear All
+                </button>
+            </div>
+        </div>
+
+        <!-- Threads List -->
+        <div id="threadsContainer" class="bg-white rounded-lg shadow-md">
+            <div class="p-6 text-center text-gray-500">
+                <div class="text-4xl mb-2">💬</div>
+                <p>Click "Refresh" to load email threads</p>
+            </div>
+        </div>
+
+        <!-- Thread Details Modal -->
+        <div id="threadModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50">
+            <div class="flex items-center justify-center min-h-screen p-4">
+                <div class="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden">
+                    <div class="flex justify-between items-center p-6 border-b">
+                        <h3 id="threadModalTitle" class="text-lg font-semibold">Thread Details</h3>
+                        <button onclick="closeThreadModal()" class="text-gray-400 hover:text-gray-600">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <div id="threadModalContent" class="p-6 overflow-y-auto max-h-[70vh]">
+                        <!-- Thread messages will be loaded here -->
+                    </div>
+                    <div class="flex justify-end gap-3 p-6 border-t">
+                        <button onclick="closeThreadModal()" class="px-4 py-2 text-gray-600 hover:text-gray-800">Cancel</button>
+                        <button id="deleteThreadBtn" onclick="deleteCurrentThread()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg">Delete Thread</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- Create Email Account Modal -->
@@ -466,6 +512,180 @@ document.addEventListener('click', function(event) {
             modal.classList.remove('flex');
         }
     });
+});
+
+// Thread Management Functions
+let currentThreadKey = null;
+
+async function loadThreads() {
+    try {
+        const response = await fetch('/api/threads');
+        const data = await response.json();
+        
+        if (data.success) {
+            displayThreads(data.threads);
+        } else {
+            showError('Failed to load threads');
+        }
+    } catch (error) {
+        console.error('Error loading threads:', error);
+        showError('Error loading threads');
+    }
+}
+
+function displayThreads(threads) {
+    const container = document.getElementById('threadsContainer');
+    
+    if (threads.length === 0) {
+        container.innerHTML = `
+            <div class="p-6 text-center text-gray-500">
+                <div class="text-4xl mb-2">📭</div>
+                <p>No email threads found</p>
+            </div>
+        `;
+        return;
+    }
+    
+    const threadsHtml = threads.map(thread => `
+        <div class="border-b last:border-b-0 p-4 hover:bg-gray-50 cursor-pointer" onclick="viewThread('${thread.thread_key}')">
+            <div class="flex justify-between items-start">
+                <div class="flex-1">
+                    <div class="flex items-center gap-2 mb-1">
+                        <span class="font-medium text-gray-900">${escapeHtml(thread.participant)}</span>
+                        <span class="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded-full">${thread.message_count} messages</span>
+                        <span class="text-xs px-2 py-1 rounded-full ${thread.last_role === 'user' ? 'bg-green-100 text-green-800' : 'bg-purple-100 text-purple-800'}">
+                            Last: ${thread.last_role === 'user' ? 'User' : 'Assistant'}
+                        </span>
+                    </div>
+                    <p class="text-sm font-medium text-gray-700 mb-1">${escapeHtml(thread.subject)}</p>
+                    <p class="text-xs text-gray-500">${escapeHtml(thread.last_activity)}</p>
+                </div>
+                <button onclick="event.stopPropagation(); deleteThread('${thread.thread_key}')" 
+                        class="text-red-500 hover:text-red-700 p-1">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    `).join('');
+    
+    container.innerHTML = `
+        <div class="divide-y">
+            ${threadsHtml}
+        </div>
+    `;
+}
+
+async function viewThread(threadKey) {
+    try {
+        const response = await fetch(`/api/threads/${encodeURIComponent(threadKey)}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            currentThreadKey = threadKey;
+            displayThreadDetails(data.thread);
+            document.getElementById('threadModal').classList.remove('hidden');
+        } else {
+            showError('Failed to load thread details');
+        }
+    } catch (error) {
+        console.error('Error loading thread details:', error);
+        showError('Error loading thread details');
+    }
+}
+
+function displayThreadDetails(thread) {
+    const messages = thread.messages || [];
+    const title = messages.length > 0 ? `${messages[0].subject || 'No Subject'}` : 'Thread Details';
+    
+    document.getElementById('threadModalTitle').textContent = title;
+    
+    const messagesHtml = messages.map((msg, index) => `
+        <div class="mb-6 ${msg.role === 'user' ? 'bg-blue-50' : 'bg-purple-50'} rounded-lg p-4">
+            <div class="flex justify-between items-start mb-2">
+                <div class="flex items-center gap-2">
+                    <span class="font-medium ${msg.role === 'user' ? 'text-blue-900' : 'text-purple-900'}">
+                        ${msg.role === 'user' ? '👤 ' + escapeHtml(msg.from || 'User') : '🤖 Assistant'}
+                    </span>
+                    <span class="text-xs text-gray-500">#${index + 1}</span>
+                </div>
+                ${msg.message_id ? `<span class="text-xs text-gray-400 font-mono">${escapeHtml(msg.message_id)}</span>` : ''}
+            </div>
+            <div class="text-sm text-gray-800 whitespace-pre-wrap">${escapeHtml(msg.content || '')}</div>
+        </div>
+    `).join('');
+    
+    document.getElementById('threadModalContent').innerHTML = messagesHtml || '<p class="text-gray-500">No messages in this thread</p>';
+}
+
+function closeThreadModal() {
+    document.getElementById('threadModal').classList.add('hidden');
+    currentThreadKey = null;
+}
+
+async function deleteThread(threadKey) {
+    if (!confirm('Are you sure you want to delete this thread? This action cannot be undone.')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/threads/${encodeURIComponent(threadKey)}`, {
+            method: 'DELETE'
+        });
+        const data = await response.json();
+        
+        if (data.success) {
+            showSuccess(data.message);
+            loadThreads(); // Refresh the list
+        } else {
+            showError(data.error || 'Failed to delete thread');
+        }
+    } catch (error) {
+        console.error('Error deleting thread:', error);
+        showError('Error deleting thread');
+    }
+}
+
+async function deleteCurrentThread() {
+    if (currentThreadKey) {
+        await deleteThread(currentThreadKey);
+        closeThreadModal();
+    }
+}
+
+async function clearAllThreads() {
+    if (!confirm('Are you sure you want to clear ALL email threads? This action cannot be undone.')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/threads', {
+            method: 'DELETE'
+        });
+        const data = await response.json();
+        
+        if (data.success) {
+            showSuccess(data.message);
+            loadThreads(); // Refresh the list
+        } else {
+            showError('Failed to clear threads');
+        }
+    } catch (error) {
+        console.error('Error clearing threads:', error);
+        showError('Error clearing threads');
+    }
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Auto-load threads when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    loadThreads();
 });
 </script>
 {% endblock %}

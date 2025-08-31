@@ -188,7 +188,7 @@
             <!-- Update API Key Form -->
             <div class="bg-blue-50 p-4 rounded-lg">
                 <h4 class="font-medium text-blue-900 mb-3">Update API Key</h4>
-                <form method="POST" class="space-y-4">
+                <form method="POST" class="space-y-4" id="apiKeyForm" onsubmit="return updateAndTestApiKey(event)">
                     <input type="hidden" name="action" value="update_api_key">
                     
                     <div>
@@ -212,13 +212,12 @@
                     </div>
 
                     <div class="flex items-center space-x-3">
-                        <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-                            🔐 Update API Key
+                        <button type="submit" id="updateApiKeyBtn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                            🔐 Update & Test API Key
                         </button>
-                        <button type="button" onclick="testApiKey()" 
-                                class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
-                            🧪 Test Connection
-                        </button>
+                        <div id="api-test-spinner" class="hidden">
+                            <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+                        </div>
                     </div>
                 </form>
             </div>
@@ -281,21 +280,45 @@ function toggleApiKeyVisibility() {
     }
 }
 
-async function testApiKey() {
+async function updateAndTestApiKey(event) {
+    event.preventDefault();
+    
     const apiKey = document.getElementById('api_key').value;
     const statusElement = document.getElementById('api-status');
+    const submitBtn = document.getElementById('updateApiKeyBtn');
+    const spinner = document.getElementById('api-test-spinner');
     
     if (!apiKey) {
-        alert('Please enter an API key to test');
-        return;
+        alert('Please enter an API key');
+        return false;
     }
     
-    // Show testing status
+    // Show loading state
+    submitBtn.disabled = true;
+    submitBtn.textContent = '🔄 Updating & Testing...';
+    spinner.classList.remove('hidden');
     statusElement.className = 'inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800';
     statusElement.textContent = '🔄 Testing...';
     
     try {
-        const response = await fetch('/settings', {
+        // First update the API key
+        const updateResponse = await fetch('/settings', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: new URLSearchParams({
+                'action': 'update_api_key',
+                'api_key': apiKey
+            })
+        });
+        
+        if (!updateResponse.ok) {
+            throw new Error('Failed to update API key');
+        }
+        
+        // Then test the API key
+        const testResponse = await fetch('/settings', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
@@ -306,22 +329,34 @@ async function testApiKey() {
             })
         });
         
-        const result = await response.json();
+        const result = await testResponse.json();
         
         if (result.success) {
             statusElement.className = 'inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800';
             statusElement.textContent = '✅ Valid';
-            alert('API key is valid and working!');
+            alert('✅ API key updated and tested successfully!');
+            
+            // Update the page info
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
         } else {
             statusElement.className = 'inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800';
             statusElement.textContent = '❌ Invalid';
-            alert('API key test failed: ' + (result.error || 'Unknown error'));
+            alert('⚠️ API key was updated but test failed: ' + (result.error || 'Unknown error'));
         }
     } catch (error) {
         statusElement.className = 'inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800';
         statusElement.textContent = '❌ Error';
-        alert('Error testing API key: ' + error.message);
+        alert('❌ Error updating API key: ' + error.message);
+    } finally {
+        // Reset button state
+        submitBtn.disabled = false;
+        submitBtn.textContent = '🔐 Update & Test API Key';
+        spinner.classList.add('hidden');
     }
+    
+    return false; // Prevent default form submission
 }
 </script>
 {% endblock %}

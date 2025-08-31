@@ -89,6 +89,52 @@ def fetch_event_data():
     
     return events
 
+def fetch_agent_event_data(agent_kb_ids):
+    """Fetch event data only from knowledge bases accessible to the agent"""
+    from app.config.knowledge_config import get_knowledge_bases_for_agent
+    
+    # Get only the knowledge bases the agent has access to
+    agent_knowledge_bases = []
+    all_kbs = get_active_knowledge_bases()
+    for kb in all_kbs:
+        if kb['id'] in agent_kb_ids and kb.get('is_events', False):
+            agent_knowledge_bases.append(kb)
+    
+    events = {}
+    
+    # Helper function to fetch and parse JSON from a URL
+    def fetch_json(url, source_info):
+        try:
+            response = requests.get(url)
+            response.raise_for_status()
+            data = response.json()
+            # Handle both array and object responses
+            events_data = data if isinstance(data, list) else [data]
+            # Add source information to each event
+            for event in events_data:
+                event['_source'] = source_info['title']
+                event['_kb_id'] = source_info['kb_id']
+            return events_data
+        except Exception as e:
+            print(f"❌ Failed to fetch events from {url} ({source_info['title']}): {e}")
+            return []
+    
+    # Fetch only from agent-accessible knowledge bases
+    for kb in agent_knowledge_bases:
+        if kb.get('event_category') and kb.get('source'):
+            category = kb['event_category']
+            if category not in events:
+                events[category] = []
+            
+            source_info = {
+                'url': kb['source'],
+                'title': kb['title'],
+                'kb_id': kb['id']
+            }
+            events[category].extend(fetch_json(kb['source'], source_info))
+    
+    return events
+
 def format_event_entry(entry):
     """Format an event entry for display in the requested format"""
     # Try to get location from various possible fields
@@ -162,9 +208,14 @@ def get_upcoming_events(category: str = "classes", limit=3):
     sorted_events = sorted(category_events, key=parse_date)
     return [format_event_entry(e) for e in sorted_events[:limit]]
 
-def get_upcoming_events_grouped_by_location(category: str = "classes", limit=10):
+def get_upcoming_events_grouped_by_location(category: str = "classes", limit=10, agent_kb_ids=None):
     """Get upcoming events grouped by location with the requested format"""
-    events = fetch_event_data()
+    if agent_kb_ids is not None:
+        # Use agent-specific event data
+        events = fetch_agent_event_data(agent_kb_ids)
+    else:
+        # Use all event data (fallback)
+        events = fetch_event_data()
     category_events = events.get(category, [])
     
     def parse_date(entry):

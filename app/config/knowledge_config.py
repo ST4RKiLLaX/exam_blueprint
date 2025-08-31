@@ -1,7 +1,8 @@
 # Knowledge Base Configuration
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
+from typing import List, Dict, Any
 
 KNOWLEDGE_CONFIG_PATH = os.path.join(os.path.dirname(__file__), "knowledge_bases.json")
 
@@ -37,7 +38,7 @@ def update_embedding_status(kb_id, status):
             return True
     return False
 
-def add_knowledge_base(title, description, kb_type, source, chunks_path=None, event_category=None, is_events=False, access_type="shared", category="general"):
+def add_knowledge_base(title, description, kb_type, source, chunks_path=None, event_category=None, is_events=False, access_type="shared", category="general", refresh_schedule="manual"):
     """Add a new knowledge base to the configuration"""
     config = load_knowledge_config()
     
@@ -56,7 +57,10 @@ def add_knowledge_base(title, description, kb_type, source, chunks_path=None, ev
         "is_events": is_events,
         "event_category": event_category if is_events else None,
         "access_type": access_type,  # "shared" or "exclusive"
-        "category": category  # "general", "cna", "pharmacy", "admin", etc.
+        "category": category,  # "general", "cna", "pharmacy", "admin", etc.
+        "refresh_schedule": refresh_schedule,  # "manual", "hourly", "daily", "weekly", "on_use"
+        "last_refreshed": datetime.now().isoformat() if kb_type == "url" else None,
+        "next_refresh": None  # Will be calculated based on schedule
     }
     
     config["knowledge_bases"].append(new_kb)
@@ -275,4 +279,75 @@ def update_knowledge_base_access(kb_id: str, access_type: str, category: str = N
             save_knowledge_config(config)
             return True
     
+    return False
+
+def calculate_next_refresh(schedule: str, last_refreshed: str = None) -> str:
+    """Calculate the next refresh time based on schedule"""
+    if schedule == "manual":
+        return None
+    
+    base_time = datetime.now()
+    if last_refreshed:
+        try:
+            base_time = datetime.fromisoformat(last_refreshed)
+        except:
+            base_time = datetime.now()
+    
+    if schedule == "hourly":
+        next_time = base_time + timedelta(hours=1)
+    elif schedule == "daily":
+        next_time = base_time + timedelta(days=1)
+    elif schedule == "weekly":
+        next_time = base_time + timedelta(weeks=1)
+    elif schedule == "on_use":
+        return "on_use"  # Special marker for refresh on each use
+    else:
+        return None
+    
+    return next_time.isoformat()
+
+def update_refresh_schedule(kb_id: str, schedule: str) -> bool:
+    """Update the refresh schedule for a knowledge base"""
+    config = load_knowledge_config()
+    
+    for kb in config.get("knowledge_bases", []):
+        if kb["id"] == kb_id:
+            kb["refresh_schedule"] = schedule
+            kb["next_refresh"] = calculate_next_refresh(schedule, kb.get("last_refreshed"))
+            save_knowledge_config(config)
+            return True
+    return False
+
+def get_knowledge_bases_due_for_refresh() -> List[Dict[str, Any]]:
+    """Get knowledge bases that are due for refresh"""
+    config = load_knowledge_config()
+    due_kbs = []
+    current_time = datetime.now()
+    
+    for kb in config.get("knowledge_bases", []):
+        if kb.get("type") != "url" or kb.get("refresh_schedule") == "manual":
+            continue
+            
+        next_refresh = kb.get("next_refresh")
+        if next_refresh and next_refresh != "on_use":
+            try:
+                next_refresh_time = datetime.fromisoformat(next_refresh)
+                if current_time >= next_refresh_time:
+                    due_kbs.append(kb)
+            except:
+                continue
+    
+    return due_kbs
+
+def mark_knowledge_base_refreshed(kb_id: str) -> bool:
+    """Mark a knowledge base as refreshed and calculate next refresh time"""
+    config = load_knowledge_config()
+    
+    for kb in config.get("knowledge_bases", []):
+        if kb["id"] == kb_id:
+            now = datetime.now().isoformat()
+            kb["last_refreshed"] = now
+            kb["next_refresh"] = calculate_next_refresh(kb.get("refresh_schedule", "manual"), now)
+            save_knowledge_config(config)
+            return True
     return False

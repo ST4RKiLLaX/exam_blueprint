@@ -105,15 +105,15 @@
         <h2 class="text-xl font-semibold text-gray-900 mb-4">System Overview</h2>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div class="text-center">
-                <div class="text-3xl font-bold text-blue-600">4</div>
+                <div class="text-3xl font-bold text-blue-600">{{ kb_count }}</div>
                 <div class="text-sm text-gray-500">Knowledge Bases</div>
             </div>
             <div class="text-center">
-                <div class="text-3xl font-bold text-green-600">2</div>
+                <div class="text-3xl font-bold text-green-600">{{ event_count }}</div>
                 <div class="text-sm text-gray-500">Event Categories</div>
             </div>
             <div class="text-center">
-                <div class="text-3xl font-bold text-purple-600">GPT-4</div>
+                <div class="text-3xl font-bold text-purple-600">{{ current_model }}</div>
                 <div class="text-sm text-gray-500">AI Model</div>
             </div>
         </div>

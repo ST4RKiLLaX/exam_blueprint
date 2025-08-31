@@ -2,7 +2,7 @@ import os
 import numpy as np
 from openai import OpenAI
 from dotenv import load_dotenv
-from app.utils.event_parser import get_upcoming_events, get_upcoming_events_grouped_by_location, get_available_categories, fetch_event_data
+from app.utils.event_parser import get_upcoming_events, get_upcoming_events_grouped_by_location, get_available_categories, fetch_event_data, get_event_sources_from_knowledge_bases
 # Default configuration for fallback when no agent is specified
 DEFAULT_CONFIG = {
     "personality": "You are a helpful AI assistant.",
@@ -71,6 +71,38 @@ def search_agent_knowledge_bases(query, agent, top_k=3):
     
     return all_results
 
+def search_location_filtered_knowledge_bases(query, agent, filtered_kb_ids, top_k=3):
+    """Search across location-filtered knowledge bases that the agent has access to"""
+    all_results = []
+    
+    # Get knowledge bases accessible to this agent, filtered by location
+    knowledge_bases = get_knowledge_bases_for_agent(agent.agent_id, filtered_kb_ids)
+    
+    for kb in knowledge_bases:
+        kb_results = search_knowledge_base(kb["id"], query, top_k)
+        if kb_results:
+            all_results.extend(kb_results)
+    
+    return all_results
+
+def get_agent_event_categories(agent):
+    """Get event categories that the agent has access to based on their knowledge bases"""
+    if not agent or not agent.knowledge_bases:
+        return []
+    
+    # Get knowledge bases accessible to this agent
+    accessible_kbs = get_knowledge_bases_for_agent(agent.agent_id, agent.knowledge_bases)
+    
+    # Extract event categories from accessible knowledge bases
+    agent_categories = []
+    for kb in accessible_kbs:
+        if kb.get('is_events', False) and kb.get('event_category'):
+            category = kb['event_category']
+            if category not in agent_categories:
+                agent_categories.append(category)
+    
+    return agent_categories
+
 def detect_location(email_body):
     """
     Detect the student's location from the email content.
@@ -118,31 +150,120 @@ def detect_location(email_body):
     # Default to NYC if no location indicators found
     return 'New York City'
 
+def filter_knowledge_bases_by_location(agent_kb_ids, detected_location):
+    """Filter knowledge bases based on detected location using KB descriptions"""
+    try:
+        from app.config.knowledge_config import load_knowledge_config
+        
+        if not agent_kb_ids or not detected_location:
+            return agent_kb_ids
+        
+        config = load_knowledge_config()
+        filtered_kb_ids = []
+        
+        print(f"🔍 Filtering KBs for detected location: {detected_location}")
+        
+        for kb_id in agent_kb_ids:
+            # Find the knowledge base
+            kb_info = None
+            for kb in config.get('knowledge_bases', []):
+                if kb.get('id') == kb_id:
+                    kb_info = kb
+                    break
+            
+            if not kb_info:
+                continue
+            
+            # Only filter event knowledge bases
+            if not kb_info.get('is_events', False):
+                filtered_kb_ids.append(kb_id)  # Include non-event KBs
+                continue
+            
+            kb_description = kb_info.get('description', '').lower()
+            kb_title = kb_info.get('title', '').lower()
+            
+            # Check if the detected location matches this KB's coverage area
+            location_match = False
+            
+            if detected_location == 'Long Island':
+                # Look for Long Island indicators in KB description/title
+                li_indicators = [
+                    'long island', 'garden city', 'mineola', 'westbury', 'hempstead',
+                    'uniondale', 'nassau', 'suffolk', 'carle place', 'new hyde park',
+                    'floral park', 'franklin square', 'west hempstead'
+                ]
+                
+                for indicator in li_indicators:
+                    if indicator in kb_description or indicator in kb_title:
+                        location_match = True
+                        break
+                        
+            elif detected_location == 'New York City':
+                # Look for NYC indicators in KB description/title
+                nyc_indicators = [
+                    'new york city', 'manhattan', 'brooklyn', 'queens', 'bronx',
+                    'staten island', 'nyc', 'jersey city', 'hoboken', 'midtown'
+                ]
+                
+                for indicator in nyc_indicators:
+                    if indicator in kb_description or indicator in kb_title:
+                        location_match = True
+                        break
+            
+            if location_match:
+                filtered_kb_ids.append(kb_id)
+                print(f"✅ Including KB: {kb_info.get('title')} (matches {detected_location})")
+            else:
+                print(f"❌ Excluding KB: {kb_info.get('title')} (doesn't match {detected_location})")
+        
+        print(f"📋 Filtered {len(agent_kb_ids)} → {len(filtered_kb_ids)} knowledge bases")
+        return filtered_kb_ids
+        
+    except Exception as e:
+        print(f"Error filtering knowledge bases by location: {e}")
+        return agent_kb_ids  # Return original list on error
+
 def build_prompt(email_body, history=None, agent=None):
     # Use agent-specific prompt or fallback to default config
     if agent:
         agent_prompt = agent.prompt or DEFAULT_CONFIG.get("prompt", "")
-        # Search agent-specific knowledge bases
-        knowledge_refs = search_agent_knowledge_bases(email_body, agent)
+        
+        # Detect location first to filter knowledge bases
+        detected_location = detect_location(email_body)
+        location_filtered_kb_ids = filter_knowledge_bases_by_location(agent.knowledge_bases, detected_location)
+        
+        # Search only location-filtered knowledge bases
+        knowledge_refs = search_location_filtered_knowledge_bases(email_body, agent, location_filtered_kb_ids)
     else:
         agent_prompt = DEFAULT_CONFIG.get("prompt", "")
         # Fallback to all knowledge bases
         knowledge_refs = search_all_knowledge_bases(email_body)
     
-    # Get events from all categories
+    # Get events based on agent permissions AND detected location
     all_events = []
-    categories = get_available_categories()
+    if agent:
+        # Use the already detected location and filtered KB IDs
+        # Get only categories that the agent has access to
+        categories = get_agent_event_categories(agent)
+    else:
+        # Fallback to all categories if no agent specified
+        categories = get_available_categories()
+        location_filtered_kb_ids = None
     
     if categories:
         all_events.append("\nAVAILABLE SCHEDULES:")
         for category in categories:
-            events = get_upcoming_events_grouped_by_location(category, limit=10)
+            # Use location-filtered knowledge base IDs for events
+            events = get_upcoming_events_grouped_by_location(category, limit=10, agent_kb_ids=location_filtered_kb_ids)
             if events:
                 all_events.append(f"\n=== {category.upper()} ===")
                 all_events.extend(events)
                 all_events.append("")  # Add blank line between categories
     else:
-        all_events.append("No event schedules available at this time.")
+        if agent:
+            all_events.append("No event schedules available for this agent.")
+        else:
+            all_events.append("No event schedules available at this time.")
     
     context = "\n".join([
         "KNOWLEDGE BASE INFORMATION:",
@@ -155,6 +276,8 @@ def build_prompt(email_body, history=None, agent=None):
         "---",
         agent_prompt
     ])
+    
+
 
     convo = ""
     if history:
