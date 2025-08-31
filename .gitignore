@@ -32,10 +32,30 @@ ENV/
 ehthumbs.db
 Thumbs.db
 
-# Project-specific
-# app/knowledge_bases/
-# app/embeddings/
-# app/config/knowledge_bases.json
+# User-Generated Data (DO NOT SYNC)
+# ===================================
+
+# User configuration data
+app/config/agents.json
+app/config/email_accounts.json
+app/config/event_categories.json
+app/config/knowledge_bases.json
+app/config/tasks.json
+app/config/api_config.json
+
+# Encryption keys (contain sensitive data)
+app/config/.api_key
+app/config/api_encryption.key
+app/config/email_encryption.key
+
+# User-uploaded knowledge bases and generated embeddings
+app/knowledge_bases/
+app/embeddings/
+
+# Runtime data
+app/data/thread_store.json
+
+# Logs
 *.log
 
 # Flask
