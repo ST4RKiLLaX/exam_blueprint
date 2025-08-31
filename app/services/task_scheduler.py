@@ -350,7 +350,7 @@ class TaskScheduler:
                     agent_id="system",
                     email_account_id="system",
                     schedule_type="system",
-                    interval_minutes=0,
+                    schedule_interval=0,
                     is_active=True
                 )
                 
