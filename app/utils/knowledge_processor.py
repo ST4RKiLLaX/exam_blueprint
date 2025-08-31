@@ -13,21 +13,19 @@ import time
 
 load_dotenv()
 
-# Initialize OpenAI client with API key from config or environment
+# Initialize OpenAI client with API key from config
 def _get_openai_client():
     """Get OpenAI client with proper API key"""
     try:
         from app.config.api_config import get_openai_api_key
         api_key = get_openai_api_key()
         if not api_key:
-            # Fallback to environment variable
-            api_key = os.getenv("OPENAI_API_KEY")
+            raise ValueError("No API key configured")
         return OpenAI(api_key=api_key)
     except ImportError:
-        # Fallback if api_config is not available
-        return OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        raise ValueError("API config not available")
 
-client = _get_openai_client()
+# Don't create client at import time - create when needed
 
 def extract_text_from_docx(file_path):
     """Extract text from DOCX file"""
@@ -121,7 +119,7 @@ def create_embeddings(chunks):
     embeddings = []
     for chunk in chunks:
         try:
-            response = client.embeddings.create(
+            response = _get_openai_client().embeddings.create(
                 input=chunk,
                 model="text-embedding-3-small"
             )
@@ -155,7 +153,7 @@ Write a 2-3 sentence summary that describes:
 
 Keep it concise but informative. Focus on the practical value and scope of the content."""
 
-        response = client.chat.completions.create(
+        response = _get_openai_client().chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": "You are a helpful assistant that creates concise, informative summaries of knowledge base content."},
@@ -188,7 +186,7 @@ Include places that are:
 
 Focus on actual place names that people would recognize and use when describing where they live or work."""
 
-        response = client.chat.completions.create(
+        response = _get_openai_client().chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": "You are a geographic assistant. Provide accurate, comma-separated lists of nearby locations. Only return the list, no explanations or additional text."},
@@ -512,7 +510,7 @@ def search_knowledge_base(kb_id, query, top_k=3):
             chunks = pickle.load(f)
         
         # Create query embedding
-        response = client.embeddings.create(
+        response = _get_openai_client().embeddings.create(
             input=query,
             model="text-embedding-3-small"
         )

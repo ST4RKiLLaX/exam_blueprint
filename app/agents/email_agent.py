@@ -16,24 +16,22 @@ from app.config.model_config import get_current_model, get_current_temperature
 
 load_dotenv()
 
-# Initialize OpenAI client with API key from config or environment
+# Initialize OpenAI client with API key from config
 def _get_openai_client():
     """Get OpenAI client with proper API key"""
     try:
         from app.config.api_config import get_openai_api_key
         api_key = get_openai_api_key()
         if not api_key:
-            # Fallback to environment variable
-            api_key = os.getenv("OPENAI_API_KEY")
+            raise ValueError("No API key configured")
         return OpenAI(api_key=api_key)
     except ImportError:
-        # Fallback if api_config is not available
-        return OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        raise ValueError("API config not available")
 
-client = _get_openai_client()
+# Don't create client at import time - create when needed
 
 def embed_query(text):
-    response = client.embeddings.create(
+    response = _get_openai_client().embeddings.create(
         input=text,
         model="text-embedding-3-small"
     )
@@ -327,7 +325,7 @@ def generate_reply(email_body, history=None, agent=None):
     
     # GPT-5 only supports default temperature (1.0)
     if current_model == "gpt-5":
-        response = client.chat.completions.create(
+        response = _get_openai_client().chat.completions.create(
             model=current_model,
             messages=[
                 {"role": "system", "content": personality + "\n" + style},
@@ -335,7 +333,7 @@ def generate_reply(email_body, history=None, agent=None):
             ]
         )
     else:
-        response = client.chat.completions.create(
+        response = _get_openai_client().chat.completions.create(
             model=current_model,
             messages=[
                 {"role": "system", "content": personality + "\n" + style},

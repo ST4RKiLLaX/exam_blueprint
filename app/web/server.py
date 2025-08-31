@@ -22,6 +22,23 @@ app.secret_key = 'your-secret-key-change-this'  # Change this in production
 app.config['UPLOAD_FOLDER'] = 'app/knowledge_bases'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 
+# Global template context processor to check API key status
+@app.context_processor
+def inject_api_key_status():
+    """Inject API key status into all templates"""
+    try:
+        from app.config.api_config import get_api_key_info
+        api_info = get_api_key_info()
+        return {
+            'api_key_has_key': api_info.get('has_key', False),
+            'api_key_status': api_info.get('test_status', 'unknown')
+        }
+    except:
+        return {
+            'api_key_has_key': False,
+            'api_key_status': 'unknown'
+        }
+
 ALLOWED_EXTENSIONS = {'pdf', 'docx'}
 
 def allowed_file(filename):
@@ -983,6 +1000,16 @@ def settings():
                 return jsonify(result)
             except Exception as e:
                 return jsonify({"success": False, "error": str(e)})
+        
+        elif action == "delete_api_key":
+            try:
+                from app.config.api_config import delete_openai_api_key
+                if delete_openai_api_key():
+                    flash('API key deleted successfully!', 'success')
+                else:
+                    flash('Error deleting API key', 'error')
+            except Exception as e:
+                flash(f'Error deleting API key: {str(e)}', 'error')
         
         return redirect(url_for('settings'))
     

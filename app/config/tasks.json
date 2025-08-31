@@ -13,12 +13,12 @@
       "business_hours_only": false,
       "status": "active",
       "created_at": "2025-08-29T17:32:18.890816",
-      "updated_at": "2025-08-31T02:21:48.278396",
-      "last_run": "2025-08-31T02:21:48.278373",
-      "next_run": "2025-08-31T02:36:48.278402",
-      "run_count": 87,
-      "success_count": 85,
-      "error_count": 2,
+      "updated_at": "2025-08-31T14:27:18.421872",
+      "last_run": "2025-08-31T14:27:18.421864",
+      "next_run": "2025-08-31T14:42:18.421879",
+      "run_count": 106,
+      "success_count": 103,
+      "error_count": 3,
       "last_error": "",
       "config": {}
     }

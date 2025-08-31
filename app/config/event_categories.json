@@ -8,46 +8,18 @@
       "is_event": true
     },
     {
-      "id": "exams",
-      "name": "Exams",
-      "description": "Certification exams and testing",
-      "created_at": "2025-07-31T11:34:16.345278",
-      "is_event": false
-    },
-    {
-      "id": "orientation",
-      "name": "Orientation",
-      "description": "New student orientation sessions",
-      "created_at": "2025-07-31T11:34:16.345279",
-      "is_event": false
-    },
-    {
-      "id": "externships",
-      "name": "Externships",
-      "description": "Clinical externship opportunities",
-      "created_at": "2025-07-31T11:34:16.345281",
-      "is_event": false
-    },
-    {
-      "id": "workshops",
-      "name": "Workshops",
-      "description": "Skills workshops and training sessions",
-      "created_at": "2025-07-31T11:34:16.345282",
-      "is_event": false
-    },
-    {
-      "id": "cat_5_1756508655",
-      "name": "test",
-      "description": "test",
-      "created_at": "2025-08-29T19:04:15.332971",
-      "is_event": false
-    },
-    {
       "id": "cat_6_1756509716",
       "name": "Document",
       "description": "",
       "created_at": "2025-08-29T19:21:56.945765",
       "is_event": false
+    },
+    {
+      "id": "cat_2_1756664668",
+      "name": "Exams",
+      "description": "Dates and location for exams",
+      "created_at": "2025-08-31T14:24:28.052203",
+      "is_event": true
     }
   ]
 }

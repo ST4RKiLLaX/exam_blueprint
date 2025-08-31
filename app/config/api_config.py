@@ -9,7 +9,7 @@ from typing import Optional, Dict, Any
 import base64
 
 CONFIG_FILE = os.path.join(os.path.dirname(__file__), "api_config.json")
-KEY_FILE = os.path.join(os.path.dirname(__file__), ".api_key")
+KEY_FILE = os.path.join(os.path.dirname(__file__), "api_encryption.key")
 
 def _get_or_create_encryption_key() -> bytes:
     """Get or create encryption key for API key storage"""
@@ -71,13 +71,7 @@ def save_api_config(config: Dict[str, Any]) -> bool:
         return False
 
 def get_openai_api_key() -> Optional[str]:
-    """Get the current OpenAI API key (decrypted)"""
-    # First try environment variable (takes precedence)
-    env_key = os.getenv("OPENAI_API_KEY")
-    if env_key:
-        return env_key
-    
-    # Then try stored encrypted key
+    """Get the current OpenAI API key (decrypted) - encrypted storage only"""
     config = load_api_config()
     encrypted_key = config.get("openai_api_key_encrypted")
     if encrypted_key:
@@ -157,6 +151,24 @@ def test_openai_api_key(api_key: Optional[str] = None) -> Dict[str, Any]:
             "error": error_msg
         }
 
+def delete_openai_api_key() -> bool:
+    """Delete the stored OpenAI API key"""
+    try:
+        config = load_api_config()
+        
+        # Clear the stored key
+        config.update({
+            "openai_api_key_encrypted": "",
+            "api_key_preview": "Not Set",
+            "last_updated": datetime.now().isoformat(),
+            "test_status": "deleted"
+        })
+        
+        return save_api_config(config)
+    except Exception as e:
+        print(f"Error deleting API key: {e}")
+        return False
+
 def get_api_key_info() -> Dict[str, Any]:
     """Get API key information for display"""
     config = load_api_config()
@@ -170,5 +182,5 @@ def get_api_key_info() -> Dict[str, Any]:
         "last_updated": config.get("last_updated"),
         "last_tested": config.get("last_tested"),
         "test_status": config.get("test_status", "unknown"),
-        "source": "Environment Variable" if os.getenv("OPENAI_API_KEY") else "Stored Encrypted"
+        "source": "Stored Encrypted"
     }

@@ -222,6 +222,22 @@
                 </form>
             </div>
 
+            <!-- Delete API Key Section -->
+            {% if api_key_status == 'valid' or api_key_status == 'invalid' %}
+            <div class="bg-red-50 p-4 rounded-lg mt-4">
+                <h4 class="font-medium text-red-900 mb-3">🗑️ Delete API Key</h4>
+                <p class="text-sm text-red-800 mb-3">
+                    Remove the stored API key from the system. This will prevent the application from making API calls until a new key is configured.
+                </p>
+                <form method="POST" class="inline" onsubmit="return confirmDeleteApiKey()">
+                    <input type="hidden" name="action" value="delete_api_key">
+                    <button type="submit" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
+                        🗑️ Delete API Key
+                    </button>
+                </form>
+            </div>
+            {% endif %}
+
             <!-- API Usage Information -->
             <div class="bg-yellow-50 p-4 rounded-lg mt-4">
                 <h4 class="font-medium text-yellow-900 mb-2">💡 API Key Security Tips</h4>
@@ -357,6 +373,11 @@ async function updateAndTestApiKey(event) {
     }
     
     return false; // Prevent default form submission
+}
+
+// API Key Delete Confirmation
+function confirmDeleteApiKey() {
+    return confirm('⚠️ Are you sure you want to delete the API key?\n\nThis will prevent the application from making API calls until a new key is configured.\n\nThis action cannot be undone.');
 }
 </script>
 {% endblock %}

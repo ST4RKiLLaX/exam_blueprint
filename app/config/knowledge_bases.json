@@ -3,7 +3,7 @@
     {
       "id": "kb_1_1756510613",
       "title": "CNA Course Dates in Long Island",
-      "description": "Events in Garden City. This includes areas like Hempstead, Mineola, Westbury, East Garden City, Uniondale, Carle Place, New Hyde Park, Franklin Square, Floral Park, Garden City Park, Garden City South, Stewart Manor, Williston Park, Albertson, Roslyn Heights, East Williston, North New Hyde Park, Lake Success, Old Westbury, Jericho",
+      "description": "Events in Garden City. This includes areas like Hempstead, Mineola, Westbury, East Garden City, Uniondale, Carle Place, New Hyde Park, Franklin Square, Garden City Park, Garden City South, Garden City Plaza, Stewart Manor, Williston Park, Floral Park, North New Hyde Park, Lakeview, South Hempstead, Malverne, Albertson, East Williston",
       "type": "url",
       "source": "https://tiamedical.com/cna_li.json",
       "chunks_path": null,
@@ -15,8 +15,8 @@
       "category": "Classes",
       "embedding_status": "completed",
       "refresh_schedule": "daily",
-      "next_refresh": "2025-08-31T01:25:36.061594",
-      "last_refreshed": "2025-08-30T01:25:36.061594"
+      "next_refresh": "2025-09-01T13:36:55.797506",
+      "last_refreshed": "2025-08-31T13:36:55.797506"
     },
     {
       "id": "kb_2_1756598066",

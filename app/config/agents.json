@@ -14,17 +14,6 @@
         "kb_2_1756598066",
         "kb_2_1756603451"
       ]
-    },
-    "937279be-80fc-4cb8-ab75-a96a64301597": {
-      "agent_id": "937279be-80fc-4cb8-ab75-a96a64301597",
-      "name": "CISSP Coach",
-      "personality": "test",
-      "style": "test",
-      "prompt": "test",
-      "status": "active",
-      "created_at": "2025-08-29T15:20:58.766648",
-      "updated_at": "2025-08-29T15:20:58.766656",
-      "knowledge_bases": []
     }
   }
 }
