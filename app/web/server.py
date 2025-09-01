@@ -88,6 +88,7 @@ def agents():
                 personality=request.form.get("personality", "").strip(),
                 style=request.form.get("style", "").strip(),
                 prompt=request.form.get("prompt", "").strip(),
+                formatting=request.form.get("formatting", "").strip(),
                 knowledge_bases=selected_kbs
             )
             if result["success"]:
@@ -107,6 +108,7 @@ def agents():
                 personality=request.form.get("personality", "").strip(),
                 style=request.form.get("style", "").strip(),
                 prompt=request.form.get("prompt", "").strip(),
+                formatting=request.form.get("formatting", "").strip(),
                 status=request.form.get("status"),
                 knowledge_bases=selected_kbs
             )

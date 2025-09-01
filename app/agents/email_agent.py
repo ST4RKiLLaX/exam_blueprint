@@ -263,6 +263,11 @@ def build_prompt(email_body, history=None, agent=None):
         else:
             all_events.append("No event schedules available at this time.")
     
+    # Add agent identity context
+    agent_identity = ""
+    if agent:
+        agent_identity = f"\nAGENT IDENTITY:\n---\nYou are {agent.name}, an AI assistant.\n"
+    
     context = "\n".join([
         "KNOWLEDGE BASE INFORMATION:",
         "---",
@@ -275,8 +280,11 @@ def build_prompt(email_body, history=None, agent=None):
         agent_prompt
     ])
     
-
-
+    # Add formatting rules if specified
+    formatting_rules = ""
+    if agent and agent.formatting:
+        formatting_rules = f"\nFORMATTING RULES:\n---\n{agent.formatting}\n"
+    
     convo = ""
     if history:
         lines = []
@@ -303,7 +311,7 @@ CRITICAL RULES:
 \"\"\"
 
 Context:
-{context}
+{agent_identity}{context}{formatting_rules}
 
 Reply:
 """
@@ -313,9 +321,14 @@ def generate_reply(email_body, history=None, agent=None):
     if agent:
         personality = agent.personality or DEFAULT_CONFIG["personality"]
         style = agent.style or DEFAULT_CONFIG["style"]
+        
+        # Automatically inject agent identity into the system message
+        agent_identity = f"You are {agent.name}, an AI assistant. "
+        system_message = agent_identity + personality + "\n" + style
     else:
         personality = DEFAULT_CONFIG["personality"]
         style = DEFAULT_CONFIG["style"]
+        system_message = personality + "\n" + style
 
     prompt = build_prompt(email_body, history=history, agent=agent)
     
@@ -328,7 +341,7 @@ def generate_reply(email_body, history=None, agent=None):
         response = _get_openai_client().chat.completions.create(
             model=current_model,
             messages=[
-                {"role": "system", "content": personality + "\n" + style},
+                {"role": "system", "content": system_message},
                 {"role": "user", "content": prompt}
             ]
         )
@@ -336,7 +349,7 @@ def generate_reply(email_body, history=None, agent=None):
         response = _get_openai_client().chat.completions.create(
             model=current_model,
             messages=[
-                {"role": "system", "content": personality + "\n" + style},
+                {"role": "system", "content": system_message},
                 {"role": "user", "content": prompt}
             ],
             temperature=current_temp

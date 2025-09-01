@@ -7,7 +7,7 @@ class AgentAPI:
     
     @staticmethod
     def create_agent(name: str, personality: str = "", style: str = "", 
-                    prompt: str = "", knowledge_bases: List[str] = None) -> Dict:
+                    prompt: str = "", formatting: str = "", knowledge_bases: List[str] = None) -> Dict:
         """Create a new agent and return result"""
         try:
             if not name.strip():
@@ -18,6 +18,7 @@ class AgentAPI:
                 personality=personality,
                 style=style,
                 prompt=prompt,
+                formatting=formatting,
                 knowledge_bases=knowledge_bases or []
             )
             

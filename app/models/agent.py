@@ -8,7 +8,7 @@ class Agent:
     """Represents an AI agent with its configuration and metadata"""
     
     def __init__(self, agent_id: str = None, name: str = "", personality: str = "", 
-                 style: str = "", prompt: str = "", status: str = "active", 
+                 style: str = "", prompt: str = "", formatting: str = "", status: str = "active", 
                  created_at: str = None, updated_at: str = None, 
                  knowledge_bases: List[str] = None):
         self.agent_id = agent_id or str(uuid.uuid4())
@@ -16,6 +16,7 @@ class Agent:
         self.personality = personality
         self.style = style
         self.prompt = prompt
+        self.formatting = formatting
         self.status = status  # active, inactive, archived
         self.created_at = created_at or datetime.now().isoformat()
         self.updated_at = updated_at or datetime.now().isoformat()
@@ -29,6 +30,7 @@ class Agent:
             "personality": self.personality,
             "style": self.style,
             "prompt": self.prompt,
+            "formatting": self.formatting,
             "status": self.status,
             "created_at": self.created_at,
             "updated_at": self.updated_at,
@@ -84,6 +86,7 @@ class AgentManager:
             personality="You are a helpful AI assistant.",
             style="Use a professional and friendly tone.",
             prompt="Please provide helpful and accurate responses.",
+            formatting="Use clear, organized formatting with appropriate spacing and structure.",
             status="active"
         )
         self._agents[default_agent.agent_id] = default_agent
@@ -102,13 +105,14 @@ class AgentManager:
             json.dump(data, f, indent=2, ensure_ascii=False)
     
     def create_agent(self, name: str, personality: str = "", style: str = "", 
-                    prompt: str = "", knowledge_bases: List[str] = None) -> Agent:
+                    prompt: str = "", formatting: str = "", knowledge_bases: List[str] = None) -> Agent:
         """Create a new agent"""
         agent = Agent(
             name=name,
             personality=personality,
             style=style,
             prompt=prompt,
+            formatting=formatting,
             knowledge_bases=knowledge_bases or []
         )
         self._agents[agent.agent_id] = agent
