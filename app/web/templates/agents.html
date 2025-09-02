@@ -41,7 +41,7 @@
                     </div>
                 </div>
                 
-                <div class="flex space-x-2">
+                <div class="flex space-x-2 mb-3">
                     <button onclick="editAgentSafe('{{ agent.agent_id }}')" 
                             class="flex-1 bg-blue-50 hover:bg-blue-100 text-blue-700 px-3 py-2 rounded text-sm font-medium transition-colors"
                             data-agent='{{ agent|tojson }}'>
@@ -57,6 +57,18 @@
                         🗑️ Delete
                     </button>
                     {% endif %}
+                </div>
+                
+                <!-- Embed Button -->
+                <div class="flex space-x-2">
+                    <a href="/embed-code/{{ agent.agent_id }}" 
+                       class="flex-1 bg-purple-50 hover:bg-purple-100 text-purple-700 px-3 py-2 rounded text-sm font-medium transition-colors text-center">
+                        🔗 Embed Chat
+                    </a>
+                    <a href="/test" 
+                       class="flex-1 bg-orange-50 hover:bg-orange-100 text-orange-700 px-3 py-2 rounded text-sm font-medium transition-colors text-center">
+                        💬 Test Chat
+                    </a>
                 </div>
             </div>
         </div>

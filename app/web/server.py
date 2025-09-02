@@ -1,4 +1,5 @@
 from flask import Flask, render_template, request, redirect, flash, url_for, jsonify
+from flask_cors import CORS
 import os
 from werkzeug.utils import secure_filename
 from app.agents.email_agent import generate_reply
@@ -16,11 +17,18 @@ from app.api.agent_api import AgentAPI
 from app.api.email_account_api import EmailAccountAPI
 from app.api.task_api import TaskAPI
 from app.services.task_scheduler import task_scheduler
+from app.models.chat_session import chat_session_manager
 
 app = Flask(__name__)
 app.secret_key = 'your-secret-key-change-this'  # Change this in production
 app.config['UPLOAD_FOLDER'] = 'app/knowledge_bases'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
+
+# Enable CORS for external embedding
+CORS(app, resources={
+    r"/api/chat/*": {"origins": "*"},
+    r"/embed/*": {"origins": "*"}
+})
 
 # Global template context processor to check API key status
 @app.context_processor
@@ -1086,6 +1094,131 @@ def settings():
                          api_key_updated=api_info.get('last_updated'),
                          api_key_status=api_info.get('test_status'),
                          api_key_source=api_info.get('source'))
+
+# Chat API endpoints for chatbot functionality
+@app.route("/api/chat/session", methods=["POST"])
+def create_chat_session():
+    """Create a new chat session"""
+    try:
+        data = request.get_json()
+        agent_id = data.get("agent_id", "").strip()
+        
+        if not agent_id:
+            return jsonify({"success": False, "error": "Agent ID is required"})
+        
+        # Verify the agent exists
+        agent_result = AgentAPI.get_agent(agent_id)
+        if not agent_result["success"]:
+            return jsonify({"success": False, "error": "Agent not found"})
+        
+        # Create new session
+        session = chat_session_manager.create_session(agent_id)
+        
+        return jsonify({
+            "success": True,
+            "session_id": session.session_id,
+            "agent_id": agent_id,
+            "created_at": session.created_at
+        })
+        
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route("/api/chat/<agent_id>", methods=["POST"])
+def chat_with_agent(agent_id):
+    """Handle chat messages with a specific agent"""
+    try:
+        data = request.get_json()
+        message = data.get("message", "").strip()
+        session_id = data.get("session_id", "").strip()
+        
+        if not message:
+            return jsonify({"success": False, "error": "Message is required"})
+        
+        # Get the agent
+        agent_result = AgentAPI.get_agent(agent_id)
+        if not agent_result["success"]:
+            return jsonify({"success": False, "error": "Agent not found"})
+        
+        # Convert dictionary to Agent object for generate_reply function
+        from app.models.agent import Agent
+        agent = Agent.from_dict(agent_result["agent"])
+        
+        # Get chat history if session exists
+        history = []
+        if session_id:
+            history = chat_session_manager.get_chat_history(session_id, limit=10)
+        
+        # Generate response using existing email agent logic
+        response = generate_reply(message, history=history, agent=agent)
+        
+        # Store the conversation if session exists
+        if session_id:
+            chat_session_manager.add_message(session_id, "user", message)
+            chat_session_manager.add_message(session_id, "assistant", response)
+        
+        return jsonify({
+            "success": True,
+            "response": response,
+            "agent_name": agent.name,
+            "session_id": session_id
+        })
+        
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route("/embed/<agent_id>")
+def get_embed_code(agent_id):
+    """Get embed code for a specific agent"""
+    try:
+        agent_result = AgentAPI.get_agent(agent_id)
+        if not agent_result["success"]:
+            return "Agent not found", 404
+        
+        agent = agent_result["agent"]
+        
+        return render_template("chat_widget.html", 
+                             agent=agent,
+                             agent_id=agent_id)
+        
+    except Exception as e:
+        return str(e), 500
+
+@app.route("/embed-code/<agent_id>")
+def embed_code_generator(agent_id):
+    """Generate embed code for a specific agent"""
+    try:
+        agent_result = AgentAPI.get_agent(agent_id)
+        if not agent_result["success"]:
+            return "Agent not found", 404
+        
+        agent = agent_result["agent"]
+        
+        # Generate different embed code options
+        base_url = request.host_url.rstrip('/')
+        
+        embed_codes = {
+            "iframe": f'<iframe src="{base_url}/embed/{agent_id}" width="400" height="600" frameborder="0"></iframe>',
+            "javascript": f'''<script>
+// Add this to your HTML head section
+(function() {{
+    var script = document.createElement('script');
+    script.src = '{base_url}/embed/{agent_id}';
+    script.async = true;
+    document.head.appendChild(script);
+}})();
+</script>''',
+            "direct_link": f'{base_url}/embed/{agent_id}'
+        }
+        
+        return render_template("embed_generator.html", 
+                             agent=agent,
+                             agent_id=agent_id,
+                             embed_codes=embed_codes,
+                             base_url=base_url)
+        
+    except Exception as e:
+        return str(e), 500
 
 # Initialize task scheduler when module is imported
 # This ensures it starts regardless of how the Flask app is run

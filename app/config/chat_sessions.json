@@ -1,0 +1,118 @@
+{
+  "sessions": {
+    "4ae97b73-47c0-4b17-bba9-d2c511a120a9": {
+      "session_id": "4ae97b73-47c0-4b17-bba9-d2c511a120a9",
+      "agent_id": "8839b6cd-d6ce-4059-a0de-c025d9b8a398",
+      "created_at": "2025-09-02T01:06:49.698554",
+      "messages": []
+    },
+    "a3d3c361-b3df-4e0f-a561-3f70f7cafe68": {
+      "session_id": "a3d3c361-b3df-4e0f-a561-3f70f7cafe68",
+      "agent_id": "8839b6cd-d6ce-4059-a0de-c025d9b8a398",
+      "created_at": "2025-09-02T01:32:36.027684",
+      "messages": [
+        {
+          "role": "user",
+          "content": "Hello! Can you tell me about your CNA programs?",
+          "timestamp": "2025-09-02T01:32:59.330589"
+        },
+        {
+          "role": "assistant",
+          "content": "Hello!\n\nThank you for your interest in our CNA programs at the Technical Institute of America. We offer a variety of class schedules to accommodate different needs. Here are the upcoming class schedules for our CNA program in New York City and Garden City:\n\n### New York City\n- 📆 Sep 15, 2025 – Nov 6, 2025\n  - 📋 Monday - Thursday\n  - ⏱️ 6pm - 9:30pm\n  \n- 📆 Sep 22, 2025 – Oct 30, 2025\n  - 📋 Monday - Thursday\n  - ⏱️ 9am - 1:30pm\n\n### One Day Classes in New York City\n- 📆 Sep 17, 2025\n  - 📋 Wednesday\n  - ⏱️ 10am - 6pm\n  \n- 📆 Sep 18, 2025\n  - 📋 Thursday\n  - ⏱️ 10am - 6pm\n  \n- 📆 Sep 19, 2025\n  - 📋 Friday\n  - ⏱️ 10am - 6pm\n  \n- 📆 Sep 25, 2025\n  - 📋 Thursday\n  - ⏱️ 10am - 6pm\n  \n- 📆 Sep 26, 2025\n  - 📋 Friday\n  - ⏱️ 10am - 6pm\n  \n- 📆 Oct 2, 2025\n  - 📋 Thursday\n  - ⏱️ 10am - 6pm\n\n### Garden City\n- 📆 Sep 19, 2025\n  - 📋 Friday\n  - ⏱️ 10am - 4pm\n  \n- 📆 Sep 26, 2025\n  - 📋 Friday\n  - ⏱️ 10am - 4pm\n\nPlease note that to register for the CNA program, you must have a high school diploma or GED. If you have any further questions or need assistance with registration, feel free to contact our admissions office at selenaa@tia.edu or nycreceptionist@tia.edu.\n\nWe look forward to helping you achieve your educational goals!\n\nBest regards,\nCNA Assistant Allie\nLet us know if you have any questions.",
+          "timestamp": "2025-09-02T01:32:59.331547"
+        },
+        {
+          "role": "user",
+          "content": "Hello! Can you tell me about your CNA programs?",
+          "timestamp": "2025-09-02T01:33:29.949527"
+        },
+        {
+          "role": "assistant",
+          "content": "Hello!\n\nThank you for reaching out to learn more about our Certified Nursing Assistant (CNA) programs at the Technical Institute of America. We have several upcoming class schedules available in both New York City and Garden City. Here are the details:\n\n### New York City\n- 📆 Sep 15, 2025 – Nov 6, 2025\n  - 📋 Monday - Thursday\n  - ⏱️ 6pm - 9:30pm\n  \n- 📆 Sep 22, 2025 – Oct 30, 2025\n  - 📋 Monday - Thursday\n  - ⏱️ 9am - 1:30pm\n\n### One Day Classes in New York City\n- 📆 Sep 17, 2025\n  - 📋 Wednesday\n  - ⏱️ 10am - 6pm\n  \n- 📆 Sep 18, 2025\n  - 📋 Thursday\n  - ⏱️ 10am - 6pm\n  \n- 📆 Sep 19, 2025\n  - 📋 Friday\n  - ⏱️ 10am - 6pm\n  \n- 📆 Sep 25, 2025\n  - 📋 Thursday\n  - ⏱️ 10am - 6pm\n  \n- 📆 Sep 26, 2025\n  - 📋 Friday\n  - ⏱️ 10am - 6pm\n  \n- 📆 Oct 2, 2025\n  - 📋 Thursday\n  - ⏱️ 10am - 6pm\n\n### Garden City\n- 📆 Sep 19, 2025\n  - 📋 Friday\n  - ⏱️ 10am - 4pm\n  \n- 📆 Sep 26, 2025\n  - 📋 Friday\n  - ⏱️ 10am - 4pm\n\nPlease remember that to enroll in our CNA program, you must have a high school diploma or GED. If you have any further questions or need assistance with registration, feel free to contact our admissions office at selenaa@tia.edu or nycreceptionist@tia.edu.\n\nWe're here to help you achieve your educational goals!\n\nBest regards,\nCNA Assistant Allie\nLet us know if you have any questions.",
+          "timestamp": "2025-09-02T01:33:29.950471"
+        }
+      ]
+    },
+    "1b897226-b078-4184-b7e3-61754bd79375": {
+      "session_id": "1b897226-b078-4184-b7e3-61754bd79375",
+      "agent_id": "8839b6cd-d6ce-4059-a0de-c025d9b8a398",
+      "created_at": "2025-09-02T01:47:25.229720",
+      "messages": [
+        {
+          "role": "user",
+          "content": "Hello! Can you tell me about your CNA programs?",
+          "timestamp": "2025-09-02T01:47:47.834065"
+        },
+        {
+          "role": "assistant",
+          "content": "Hello!\n\nThank you for your interest in our CNA programs at the Technical Institute of America! Here are the upcoming class schedules for the Nurse Aide - CNA course in New York City and Garden City:\n\n### New York City\n- 📆 Sep 15, 2025 – Nov 6, 2025\n- 📋 Monday - Thursday\n- ⏱️ 6pm - 9:30pm\n\n- 📆 Sep 22, 2025 – Oct 30, 2025\n- 📋 Monday - Thursday\n- ⏱️ 9am - 1:30pm\n\nOne Day Classes in New York City:\n- 📆 Sep 17, 2025\n- 📋 Wednesday\n- ⏱️ 10am - 6pm\n\n- 📆 Sep 18, 2025\n- 📋 Thursday\n- ⏱️ 10am - 6pm\n\n- 📆 Sep 19, 2025\n- 📋 Friday\n- ⏱️ 10am - 6pm\n\n- 📆 Sep 25, 2025\n- 📋 Thursday\n- ⏱️ 10am - 6pm\n\n- 📆 Sep 26, 2025\n- 📋 Friday\n- ⏱️ 10am - 6pm\n\n- 📆 Oct 2, 2025\n- 📋 Thursday\n- ⏱️ 10am - 6pm\n\n### Garden City\nOne Day Classes in Garden City:\n- 📆 Sep 19, 2025\n- 📋 Friday\n- ⏱️ 10am - 4pm\n\n- 📆 Sep 26, 2025\n- 📋 Friday\n- ⏱️ 10am - 4pm\n\nPlease note that enrollment requires a high school diploma or GED. If you have any more questions or need further assistance, feel free to contact our training coordinators at selenaa@tia.edu or nycreceptionist@tia.edu.\n\nLet us know if you have any questions.\n\nBest regards,\nCNA Assistant Allie",
+          "timestamp": "2025-09-02T01:47:47.835190"
+        }
+      ]
+    },
+    "69dbe97e-d98e-49ec-a802-37bf2f6ad81a": {
+      "session_id": "69dbe97e-d98e-49ec-a802-37bf2f6ad81a",
+      "agent_id": "8839b6cd-d6ce-4059-a0de-c025d9b8a398",
+      "created_at": "2025-09-02T01:48:30.407125",
+      "messages": [
+        {
+          "role": "user",
+          "content": "When can i take the exam?",
+          "timestamp": "2025-09-02T01:48:52.393339"
+        },
+        {
+          "role": "assistant",
+          "content": "Hello!\n\nYou can take the State Certification Exam after completing your externship. Here are the upcoming exam dates available:\n\n📌 New York City\n📆 Sep 26, 2025 – One Day Class\n📋 Friday\n⏱️ 10am - 6pm\n\n📆 Oct 2, 2025 – One Day Class\n📋 Thursday\n⏱️ 10am - 6pm\n\nPlease remember to arrive half an hour early at 9:30 am. Exam dates are subject to change, and it's important to have all required documents and IDs ready to avoid any inconvenience.\n\nLet us know if you have any more questions or need further assistance!\n\nBest regards,\nCNA Assistant Allie\nLet us know if you have any questions.",
+          "timestamp": "2025-09-02T01:48:52.394266"
+        }
+      ]
+    },
+    "10c180d4-ab0a-43f5-a7f6-995b8222f3f4": {
+      "session_id": "10c180d4-ab0a-43f5-a7f6-995b8222f3f4",
+      "agent_id": "8839b6cd-d6ce-4059-a0de-c025d9b8a398",
+      "created_at": "2025-09-02T02:09:07.359401",
+      "messages": [
+        {
+          "role": "user",
+          "content": "I have my GED do I need anything else to start taking CNA?",
+          "timestamp": "2025-09-02T02:09:16.478939"
+        },
+        {
+          "role": "assistant",
+          "content": "Hello,\n\nGreat to hear that you have your GED! That's exactly what you need to start taking the CNA program at the Technical Institute of America. Just make sure to submit your GED by the end of the first week of your class schedule.\n\nIf you're ready to enroll, here are some upcoming class schedules in New York City:\n\n📌 New York City\n📆 Sep 15, 2025 – Nov 6, 2025\n📋 Monday - Thursday\n⏱️ 6pm - 9:30pm\n\n📆 Sep 22, 2025 – Oct 30, 2025\n📋 Monday - Thursday\n⏱️ 9am - 1:30pm\n\nFeel free to choose the one that best fits your schedule. If you need more information or assistance with the registration process, please don't hesitate to reach out.\n\nLet us know if you have any questions.\n\nBest regards,\nCNA Assistant Allie",
+          "timestamp": "2025-09-02T02:09:16.479542"
+        },
+        {
+          "role": "user",
+          "content": "Are there any other requirements to take the class?",
+          "timestamp": "2025-09-02T02:10:28.763515"
+        },
+        {
+          "role": "assistant",
+          "content": "Hello,\n\nIn addition to your GED, there are a few more requirements and policies to keep in mind for the CNA program:\n\n1. **Payment Schedule:** You will need to make several payments throughout the course:\n   - First week of class: $339.80\n   - Second week of class: $339.80\n   - Third week of class: $339.80\n   - Fourth week of class: $339.80\n   - Fifth week of class: $339.80 (This payment allows you to attend the externship and the CNA state exam).\n\n2. **Attendance Policy:** Attendance is mandatory on the first day of class. Regular attendance is crucial as it affects your grades and your ability to graduate. Missing more than 16 hours of class time will result in automatic withdrawal from the course.\n\n3. **Dress Code:** You must wear a clean and ironed TIA uniform daily, with closed-toe shoes. Sandals, flip-flops, and other listed items are not permitted.\n\n4. **Student Assessment Policy:** You must complete all course exams to meet the requirements for passing the course.\n\nPlease ensure you can meet these requirements before enrolling. If you have any more questions or need further clarification, feel free to reach out.\n\nLet us know if you have any questions.\n\nBest regards,\nCNA Assistant Allie",
+          "timestamp": "2025-09-02T02:10:28.764340"
+        },
+        {
+          "role": "user",
+          "content": "Can I do the class I spanish?",
+          "timestamp": "2025-09-02T02:11:16.937066"
+        },
+        {
+          "role": "assistant",
+          "content": "Hello,\n\nCurrently, our CNA program classes are conducted in English. We do not have classes available in Spanish at the moment. If you have any concerns about language barriers or need additional support, please let us know, and we'll do our best to assist you.\n\nLet us know if you have any more questions.\n\nBest regards,\nCNA Assistant Allie",
+          "timestamp": "2025-09-02T02:11:16.938146"
+        },
+        {
+          "role": "user",
+          "content": "je ne parle que français",
+          "timestamp": "2025-09-02T02:11:53.065129"
+        },
+        {
+          "role": "assistant",
+          "content": "Bonjour,\n\nJe comprends que vous parlez français. Actuellement, nos cours CNA sont dispensés uniquement en anglais. Si vous avez besoin d'une assistance supplémentaire ou si vous avez des questions spécifiques, n'hésitez pas à nous contacter. Nous sommes là pour vous aider du mieux que nous pouvons.\n\nFaites-nous savoir si vous avez d'autres questions.\n\nMeilleures salutations,\nCNA Assistant Allie",
+          "timestamp": "2025-09-02T02:11:53.066016"
+        }
+      ]
+    }
+  }
+}

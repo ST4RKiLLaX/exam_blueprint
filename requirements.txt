@@ -8,6 +8,7 @@ email-validator
 python-dotenv
 imap-tools
 flask
+flask-cors
 jinja2
 pypdf
 werkzeug

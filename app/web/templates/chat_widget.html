@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AI Agent Chat Widget</title>
+    <style>
+        .chat-widget {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 350px;
+            height: 500px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            display: flex;
+            flex-direction: column;
+            font-family: Arial, sans-serif;
+            z-index: 10000;
+            border: 1px solid #e0e0e0;
+        }
+        
+        .chat-header {
+            background: #007bff;
+            color: white;
+            padding: 15px;
+            border-radius: 10px 10px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: bold;
+        }
+        
+        .chat-messages {
+            flex: 1;
+            padding: 15px;
+            overflow-y: auto;
+            background: #f8f9fa;
+        }
+        
+        .message {
+            margin-bottom: 10px;
+            padding: 10px;
+            border-radius: 15px;
+            max-width: 80%;
+            word-wrap: break-word;
+        }
+        
+        .message.user {
+            background: #007bff;
+            color: white;
+            margin-left: auto;
+        }
+        
+        .message.assistant {
+            background: white;
+            border: 1px solid #dee2e6;
+            color: #333;
+        }
+        
+        .chat-input {
+            padding: 15px;
+            border-top: 1px solid #dee2e6;
+            display: flex;
+            gap: 10px;
+            background: white;
+        }
+        
+        .chat-input input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #dee2e6;
+            border-radius: 20px;
+            outline: none;
+            font-size: 14px;
+        }
+        
+        .chat-input button {
+            padding: 10px 15px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.2s;
+        }
+        
+        .chat-input button:hover {
+            background: #0056b3;
+        }
+        
+        .chat-input button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+        
+        .chat-toggle {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 60px;
+            height: 60px;
+            background: #007bff;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 24px;
+            z-index: 10001;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            transition: transform 0.2s;
+        }
+        
+        .chat-toggle:hover {
+            transform: scale(1.1);
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .typing-indicator {
+            display: none;
+            padding: 10px;
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 15px;
+            max-width: 80%;
+            margin-bottom: 10px;
+        }
+        
+        .typing-indicator span {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #007bff;
+            margin: 0 2px;
+            animation: typing 1.4s infinite ease-in-out;
+        }
+        
+        .typing-indicator span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        
+        .typing-indicator span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+        
+        @keyframes typing {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-10px); }
+        }
+        
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            border-radius: 15px;
+            padding: 10px;
+            margin-bottom: 10px;
+            max-width: 80%;
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-toggle" onclick="toggleChat()" id="chatToggle">💬</div>
+    
+    <div class="chat-widget hidden" id="chatWidget">
+        <div class="chat-header">
+            <span id="agentName">AI Assistant</span>
+            <span onclick="toggleChat()" style="cursor: pointer;">✕</span>
+        </div>
+        
+        <div class="chat-messages" id="chatMessages">
+            <div class="message assistant">
+                Hello! I'm here to help. How can I assist you today?
+            </div>
+        </div>
+        
+        <div class="typing-indicator" id="typingIndicator">
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
+        
+        <div class="chat-input">
+            <input type="text" id="messageInput" placeholder="Type your message..." onkeypress="handleKeyPress(event)">
+            <button onclick="sendMessage()" id="sendButton">Send</button>
+        </div>
+    </div>
+
+    <script>
+        let sessionId = null;
+        let agentId = '{{ agent_id }}'; // This will be replaced by your backend
+        let isTyping = false;
+        
+        // Initialize chat session
+        async function initChat() {
+            try {
+                const response = await fetch('/api/chat/session', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        agent_id: agentId
+                    })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    sessionId = data.session_id;
+                    console.log('Chat session initialized:', sessionId);
+                } else {
+                    console.error('Failed to initialize chat:', data.error);
+                }
+            } catch (error) {
+                console.error('Failed to initialize chat:', error);
+            }
+        }
+        
+        function toggleChat() {
+            const widget = document.getElementById('chatWidget');
+            const toggle = document.getElementById('chatToggle');
+            
+            if (widget.classList.contains('hidden')) {
+                widget.classList.remove('hidden');
+                toggle.style.display = 'none';
+                
+                if (!sessionId) {
+                    initChat();
+                }
+                
+                // Focus on input
+                document.getElementById('messageInput').focus();
+            } else {
+                widget.classList.add('hidden');
+                toggle.style.display = 'flex';
+            }
+        }
+        
+        function handleKeyPress(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendMessage();
+            }
+        }
+        
+        function showTyping() {
+            if (!isTyping) {
+                isTyping = true;
+                document.getElementById('typingIndicator').style.display = 'block';
+                scrollToBottom();
+            }
+        }
+        
+        function hideTyping() {
+            isTyping = false;
+            document.getElementById('typingIndicator').style.display = 'none';
+        }
+        
+        function scrollToBottom() {
+            const messagesDiv = document.getElementById('chatMessages');
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+        
+        async function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const sendButton = document.getElementById('sendButton');
+            const message = input.value.trim();
+            
+            if (!message || isTyping) return;
+            
+            // Disable input and button
+            input.disabled = true;
+            sendButton.disabled = true;
+            
+            // Add user message to chat
+            addMessage('user', message);
+            input.value = '';
+            
+            // Show typing indicator
+            showTyping();
+            
+            try {
+                const response = await fetch(`/api/chat/${agentId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message: message,
+                        session_id: sessionId
+                    })
+                });
+                
+                const data = await response.json();
+                hideTyping();
+                
+                if (data.success) {
+                    addMessage('assistant', data.response);
+                } else {
+                    addMessage('error', data.error || 'Sorry, I encountered an error. Please try again.');
+                }
+            } catch (error) {
+                hideTyping();
+                addMessage('error', 'Sorry, I encountered an error. Please try again.');
+                console.error('Chat error:', error);
+            }
+            
+            // Re-enable input and button
+            input.disabled = false;
+            sendButton.disabled = false;
+            input.focus();
+        }
+        
+        function addMessage(role, content) {
+            const messagesDiv = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            
+            if (role === 'error') {
+                messageDiv.className = 'message error-message';
+            } else {
+                messageDiv.className = `message ${role}`;
+            }
+            
+            // Format the content (preserve line breaks and basic formatting)
+            content = content.replace(/\n/g, '<br>');
+            messageDiv.innerHTML = content;
+            
+            messagesDiv.appendChild(messageDiv);
+            scrollToBottom();
+        }
+        
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            // You can customize the agent ID here or pass it from your backend
+            agentId = '{{ agent_id }}' || 'default-agent-id';
+            
+            // Set agent name if available
+            const agentNameElement = document.getElementById('agentName');
+            if (agentNameElement) {
+                agentNameElement.textContent = '{{ agent.name }}' || 'AI Assistant';
+            }
+        });
+        
+        // Close chat when clicking outside (optional)
+        document.addEventListener('click', function(event) {
+            const widget = document.getElementById('chatWidget');
+            const toggle = document.getElementById('chatToggle');
+            
+            if (!widget.contains(event.target) && !toggle.contains(event.target)) {
+                // Don't auto-close for now, let users control it
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,235 +1,430 @@
 {% extends "base.html" %}
 
-{% block title %}Test Agent - CNA AI Agent{% endblock %}
+{% block title %}Test & Chat with Agents{% endblock %}
 
 {% block content %}
-<div class="max-w-4xl mx-auto space-y-8">
+<div class="max-w-6xl mx-auto space-y-8">
     <!-- Header -->
     <div class="text-center">
-        <h1 class="text-3xl font-bold text-gray-900 mb-2">✉️ Test Agent Reply</h1>
-        <p class="text-gray-600">Test how your AI agent responds to different email scenarios</p>
+        <h1 class="text-3xl font-bold text-gray-900 mb-2">🧪 Test & Chat with Agents</h1>
+        <p class="text-gray-600">Test your AI agents with email scenarios or chat with them in real-time</p>
     </div>
 
-    <!-- Test Form -->
-    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <form method="post" class="space-y-6">
-            <div>
-                <label for="email_body" class="block text-sm font-medium text-gray-700 mb-2">
-                    Sample Email Content
-                </label>
-                <textarea 
-                    id="email_body"
-                    name="email_body" 
-                    rows="8" 
-                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
-                    placeholder="Paste a sample email here to test the AI agent's response..."
-                >{{ email_input }}</textarea>
-            </div>
+    <!-- Tab Navigation -->
+    <div class="flex space-x-1 bg-gray-100 p-1 rounded-lg max-w-md mx-auto">
+        <button onclick="showTab('email')" id="email-tab" class="tab-button flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors bg-white text-blue-600 shadow-sm">
+            ✉️ Email Testing
+        </button>
+        <button onclick="showTab('chat')" id="chat-tab" class="tab-button flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors text-gray-600 hover:text-gray-900">
+            💬 Live Chat
+        </button>
+    </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <!-- Email Testing Section -->
+    <div id="email-section">
+        <!-- Test Form -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">✉️ Test Agent Reply</h3>
+            
+            <form method="POST" class="space-y-4">
+                <!-- Agent Selection -->
                 <div>
-                    <label for="test_subject" class="block text-sm font-medium text-gray-700 mb-2">Subject (for thread)</label>
-                    <input type="text" id="test_subject" name="test_subject" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Optional subject">
-                </div>
-                <div>
-                    <label for="test_from" class="block text-sm font-medium text-gray-700 mb-2">From (for thread)</label>
-                    <input type="email" id="test_from" name="test_from" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="test@example.com" value="test@example.com">
-                </div>
-                <div>
-                    <label for="test_agent" class="block text-sm font-medium text-gray-700 mb-2">Select Agent *</label>
+                    <label for="test_agent" class="block text-sm font-medium text-gray-700 mb-2">Select Agent</label>
                     <select id="test_agent" name="test_agent" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                         <option value="">-- Choose an agent --</option>
                         {% for agent in agents %}
-                        <option value="{{ agent.agent_id }}" {% if selected_agent_id == agent.agent_id %}selected{% endif %}>
+                        <option value="{{ agent.agent_id }}" {% if agent.agent_id == selected_agent_id %}selected{% endif %}>
                             {{ agent.name }} ({{ agent.knowledge_bases|length }} KBs)
                         </option>
                         {% endfor %}
                     </select>
-                    <p class="text-xs text-gray-500 mt-1">Required: Select which agent should respond to this test</p>
                 </div>
-            </div>
 
-            <!-- Agent Selection Info -->
-            {% if selected_agent_id %}
-            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <div class="flex items-center">
-                    <svg class="w-5 h-5 text-blue-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                    </svg>
-                    <div>
-                        <h4 class="font-medium text-blue-900">Testing with Agent</h4>
-                        {% for agent in agents %}
-                            {% if agent.agent_id == selected_agent_id %}
-                            <p class="text-sm text-blue-700">
-                                <strong>{{ agent.name }}</strong> - Access to {{ agent.knowledge_bases|length }} knowledge base(s)
-                            </p>
-                            <p class="text-xs text-blue-600 mt-1">
-                                Knowledge Bases: {{ agent.knowledge_bases|join(', ') }}
-                            </p>
-                            {% endif %}
+                <!-- Thread Selection -->
+                <div>
+                    <label class="flex items-center space-x-2">
+                        <input type="checkbox" id="use_thread" name="use_thread" onchange="toggleThreadSelect(this)" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                        <span class="text-sm font-medium text-gray-700">Use existing thread context</span>
+                    </label>
+                </div>
+
+                <div id="thread_select_container" class="hidden">
+                    <label for="thread_key" class="block text-sm font-medium text-gray-700 mb-2">Select Thread</label>
+                    <select id="thread_key" name="thread_key" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">-- Choose a thread --</option>
+                        {% for thread in threads %}
+                        <option value="{{ thread.key }}" {% if thread.key == selected_thread_key %}selected{% endif %}>
+                            {{ thread.label }}
+                        </option>
                         {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Email Input -->
+                <div>
+                    <label for="email_body" class="block text-sm font-medium text-gray-700 mb-2">Email Content</label>
+                    <textarea id="email_body" name="email_body" rows="6" required 
+                              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              placeholder="Enter the email content you want to test...">{{ email_input }}</textarea>
+                </div>
+
+                <!-- Optional Fields -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="test_subject" class="block text-sm font-medium text-gray-700 mb-2">Subject (optional)</label>
+                        <input type="text" id="test_subject" name="test_subject" 
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                               placeholder="Email subject">
+                    </div>
+                    <div>
+                        <label for="test_from" class="block text-sm font-medium text-gray-700 mb-2">From (optional)</label>
+                        <input type="text" id="test_from" name="test_from" 
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                               placeholder="sender@example.com">
                     </div>
                 </div>
+
+                <!-- Submit Button -->
+                <div class="flex justify-end">
+                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors">
+                        🚀 Generate Reply
+                    </button>
+                </div>
+            </form>
+
+            <!-- Reply Output -->
+            {% if reply_output %}
+            <div class="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+                <h4 class="font-medium text-green-900 mb-2">🤖 Agent Reply:</h4>
+                <div class="text-green-800 whitespace-pre-wrap">{{ reply_output }}</div>
             </div>
             {% endif %}
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div class="space-y-3">
-                    <label class="inline-flex items-center">
-                        <input type="checkbox" name="use_thread" id="use_thread" class="h-4 w-4 text-blue-600 border-gray-300 rounded" onchange="toggleThreadSelect(this)">
-                        <span class="ml-2 text-sm text-gray-700">Use existing conversation (threaded)</span>
-                    </label>
-                    <div id="thread_select_container" class="hidden">
-                        <label for="thread_key" class="block text-sm font-medium text-gray-700 mb-2">Select a thread</label>
-                        <select id="thread_key" name="thread_key" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                            <option value="">-- Choose a thread --</option>
-                            {% for t in threads %}
-                            <option value="{{ t.key }}" {% if selected_thread_key == t.key %}selected{% endif %}>{{ t.label }}</option>
-                            {% endfor %}
-                        </select>
+            <!-- Thread History Preview -->
+            {% if history_preview %}
+            <div class="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <h4 class="font-medium text-blue-900 mb-2">📚 Thread History:</h4>
+                <div class="space-y-2 text-sm">
+                    {% for msg in history_preview %}
+                    <div class="flex space-x-2">
+                        <span class="font-medium text-blue-800">{{ msg.role }}:</span>
+                        <span class="text-blue-700">{{ msg.content[:100] }}{% if msg.content|length > 100 %}...{% endif %}</span>
                     </div>
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Conversation Preview</label>
-                    <div class="h-40 overflow-auto bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm">
-                        {% if history_preview and history_preview|length %}
-                            {% for m in history_preview %}
-                                <div class="mb-2">
-                                    <span class="font-semibold text-gray-800">{% if m.role == 'user' %}User{% else %}Assistant{% endif %}:</span>
-                                    <span class="text-gray-700">{{ m.content }}</span>
-                                </div>
-                            {% endfor %}
-                        {% else %}
-                            <div class="text-gray-500">No conversation selected.</div>
-                        {% endif %}
-                    </div>
+                    {% endfor %}
                 </div>
             </div>
+            {% endif %}
+        </div>
 
-            <div class="flex justify-center">
-                <button 
-                    type="submit" 
-                    class="inline-flex items-center px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 focus:ring-4 focus:ring-blue-200 transition-colors"
-                >
-                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-                    </svg>
-                    Generate Reply
-                </button>
+        <!-- Sample Emails -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <h4 class="text-lg font-semibold text-gray-900 mb-4">💡 Sample Emails to Test</h4>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                    <h4 class="font-medium text-blue-900 mb-2">Course Information</h4>
+                    <p class="text-sm text-blue-700 mb-3">
+                        "I'm interested in your CNA training program. Can you tell me about the course schedule, cost, and requirements?"
+                    </p>
+                    <button 
+                        onclick="document.getElementById('email_body').value='I\\'m interested in your CNA training program. Can you tell me about the course schedule, cost, and requirements?'"
+                        class="text-xs text-blue-600 hover:text-blue-700 font-medium"
+                    >
+                        Use this sample
+                    </button>
+                </div>
+                
+                <div class="p-4 bg-green-50 rounded-lg border border-green-200">
+                    <h4 class="font-medium text-green-900 mb-2">Registration Process</h4>
+                    <p class="text-sm text-green-700 mb-3">
+                        "How do I register for the CNA program? What documents do I need and what's the deadline?"
+                    </p>
+                    <button 
+                        onclick="document.getElementById('email_body').value='How do I register for the CNA program? What documents do I need and what\\'s the deadline?'"
+                        class="text-xs text-green-600 hover:text-green-700 font-medium"
+                    >
+                        Use this sample
+                    </button>
+                </div>
+                
+                <div class="p-4 bg-purple-50 rounded-lg border border-purple-200">
+                    <h4 class="font-medium text-purple-900 mb-2">Eligibility Question</h4>
+                    <p class="text-sm text-purple-700 mb-3">
+                        "I don't have a high school diploma. Am I still eligible for the CNA training program?"
+                    </p>
+                    <button 
+                        onclick="document.getElementById('email_body').value='I don\\'t have a high school diploma. Am I still eligible for the CNA training program?'"
+                        class="text-xs text-purple-600 hover:text-purple-700 font-medium"
+                    >
+                        Use this sample
+                    </button>
+                </div>
+                
+                <div class="p-4 bg-orange-50 rounded-lg border border-orange-200">
+                    <h4 class="font-medium text-orange-900 mb-2">Refund Request</h4>
+                    <p class="text-sm text-orange-700 mb-3">
+                        "I need to request a refund for my course. What's the process and who should I contact?"
+                    </p>
+                    <button 
+                        onclick="document.getElementById('email_body').value='I need to request a refund for my course. What\\'s the process and who should I contact?'"
+                        class="text-xs text-orange-600 hover:text-orange-700 font-medium"
+                    >
+                        Use this sample
+                    </button>
+                </div>
             </div>
-        </form>
+        </div>
     </div>
 
-    <!-- Response Output -->
-    {% if reply_output %}
-    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <div class="flex items-center mb-4">
-            <div class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center mr-3">
-                <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
-                </svg>
-            </div>
-            <h3 class="text-lg font-semibold text-gray-900">AI Agent Response</h3>
-        </div>
+    <!-- Live Chat Interface -->
+    <div id="chat-section" class="hidden bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">💬 Live Chat with Agent</h3>
         
-        <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
-            <pre class="whitespace-pre-wrap text-sm text-gray-800 font-mono">{{ reply_output }}</pre>
+        <!-- Agent Selection for Chat -->
+        <div class="mb-6">
+            <label for="chat_agent" class="block text-sm font-medium text-gray-700 mb-2">Select Agent for Chat</label>
+            <select id="chat_agent" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" onchange="onAgentChange()">
+                <option value="">-- Choose an agent --</option>
+                {% for agent in agents %}
+                <option value="{{ agent.agent_id }}">
+                    {{ agent.name }} ({{ agent.knowledge_bases|length }} KBs)
+                </option>
+                {% endfor %}
+            </select>
         </div>
-        
-        <div class="mt-4 flex items-center justify-between">
-            <div class="text-sm text-gray-500">
-                Generated using GPT-4 with knowledge base integration
-            </div>
-            <button 
-                onclick="navigator.clipboard.writeText('{{ reply_output|replace('\n', '\\n')|replace('"', '\\"') }}')"
-                class="inline-flex items-center px-3 py-1 text-sm text-blue-600 hover:text-blue-700 font-medium"
-            >
-                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
-                </svg>
-                Copy Response
-            </button>
-        </div>
-    </div>
-    {% endif %}
 
-    <!-- Sample Emails -->
-    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <h3 class="text-lg font-semibold text-gray-900 mb-4">💡 Sample Test Emails</h3>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div class="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                <h4 class="font-medium text-blue-900 mb-2">Course Information</h4>
-                <p class="text-sm text-blue-700 mb-3">
-                    "Hi, I'm interested in the CNA class. I live in Long Island. How long is the program and what's the cost?"
-                </p>
-                <button 
-                    onclick="document.getElementById('email_body').value='Hi, I\\'m interested in the CNA class. I live in Long Island. How long is the program and what\\'s the cost?'"
-                    class="text-xs text-blue-600 hover:text-blue-700 font-medium"
-                >
-                    Use this sample
-                </button>
+        <!-- Chat Interface -->
+        <div class="border border-gray-200 rounded-lg bg-gray-50">
+            <!-- Chat Messages -->
+            <div id="chat-messages" class="h-96 overflow-y-auto p-4 space-y-4">
+                <div class="text-center text-gray-500 text-sm">
+                    Select an agent and start chatting below
+                </div>
             </div>
             
-            <div class="p-4 bg-green-50 rounded-lg border border-green-200">
-                <h4 class="font-medium text-green-900 mb-2">Schedule Request</h4>
-                <p class="text-sm text-green-700 mb-3">
-                    "I need to know the upcoming class schedules for Manhattan. Do you have any weekend classes available?"
-                </p>
-                <button 
-                    onclick="document.getElementById('email_body').value='I need to know the upcoming class schedules for Manhattan. Do you have any weekend classes available?'"
-                    class="text-xs text-green-600 hover:text-green-700 font-medium"
-                >
-                    Use this sample
-                </button>
-            </div>
-            
-            <div class="p-4 bg-purple-50 rounded-lg border border-purple-200">
-                <h4 class="font-medium text-purple-900 mb-2">Eligibility Question</h4>
-                <p class="text-sm text-purple-700 mb-3">
-                    "I don't have a high school diploma. Am I still eligible for the CNA training program?"
-                </p>
-                <button 
-                    onclick="document.getElementById('email_body').value='I don\\'t have a high school diploma. Am I still eligible for the CNA training program?'"
-                    class="text-xs text-purple-600 hover:text-purple-700 font-medium"
-                >
-                    Use this sample
-                </button>
-            </div>
-            
-            <div class="p-4 bg-orange-50 rounded-lg border border-orange-200">
-                <h4 class="font-medium text-orange-900 mb-2">Refund Request</h4>
-                <p class="text-sm text-orange-700 mb-3">
-                    "I need to request a refund for my course. What's the process and who should I contact?"
-                </p>
-                <button 
-                    onclick="document.getElementById('email_body').value='I need to request a refund for my course. What\\'s the process and who should I contact?'"
-                    class="text-xs text-orange-600 hover:text-orange-700 font-medium"
-                >
-                    Use this sample
-                </button>
+            <!-- Chat Input -->
+            <div class="border-t border-gray-200 p-4 bg-white">
+                <div class="flex space-x-3">
+                    <input 
+                        type="text" 
+                        id="chat-input" 
+                        placeholder="Type your message..." 
+                        class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        onkeypress="handleChatKeyPress(event)"
+                    >
+                    <button 
+                        onclick="sendChatMessage()" 
+                        id="chat-send-btn"
+                        class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        Send
+                    </button>
+                </div>
             </div>
         </div>
-    </div>
-    </div>
 
-    <script>
-        function toggleThreadSelect(cb) {
-            var container = document.getElementById('thread_select_container');
-            if (cb.checked) {
-                container.classList.remove('hidden');
-            } else {
-                container.classList.add('hidden');
-            }
-        }
-        (function() {
-            const useThread = document.getElementById('use_thread');
-            const threadKey = '{{ selected_thread_key or '' }}';
-            if (threadKey) {
-                useThread.checked = true;
-                toggleThreadSelect(useThread);
-            }
-        })();
-    </script>
+        <!-- Chat Status -->
+        <div class="mt-4 text-sm text-gray-600">
+            <div id="chat-status">Ready to chat</div>
+            <div id="session-info" class="text-xs text-gray-500 mt-1"></div>
+        </div>
+    </div>
 </div>
+
+<script>
+    // Tab functionality
+    function showTab(tabName) {
+        // Hide all sections
+        document.getElementById('email-section').classList.add('hidden');
+        document.getElementById('chat-section').classList.add('hidden');
+        
+        // Remove active state from all tabs
+        document.querySelectorAll('.tab-button').forEach(btn => {
+            btn.classList.remove('bg-white', 'text-blue-600', 'shadow-sm');
+            btn.classList.add('text-gray-600', 'hover:text-gray-900');
+        });
+        
+        // Show selected section and activate tab
+        if (tabName === 'email') {
+            document.getElementById('email-section').classList.remove('hidden');
+            document.getElementById('email-tab').classList.add('bg-white', 'text-blue-600', 'shadow-sm');
+            document.getElementById('email-tab').classList.remove('text-gray-600', 'hover:text-gray-900');
+        } else if (tabName === 'chat') {
+            document.getElementById('chat-section').classList.remove('hidden');
+            document.getElementById('chat-tab').classList.add('bg-white', 'text-blue-600', 'shadow-sm');
+            document.getElementById('chat-tab').classList.remove('text-gray-600', 'hover:text-gray-900');
+        }
+    }
+
+    function toggleThreadSelect(cb) {
+        var container = document.getElementById('thread_select_container');
+        if (cb.checked) {
+            container.classList.remove('hidden');
+        } else {
+            container.classList.add('hidden');
+        }
+    }
+
+    // Chat functionality
+    let chatSessionId = null;
+    let currentAgentId = null;
+
+    function onAgentChange() {
+        const agentSelect = document.getElementById('chat_agent');
+        const selectedAgent = agentSelect.value;
+        console.log('Agent selected:', selectedAgent);
+        
+        if (selectedAgent) {
+            updateChatStatus(`Agent selected: ${agentSelect.options[agentSelect.selectedIndex].text}`);
+            // Clear previous chat session
+            chatSessionId = null;
+            currentAgentId = null;
+            // Clear chat messages
+            document.getElementById('chat-messages').innerHTML = '<div class="text-center text-gray-500 text-sm">Start chatting with your selected agent below</div>';
+            updateSessionInfo('');
+        } else {
+            updateChatStatus('Ready to chat');
+            updateSessionInfo('');
+        }
+    }
+
+    function handleChatKeyPress(event) {
+        if (event.key === 'Enter') {
+            sendChatMessage();
+        }
+    }
+
+    async function sendChatMessage() {
+        const input = document.getElementById('chat-input');
+        const sendBtn = document.getElementById('chat-send-btn');
+        const message = input.value.trim();
+        
+        if (!message) return;
+        
+        const agentSelect = document.getElementById('chat_agent');
+        if (!agentSelect.value) {
+            alert('Please select an agent first');
+            return;
+        }
+        
+        // Disable input and button while processing
+        input.disabled = true;
+        sendBtn.disabled = true;
+        
+        // Add user message to chat
+        addChatMessage('user', message);
+        input.value = '';
+        
+        try {
+            // Initialize session if needed
+            if (!chatSessionId || currentAgentId !== agentSelect.value) {
+                currentAgentId = agentSelect.value;
+                await initializeChatSession();
+            }
+            
+            // Send message
+            const response = await fetch(`/api/chat/${currentAgentId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    message: message,
+                    session_id: chatSessionId
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                addChatMessage('assistant', data.response);
+                updateChatStatus(`Chatting with ${data.agent_name}`);
+            } else {
+                addChatMessage('error', data.error || 'Sorry, I encountered an error. Please try again.');
+                updateChatStatus('Error occurred');
+            }
+        } catch (error) {
+            addChatMessage('error', 'Sorry, I encountered an error. Please try again.');
+            updateChatStatus('Connection error');
+            console.error('Chat error:', error);
+        }
+        
+        // Re-enable input and button
+        input.disabled = false;
+        sendBtn.disabled = false;
+        input.focus();
+    }
+
+    async function initializeChatSession() {
+        try {
+            const response = await fetch('/api/chat/session', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    agent_id: currentAgentId
+                })
+            });
+            
+            const data = await response.json();
+            if (data.success) {
+                chatSessionId = data.session_id;
+                updateSessionInfo(`Session: ${data.session_id.substring(0, 8)}...`);
+                updateChatStatus('Session initialized');
+            } else {
+                throw new Error(data.error);
+            }
+        } catch (error) {
+            console.error('Failed to initialize chat session:', error);
+            updateChatStatus('Failed to initialize session');
+        }
+    }
+
+    function addChatMessage(role, content) {
+        const messagesDiv = document.getElementById('chat-messages');
+        const messageDiv = document.createElement('div');
+        
+        let bgColor, textColor, alignment;
+        if (role === 'user') {
+            bgColor = 'bg-blue-600 text-white ml-auto';
+            alignment = 'text-right';
+        } else if (role === 'assistant') {
+            bgColor = 'bg-white text-gray-800 border border-gray-200';
+            alignment = 'text-left';
+        } else {
+            bgColor = 'bg-red-100 text-red-800 border border-red-200';
+            alignment = 'text-left';
+        }
+        
+        messageDiv.className = `max-w-xs ${bgColor} rounded-lg px-3 py-2 ${alignment}`;
+        messageDiv.innerHTML = content.replace(/\n/g, '<br>');
+        
+        messagesDiv.appendChild(messageDiv);
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+
+    function updateChatStatus(status) {
+        document.getElementById('chat-status').textContent = status;
+    }
+
+    function updateSessionInfo(info) {
+        document.getElementById('session-info').textContent = info;
+    }
+
+    // Initialize on page load
+    (function() {
+        const useThread = document.getElementById('use_thread');
+        const threadKey = '{{ selected_thread_key or '' }}';
+        if (threadKey) {
+            useThread.checked = true;
+            toggleThreadSelect(useThread);
+        }
+        
+        // Debug: Check what agents are loaded
+        console.log('Agents loaded:', {{ agents|tojson }});
+        
+        // Show email tab by default
+        showTab('email');
+    })();
+</script>
 {% endblock %}
