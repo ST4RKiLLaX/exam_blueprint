@@ -12,6 +12,7 @@ DEFAULT_CONFIG = {
 from app.config.knowledge_config import get_active_knowledge_bases, get_knowledge_bases_for_agent
 from app.utils.knowledge_processor import search_knowledge_base
 from app.config.model_config import get_current_model, get_current_temperature
+from app.utils.secure_access import secure_knowledge_base_access
 
 
 load_dotenv()
@@ -38,16 +39,22 @@ def embed_query(text):
     return np.array(response.data[0].embedding, dtype="float32")
 
 def search_all_knowledge_bases(query, top_k=3, agent=None):
-    """Search across all active knowledge bases (legacy function for backward compatibility)"""
+    """
+    SECURE SEARCH: Implicit deny - agents can ONLY access their assigned knowledge bases.
+    No fallbacks, no bypasses, no exceptions.
+    """
+    if not agent:
+        print("🚫 SECURITY: No agent specified - denying all knowledge base access")
+        return []
+    
+    if not agent.knowledge_bases:
+        print(f"🚫 SECURITY: Agent '{agent.name}' has no assigned knowledge bases - denying all access")
+        return []
+    
+    # STRICT: Only agent-assigned knowledge bases
+    knowledge_bases = get_knowledge_bases_for_agent(agent.agent_id, agent.knowledge_bases)
+    
     all_results = []
-    
-    if agent:
-        # Use agent-specific knowledge bases
-        knowledge_bases = get_knowledge_bases_for_agent(agent.agent_id, agent.knowledge_bases)
-    else:
-        # Fallback to all active knowledge bases
-        knowledge_bases = get_active_knowledge_bases()
-    
     for kb in knowledge_bases:
         kb_results = search_knowledge_base(kb["id"], query, top_k)
         if kb_results:
@@ -56,12 +63,21 @@ def search_all_knowledge_bases(query, top_k=3, agent=None):
     return all_results
 
 def search_agent_knowledge_bases(query, agent, top_k=3):
-    """Search across knowledge bases that the agent has access to"""
-    all_results = []
+    """
+    SECURE SEARCH: Implicit deny - agents can ONLY access their assigned knowledge bases.
+    """
+    if not agent:
+        print("🚫 SECURITY: No agent specified - denying all knowledge base access")
+        return []
     
-    # Get knowledge bases accessible to this agent
+    if not agent.knowledge_bases:
+        print(f"🚫 SECURITY: Agent '{agent.name}' has no assigned knowledge bases - denying all access")
+        return []
+    
+    # STRICT: Only agent-assigned knowledge bases
     knowledge_bases = get_knowledge_bases_for_agent(agent.agent_id, agent.knowledge_bases)
     
+    all_results = []
     for kb in knowledge_bases:
         kb_results = search_knowledge_base(kb["id"], query, top_k)
         if kb_results:
@@ -70,12 +86,30 @@ def search_agent_knowledge_bases(query, agent, top_k=3):
     return all_results
 
 def search_location_filtered_knowledge_bases(query, agent, filtered_kb_ids, top_k=3):
-    """Search across location-filtered knowledge bases that the agent has access to"""
-    all_results = []
+    """
+    SECURE SEARCH: Implicit deny - agents can ONLY access their assigned knowledge bases.
+    Location filtering only applies within authorized KBs.
+    """
+    if not agent:
+        print("🚫 SECURITY: No agent specified - denying all knowledge base access")
+        return []
+    
+    if not agent.knowledge_bases:
+        print(f"🚫 SECURITY: Agent '{agent.name}' has no assigned knowledge bases - denying all access")
+        return []
+    
+    # Validate that all requested KB IDs are authorized for this agent
+    unauthorized_kbs = [kb_id for kb_id in filtered_kb_ids if kb_id not in agent.knowledge_bases]
+    if unauthorized_kbs:
+        print(f"🚫 SECURITY: Agent '{agent.name}' attempted to access unauthorized KBs: {unauthorized_kbs}")
+        print(f"   Authorized KBs: {agent.knowledge_bases}")
+        # Filter to only authorized KBs
+        filtered_kb_ids = [kb_id for kb_id in filtered_kb_ids if kb_id in agent.knowledge_bases]
     
     # Get knowledge bases accessible to this agent, filtered by location
     knowledge_bases = get_knowledge_bases_for_agent(agent.agent_id, filtered_kb_ids)
     
+    all_results = []
     for kb in knowledge_bases:
         kb_results = search_knowledge_base(kb["id"], query, top_k)
         if kb_results:
@@ -84,12 +118,19 @@ def search_location_filtered_knowledge_bases(query, agent, filtered_kb_ids, top_
     return all_results
 
 def get_agent_event_categories(agent):
-    """Get event categories that the agent has access to based on their knowledge bases"""
-    if not agent or not agent.knowledge_bases:
+    """
+    SECURE ACCESS: Implicit deny - agents can ONLY access event categories from their assigned knowledge bases.
+    """
+    if not agent:
+        print("🚫 SECURITY: No agent specified - denying all event category access")
         return []
     
-    # Get knowledge bases accessible to this agent
-    accessible_kbs = get_knowledge_bases_for_agent(agent.agent_id, agent.knowledge_bases)
+    if not agent.knowledge_bases:
+        print(f"🚫 SECURITY: Agent '{agent.name}' has no assigned knowledge bases - denying all event category access")
+        return []
+    
+    # STRICT: Only knowledge bases assigned to the agent
+    accessible_kbs = secure_knowledge_base_access(agent)
     
     # Extract event categories from accessible knowledge bases
     agent_categories = []
@@ -99,6 +140,7 @@ def get_agent_event_categories(agent):
             if category not in agent_categories:
                 agent_categories.append(category)
     
+    print(f"🔒 SECURITY: Agent '{agent.name}' accessing event categories: {agent_categories}")
     return agent_categories
 
 def detect_location(email_body):
@@ -222,8 +264,15 @@ def filter_knowledge_bases_by_location(agent_kb_ids, detected_location):
         return agent_kb_ids  # Return original list on error
 
 def build_prompt(email_body, history=None, agent=None):
-    # Use agent-specific prompt or fallback to default config
-    if agent:
+    # SECURITY: Require agent for knowledge base access
+    if not agent:
+        print("🚫 SECURITY: No agent specified - denying all knowledge base access")
+        knowledge_refs = []
+        all_events = []
+        agent_prompt = DEFAULT_CONFIG.get("prompt", "")
+        categories = []
+        location_filtered_kb_ids = None
+    else:
         agent_prompt = agent.prompt or DEFAULT_CONFIG.get("prompt", "")
         
         # Detect location first to filter knowledge bases
@@ -232,21 +281,12 @@ def build_prompt(email_body, history=None, agent=None):
         
         # Search only location-filtered knowledge bases
         knowledge_refs = search_location_filtered_knowledge_bases(email_body, agent, location_filtered_kb_ids)
-    else:
-        agent_prompt = DEFAULT_CONFIG.get("prompt", "")
-        # Fallback to all knowledge bases
-        knowledge_refs = search_all_knowledge_bases(email_body)
-    
-    # Get events based on agent permissions AND detected location
-    all_events = []
-    if agent:
+        
+        # Get events based on agent permissions AND detected location
+        all_events = []
         # Use the already detected location and filtered KB IDs
         # Get only categories that the agent has access to
         categories = get_agent_event_categories(agent)
-    else:
-        # Fallback to all categories if no agent specified
-        categories = get_available_categories()
-        location_filtered_kb_ids = None
     
     if categories:
         all_events.append("\nAVAILABLE SCHEDULES:")
@@ -317,20 +357,27 @@ Reply:
 """
 
 def generate_reply(email_body, history=None, agent=None):
-    # Use agent-specific personality and style or fallback to default config
-    if agent:
-        personality = agent.personality or DEFAULT_CONFIG["personality"]
-        style = agent.style or DEFAULT_CONFIG["style"]
-        
-        # Automatically inject agent identity into the system message
-        agent_identity = f"You are {agent.name}, an AI assistant. "
-        system_message = agent_identity + personality + "\n" + style
-    else:
-        personality = DEFAULT_CONFIG["personality"]
-        style = DEFAULT_CONFIG["style"]
-        system_message = personality + "\n" + style
+    # SECURITY: Require agent for all operations
+    if not agent:
+        print("🚫 SECURITY: No agent specified - denying reply generation")
+        return "🚫 ACCESS DENIED: No agent specified. Please select an agent to generate a reply."
+    
+    # Use agent-specific personality and style
+    personality = agent.personality or DEFAULT_CONFIG["personality"]
+    style = agent.style or DEFAULT_CONFIG["style"]
+    
+    # Automatically inject agent identity into the system message
+    agent_identity = f"You are {agent.name}, an AI assistant. "
+    system_message = agent_identity + personality + "\n" + style
 
     prompt = build_prompt(email_body, history=history, agent=agent)
+    
+    # SECURITY: If no knowledge base access was granted, block the reply
+    if not agent and "KNOWLEDGE BASE INFORMATION:" in prompt and "---" in prompt:
+        kb_content = prompt.split("KNOWLEDGE BASE INFORMATION:")[1].split("SCHEDULE INFORMATION:")[0]
+        if kb_content.strip() == "---":
+            print("🚫 SECURITY: No knowledge base access - blocking reply generation")
+            return "🚫 ACCESS DENIED: No knowledge base access granted. Please select an agent with proper permissions."
     
     # Get current model configuration
     current_model = get_current_model()
@@ -353,7 +400,7 @@ def generate_reply(email_body, history=None, agent=None):
                 {"role": "user", "content": prompt}
             ],
             temperature=current_temp
-    )
+        )
     return response.choices[0].message.content.strip()
 
 

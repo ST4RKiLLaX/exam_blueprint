@@ -298,10 +298,26 @@ def get_upcoming_events_grouped_by_location(category: str = "classes", limit=10,
     
     return formatted_groups
 
-def get_available_categories():
-    """Get all available event categories from knowledge bases"""
-    get_event_sources_from_knowledge_bases()
-    return list(EVENT_SOURCES.keys())
+def get_available_categories(agent_kb_ids=None):
+    """Get available event categories from knowledge bases.
+    
+    Args:
+        agent_kb_ids: Optional list of knowledge base IDs the agent has access to.
+                     If None, returns all available categories (for backward compatibility).
+    """
+    if agent_kb_ids:
+        # Only get categories from knowledge bases the agent has access to
+        from app.config.knowledge_config import get_knowledge_bases_for_agent
+        agent_kbs = get_knowledge_bases_for_agent("temp_agent", agent_kb_ids)
+        categories = set()
+        for kb in agent_kbs:
+            if kb.get('is_events', False) and kb.get('event_category'):
+                categories.add(kb['event_category'])
+        return list(categories)
+    else:
+        # Backward compatibility: get all categories
+        get_event_sources_from_knowledge_bases()
+        return list(EVENT_SOURCES.keys())
 
 # Backward compatibility function
 def get_upcoming_classes(location: str = "classes", limit=3):
