@@ -416,7 +416,13 @@ def test():
     email_input = ""
     reply_output = ""
     selected_thread_key = None
+    selected_agent_id = None
     history_preview = []
+
+    # Load agents for selection
+    from app.api.agent_api import AgentAPI
+    agents_result = AgentAPI.get_all_agents()
+    agents = agents_result.get("agents", []) if agents_result["success"] else []
 
     # Load existing threads for selection
     store = load_store()
@@ -434,10 +440,41 @@ def test():
 
     if request.method == "POST":
         email_input = request.form["email_body"]
+        selected_agent_id = request.form.get("test_agent")
         use_thread = request.form.get("use_thread") == "on"
         selected_thread_key = request.form.get("thread_key") or None
         test_subject = (request.form.get("test_subject") or "").strip()
         test_from = (request.form.get("test_from") or "").strip() or "test@example.com"
+
+        # Validate agent selection
+        if not selected_agent_id:
+            flash("Please select an agent to test with.", "error")
+            return render_template(
+                "test.html",
+                email_input=email_input,
+                reply_output="",
+                agents=agents,
+                selected_agent_id=selected_agent_id,
+                threads=threads,
+                selected_thread_key=selected_thread_key,
+                history_preview=history_preview,
+            )
+
+        # Get the selected agent
+        from app.models.agent import agent_manager
+        selected_agent = agent_manager.get_agent(selected_agent_id)
+        if not selected_agent:
+            flash("Selected agent not found.", "error")
+            return render_template(
+                "test.html",
+                email_input=email_input,
+                reply_output="",
+                agents=agents,
+                selected_agent_id=selected_agent_id,
+                threads=threads,
+                selected_thread_key=selected_thread_key,
+                history_preview=history_preview,
+            )
 
         history = []
         if use_thread:
@@ -469,7 +506,7 @@ def test():
             history = get_history(thread_key, limit=10)
             history_preview = history
             # Generate reply with history and persist outbound to the same thread
-            reply_output = generate_reply(email_input, history=history)
+            reply_output = generate_reply(email_input, history=history, agent=selected_agent)
             synthetic_sent_id = make_msgid()
             add_outbound(thread_key, test_from, email_obj["subject"], reply_output, synthetic_sent_id, in_reply_to=email_obj.get("message_id"), references=[email_obj.get("message_id")])
             # Reload store and threads for updated dropdown
@@ -486,12 +523,15 @@ def test():
                         label = f"{subj} — {frm}"
                 threads.append({"key": key, "label": label})
         else:
-            reply_output = generate_reply(email_input, history=[])
+            # Generate reply with the selected agent (no history)
+            reply_output = generate_reply(email_input, history=[], agent=selected_agent)
 
     return render_template(
         "test.html",
         email_input=email_input,
         reply_output=reply_output,
+        agents=agents,
+        selected_agent_id=selected_agent_id,
         threads=threads,
         selected_thread_key=selected_thread_key,
         history_preview=history_preview,
