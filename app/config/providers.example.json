@@ -1,0 +1,12 @@
+{
+  "providers": {
+    "openai": {
+      "api_key": "",
+      "enabled": true
+    },
+    "gemini": {
+      "api_key": "",
+      "enabled": true
+    }
+  }
+}

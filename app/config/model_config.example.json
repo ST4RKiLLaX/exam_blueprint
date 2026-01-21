@@ -1,0 +1,6 @@
+{
+  "chat_model": "gpt-5.2",
+  "temperature": 0.5,
+  "max_tokens": 1000,
+  "updated_at": ""
+}

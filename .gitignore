@@ -42,6 +42,9 @@ app/config/event_categories.json
 app/config/knowledge_bases.json
 app/config/tasks.json
 app/config/api_config.json
+app/config/providers.json
+app/config/chat_sessions.json
+app/config/model_config.json
 
 # Encryption keys (contain sensitive data)
 app/config/.api_key
@@ -65,9 +68,31 @@ instance/
 # Temporary files
 *.tmp
 *.temp
+*.bak
+*.backup
+*~.nib
 
-# Optional: Testing / Static analysis
+# Testing / Static analysis
 .mypy_cache/
 .pytest_cache/
 .coverage
 htmlcov/
+.tox/
+.hypothesis/
+
+# Python distribution / build artifacts
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Local development files
+*.local.json
+*_local.json
+local_*.json
+
+# Test files (user-created)
+test_*.py
