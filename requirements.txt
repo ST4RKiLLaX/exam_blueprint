@@ -9,6 +9,12 @@ tqdm
 python-dotenv
 flask
 flask-cors
+flask-security-too
+flask-sqlalchemy
+flask-limiter
+argon2-cffi
+email-validator
+zxcvbn
 jinja2
 pypdf
 werkzeug

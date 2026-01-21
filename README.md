@@ -4,6 +4,11 @@ A Flask-based application for generating high-quality multiple-choice questions 
 
 ## Features
 
+- **Secure Authentication**: User management with role-based access control (Admin/User)
+  - Argon2id password hashing
+  - Account lockout protection
+  - Audit logging for admin actions
+  - Session management with Flask-Security-Too
 - **Multi-Provider AI Support**: OpenAI (GPT-5.x, GPT-4.x) and Google Gemini models
 - **Knowledge Base Integration**: Upload PDFs and DOCX files with FAISS vector search
 - **Advanced Question Generation**: 
@@ -28,10 +33,12 @@ A Flask-based application for generating high-quality multiple-choice questions 
 ### Key Technologies
 
 - **Backend**: Flask, Python 3.13+
+- **Authentication**: Flask-Security-Too, Flask-SQLAlchemy, Argon2id
 - **AI Providers**: OpenAI API, Google Gemini API
 - **Vector Search**: FAISS (Facebook AI Similarity Search)
 - **Document Processing**: pypdf, python-docx, BeautifulSoup
 - **Tokenization**: tiktoken
+- **Security**: Rate limiting, account lockout, audit logging, proxy headers support
 
 ## Installation
 
@@ -128,6 +135,32 @@ The application will be available at:
 - Local: `http://127.0.0.1:5000`
 - Network: `http://<your-ip>:5000`
 
+### First-Time Login
+
+On the first run, the application will automatically:
+1. Create the user database (`app/config/users.db`)
+2. Generate a default admin account
+3. Print the credentials to the console:
+
+```
+============================================================
+INITIAL ADMIN ACCOUNT CREATED
+============================================================
+Email:    admin@example.com
+Password: [randomly-generated-password]
+============================================================
+PLEASE SAVE THESE CREDENTIALS AND CHANGE PASSWORD IMMEDIATELY
+============================================================
+```
+
+**⚠️ Important**: Save these credentials immediately. The password is only shown once during first run.
+
+**Changing Your Password:**
+1. Log in with the default admin account
+2. Navigate to **Users** (admin menu)
+3. Click **Reset Password** next to your account
+4. Enter your new password
+
 ### Production Mode
 
 For production deployment, use a WSGI server like Gunicorn:
@@ -139,13 +172,32 @@ gunicorn -w 4 -b 0.0.0.0:5000 "app.web.server:app"
 
 ## Usage
 
-### 1. Configure API Keys
+### 1. User Management (Admin Only)
+
+After logging in as admin, you can manage users:
+
+**Add New Users:**
+1. Navigate to **Users** in the menu
+2. Click **Add New User**
+3. Enter email, password, and role (User or Admin)
+
+**Manage Existing Users:**
+- **Edit Email**: Change a user's email address
+- **Reset Password**: Generate a new password for any user
+- **Activate/Deactivate**: Enable or disable user accounts
+- **Delete**: Remove users from the system
+
+**View Audit Log:**
+- All administrative actions are logged with timestamp, admin email, action type, and IP address
+- Access the audit log at the bottom of the Users page
+
+### 2. Configure API Keys (Admin Only)
 
 1. Navigate to **Settings** in the menu
 2. Enter your OpenAI and/or Gemini API keys
 3. Click **Save Configuration**
 
-### 2. Create Knowledge Bases
+### 3. Create Knowledge Bases
 
 1. Go to **Knowledge Bases** in the menu
 2. Click **Add New Knowledge Base**
@@ -153,7 +205,7 @@ gunicorn -w 4 -b 0.0.0.0:5000 "app.web.server:app"
 4. Select embedding provider (OpenAI or Gemini)
 5. Wait for processing to complete
 
-### 3. Create an Agent
+### 4. Create an Agent
 
 1. Navigate to **Agents**
 2. Click **Create New Agent**
@@ -164,7 +216,7 @@ gunicorn -w 4 -b 0.0.0.0:5000 "app.web.server:app"
    - **Post-Processing**: Enable MCQ validation, repetition detection
    - **CISSP Mode**: Enable blueprint-based question diversity (optional)
 
-### 4. Generate Questions
+### 5. Generate Questions
 
 **Via Chat Interface:**
 1. Go to **Generate Questions** (home page)
@@ -215,18 +267,26 @@ ai_agent/
 │   ├── agents/          # Agent reply generation
 │   ├── api/             # API layer for CRUD operations
 │   ├── config/          # Configuration files (gitignored)
+│   │   └── users.db     # User database (SQLite, gitignored)
 │   ├── data/            # Runtime data
 │   ├── embeddings/      # Generated embeddings (gitignored)
 │   ├── knowledge_bases/ # Uploaded documents (gitignored)
-│   ├── models/          # Data models (Agent, ChatSession)
+│   ├── models/          # Data models (Agent, ChatSession, User, AuditLog)
+│   │   ├── agent.py
+│   │   ├── user.py      # User and Role models
+│   │   └── audit_log.py # Admin action audit logging
 │   ├── utils/           # Utilities (KB processing, response processing)
 │   └── web/             # Flask server and templates
 │       ├── server.py
 │       └── templates/   # HTML templates
+│           ├── security/ # Authentication templates
+│           │   └── login_user.html
+│           └── users.html # User management
 ├── venv/                # Virtual environment (gitignored)
 ├── .gitignore
 ├── README.md
 ├── requirements.txt
+├── SECURITY_NOTICE.md
 └── main.py
 ```
 
@@ -234,6 +294,7 @@ ai_agent/
 
 ### Sensitive Files (Never Commit)
 - `app/config/providers.json` - Contains API keys
+- `app/config/users.db` - User database with hashed passwords
 - `app/config/agents.json` - User agent configurations
 - `app/config/chat_sessions.json` - Conversation history
 - `app/knowledge_bases/` - Uploaded documents
@@ -241,10 +302,22 @@ ai_agent/
 
 All sensitive files are already in `.gitignore`.
 
+### Authentication Security
+- **Password Hashing**: Argon2id algorithm (OWASP recommended)
+- **Account Lockout**: Automatic lockout after 5 failed login attempts (15-minute cooldown)
+- **Session Management**: Flask-Security-Too with secure session cookies
+- **Audit Logging**: All admin actions logged with timestamp, user, and IP address
+- **Rate Limiting**: Flask-Limiter protects against brute force attacks
+- **Role-Based Access**: Admin and User roles with granular permissions
+
 ### API Key Storage
 - API keys are stored in `app/config/providers.json`
 - File permissions should be restricted: `chmod 600 app/config/providers.json` (Unix)
 - Consider using environment variables for production deployments
+
+### Reverse Proxy Support
+- Application supports `X-Forwarded-For` and `X-Forwarded-Proto` headers
+- Properly configured for deployment behind nginx, Apache, or cloud load balancers
 
 ## Troubleshooting
 
@@ -271,6 +344,24 @@ $env:PYTHONIOENCODING = "utf-8"
 
 ### Issue: Flask context errors
 **Solution**: All Flask `g` object accesses are wrapped in try/except blocks. If you see context errors, ensure you're calling functions within a Flask request context or application context.
+
+### Issue: Cannot log in with initial password
+**Solution**: 
+- The password is only displayed once during first run in the console
+- If you lost it, delete `app/config/users.db` and restart the server to regenerate
+- Make sure you're copying the password exactly as shown (no extra spaces)
+
+### Issue: Account locked after failed login attempts
+**Solution**: 
+- Accounts automatically lock after 5 failed login attempts
+- Wait 15 minutes for automatic unlock, or
+- Have another admin reset the password via the Users page
+
+### Issue: Email validation error on user creation
+**Solution**: 
+- Email addresses must be valid format (e.g., `user@example.com`)
+- Email addresses must be unique
+- Local domains like `@localhost` are not accepted
 
 ## Development
 

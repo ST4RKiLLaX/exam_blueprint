@@ -46,6 +46,9 @@ app/config/providers.json
 app/config/chat_sessions.json
 app/config/model_config.json
 
+# User database (contains sensitive user data and passwords)
+app/config/users.db
+
 # Encryption keys (contain sensitive data)
 app/config/.api_key
 app/config/api_encryption.key

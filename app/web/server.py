@@ -1,7 +1,13 @@
 from flask import Flask, render_template, request, redirect, flash, url_for, jsonify, g
 from flask_cors import CORS
+from flask_security import Security, SQLAlchemyUserDatastore, login_required, roles_required, current_user, hash_password
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from werkzeug.middleware.proxy_fix import ProxyFix
 import os
+import secrets
 from werkzeug.utils import secure_filename
+from datetime import datetime
 from app.agents.agent import generate_reply
 
 from app.config.knowledge_config import (
@@ -12,33 +18,190 @@ from app.config.knowledge_config import (
 from app.utils.knowledge_processor import process_knowledge_base
 from app.api.agent_api import AgentAPI
 from app.models.chat_session import chat_session_manager
+from app.models.user import db, User, Role
+from app.models.audit_log import AuditLog
 
 app = Flask(__name__)
-app.secret_key = 'your-secret-key-change-this'  # Change this in production
+
+# Generate secure secret keys
+app.secret_key = os.environ.get('SECRET_KEY', secrets.token_hex(32))
+app.config['SECURITY_PASSWORD_SALT'] = os.environ.get('SECURITY_PASSWORD_SALT', secrets.token_hex(32))
+
+# Database configuration
+# Calculate absolute path to app/config/users.db
+basedir = os.path.abspath(os.path.dirname(__file__))  # Gets app/web/
+config_dir = os.path.join(basedir, '..', 'config')     # Gets app/config/
+os.makedirs(config_dir, exist_ok=True)                 # Ensure directory exists
+db_path = os.path.join(config_dir, 'users.db')         # Full path to users.db
+
+app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# Flask-Security configuration
+app.config['SECURITY_PASSWORD_HASH'] = 'argon2'
+app.config['SECURITY_REGISTERABLE'] = False  # No public registration
+app.config['SECURITY_RECOVERABLE'] = False  # Admin-only password reset
+app.config['SECURITY_TRACKABLE'] = True  # Track login time/IP
+app.config['SECURITY_CHANGEABLE'] = True  # Allow password changes
+app.config['SECURITY_SEND_REGISTER_EMAIL'] = False
+app.config['SECURITY_SEND_PASSWORD_CHANGE_EMAIL'] = False
+app.config['SECURITY_SEND_PASSWORD_RESET_EMAIL'] = False
+
+# Session security
+app.config['SESSION_COOKIE_SECURE'] = True  # HTTPS only
+app.config['SESSION_COOKIE_HTTPONLY'] = True  # XSS protection
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # CSRF protection
+
+# Upload configuration
 app.config['UPLOAD_FOLDER'] = 'app/knowledge_bases'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 
-# Enable CORS for external embedding
+# Configure ProxyFix for reverse proxy
+app.wsgi_app = ProxyFix(
+    app.wsgi_app,
+    x_for=1,      # X-Forwarded-For
+    x_proto=1,    # X-Forwarded-Proto (HTTP/HTTPS)
+    x_host=1,     # X-Forwarded-Host
+    x_prefix=1    # X-Forwarded-Prefix
+)
+
+# Initialize database
+db.init_app(app)
+
+# Setup Flask-Security
+user_datastore = SQLAlchemyUserDatastore(db, User, Role)
+security = Security(app, user_datastore)
+
+# Account lockout - Reset counter on successful authentication
+from flask_security.signals import user_authenticated
+
+@user_authenticated.connect_via(app)
+def on_user_authenticated(sender, user, **extra):
+    """Reset failed login count on successful authentication"""
+    user.reset_failed_login()
+    db.session.commit()
+
+@app.before_request
+def check_account_lockout():
+    """Check if account is locked and track failed attempts"""
+    if request.endpoint == 'security.login' and request.method == 'POST':
+        email = request.form.get('email')
+        if email:
+            user = user_datastore.find_user(email=email)
+            if user:
+                # Check if account is locked
+                if user.is_locked():
+                    minutes_left = int((user.locked_until - datetime.utcnow()).total_seconds() / 60)
+                    if minutes_left > 0:
+                        flash(f"Account locked. Try again in {minutes_left} minutes.", "error")
+                        return redirect(url_for('security.login'))
+                    else:
+                        # Lock expired, reset it
+                        user.locked_until = None
+                        user.failed_login_count = 0
+                        db.session.commit()
+
+@app.after_request
+def track_failed_login(response):
+    """Track failed login attempts after authentication"""
+    if request.endpoint == 'security.login' and request.method == 'POST':
+        email = request.form.get('email')
+        # If not authenticated after POST to login, it failed
+        if email and not current_user.is_authenticated:
+            user = user_datastore.find_user(email=email)
+            if user and not user.is_locked():
+                user.increment_failed_login()
+                db.session.commit()
+                
+                if user.is_locked():
+                    flash("Too many failed attempts. Account locked for 15 minutes.", "error")
+    
+    return response
+
+# Initialize rate limiter
+limiter = Limiter(
+    app=app,
+    key_func=get_remote_address,
+    storage_uri="memory://",
+    default_limits=["200 per day", "50 per hour"]
+)
+
+# Enable CORS for external embedding (quiz widgets remain public)
 CORS(app, resources={
     r"/api/chat/*": {"origins": "*"},
-    r"/embed/*": {"origins": "*"}
+    r"/embed/*": {"origins": "*"},
+    r"/api/quiz/*": {"origins": "*"},
+    r"/quiz/*": {"origins": "*"}
 })
 
-# Global template context processor to check API key status
+# First-run setup: Create tables and default admin user
+def create_initial_setup():
+    """Create database tables and default admin user on first run"""
+    # Create all tables
+    db.create_all()
+    
+    # Create roles if they don't exist
+    if not user_datastore.find_role('admin'):
+        user_datastore.create_role(name='admin', description='Administrator')
+    if not user_datastore.find_role('user'):
+        user_datastore.create_role(name='user', description='Regular User')
+    
+    # Create default admin if no users exist
+    if not user_datastore.find_user(email='admin@example.com'):
+        admin_password = secrets.token_urlsafe(16)
+        user_datastore.create_user(
+            email='admin@example.com',
+            password=hash_password(admin_password),
+            active=True,
+            roles=['admin'],
+            fs_uniquifier=secrets.token_urlsafe(32)
+        )
+        db.session.commit()
+        
+        print("\n" + "="*60)
+        print("INITIAL ADMIN ACCOUNT CREATED")
+        print("="*60)
+        print(f"Email:    admin@example.com")
+        print(f"Password: {admin_password}")
+        print("="*60)
+        print("PLEASE SAVE THESE CREDENTIALS AND CHANGE PASSWORD IMMEDIATELY")
+        print("="*60 + "\n")
+
+# Initialize database on first request (Flask 3.x pattern)
+_db_initialized = False
+
+@app.before_request
+def initialize_database_once():
+    """Initialize database on first request (Flask 3.x pattern)"""
+    global _db_initialized
+    if not _db_initialized:
+        # Check if database is already initialized by checking if tables exist
+        try:
+            # Try to query users table - if it works, DB is initialized
+            User.query.first()
+            _db_initialized = True
+        except:
+            # Database not initialized, create it
+            create_initial_setup()
+            _db_initialized = True
+
+# Global template context processor to check API key status and inject user
 @app.context_processor
-def inject_api_key_status():
-    """Inject API key status into all templates"""
+def inject_context():
+    """Inject API key status and current user into all templates"""
     try:
         from app.config.api_config import get_api_key_info
         api_info = get_api_key_info()
         return {
             'api_key_has_key': api_info.get('has_key', False),
-            'api_key_status': api_info.get('test_status', 'unknown')
+            'api_key_status': api_info.get('test_status', 'unknown'),
+            'current_user': current_user
         }
     except:
         return {
             'api_key_has_key': False,
-            'api_key_status': 'unknown'
+            'api_key_status': 'unknown',
+            'current_user': current_user
         }
 
 ALLOWED_EXTENSIONS = {'pdf', 'docx'}
@@ -47,6 +210,7 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 @app.route("/")
+@login_required
 def home():
     # Load agents for chat interface
     from app.api.agent_api import AgentAPI
@@ -67,6 +231,7 @@ def home():
                          kb_count=kb_count)
 
 @app.route("/agents", methods=["GET", "POST"])
+@login_required
 def agents():
     # Clean up any orphaned knowledge base references
     cleanup_orphaned_kb_references()
@@ -338,6 +503,7 @@ def agents():
 
 
 @app.route("/knowledge_bases", methods=["GET", "POST"])
+@login_required
 def knowledge_bases():
     if request.method == "POST":
         action = request.form.get("action")
@@ -618,6 +784,7 @@ def knowledge_bases():
                          knowledge_bases=knowledge_bases)
 
 @app.route("/knowledge", methods=["GET", "POST"])
+@login_required
 def knowledge():
     if request.method == "POST":
         action = request.form.get("action")
@@ -697,6 +864,7 @@ def knowledge():
     return render_template("knowledge.html", knowledge_bases=knowledge_bases)
 
 @app.route("/settings", methods=["GET", "POST"])
+@roles_required('admin')
 def settings():
     if request.method == "POST":
         action = request.form.get("action")
@@ -814,6 +982,7 @@ def settings():
 
 # Chat API endpoints for chatbot functionality
 @app.route("/api/chat/session", methods=["POST"])
+@login_required
 def create_chat_session():
     """Create a new chat session"""
     try:
@@ -842,6 +1011,7 @@ def create_chat_session():
         return jsonify({"success": False, "error": str(e)})
 
 @app.route("/api/chat/<agent_id>", methods=["POST"])
+@login_required
 def chat_with_agent(agent_id):
     """Handle chat messages with a specific agent"""
     try:
@@ -905,6 +1075,7 @@ def get_embed_code(agent_id):
         return str(e), 500
 
 @app.route("/embed-code/<agent_id>")
+@login_required
 def embed_code_generator(agent_id):
     """Generate embed code for a specific agent"""
     try:
@@ -958,6 +1129,7 @@ def quiz_widget(agent_id):
         return str(e), 500
 
 @app.route("/quiz-code/<agent_id>")
+@login_required
 def quiz_embed_code_generator(agent_id):
     """Generate embed code for quiz widget"""
     try:
@@ -1027,6 +1199,190 @@ def generate_quiz_questions(agent_id):
         print(f"[ERROR] Error generating quiz questions: {e}")
         import traceback
         traceback.print_exc()
+        return jsonify({"success": False, "error": str(e)})
+
+# User Management Routes
+@app.route("/users")
+@roles_required('admin')
+def users():
+    """User management page (admin only)"""
+    all_users = User.query.all()
+    recent_logs = AuditLog.query.order_by(AuditLog.timestamp.desc()).limit(50).all()
+    return render_template("users.html", users=all_users, audit_logs=recent_logs)
+
+@app.route("/users/add", methods=["POST"])
+@roles_required('admin')
+def add_user():
+    """Add a new user (admin only)"""
+    try:
+        email = request.form.get("email")
+        password = request.form.get("password")
+        role = request.form.get("role", "user")
+        
+        if user_datastore.find_user(email=email):
+            flash("User with this email already exists", "error")
+            return redirect(url_for("users"))
+        
+        user_datastore.create_user(
+            email=email,
+            password=password,
+            active=True,
+            roles=[role],
+            fs_uniquifier=secrets.token_urlsafe(32)
+        )
+        db.session.commit()
+        
+        # Log the action
+        AuditLog.log_action(
+            admin_email=current_user.email,
+            action_type="user_created",
+            target_email=email,
+            ip_address=request.remote_addr,
+            role=role
+        )
+        
+        flash(f"User {email} created successfully", "success")
+        return redirect(url_for("users"))
+        
+    except Exception as e:
+        flash(f"Error creating user: {str(e)}", "error")
+        return redirect(url_for("users"))
+
+@app.route("/users/reset-password", methods=["POST"])
+@roles_required('admin')
+def reset_user_password():
+    """Reset a user's password (admin only)"""
+    try:
+        data = request.json
+        email = data.get("email")
+        
+        user = user_datastore.find_user(email=email)
+        if not user:
+            return jsonify({"success": False, "error": "User not found"})
+        
+        # Generate new password
+        new_password = secrets.token_urlsafe(16)
+        user.password = hash_password(new_password)
+        db.session.commit()
+        
+        # Log the action
+        AuditLog.log_action(
+            admin_email=current_user.email,
+            action_type="password_reset",
+            target_email=email,
+            ip_address=request.remote_addr
+        )
+        
+        return jsonify({"success": True, "password": new_password})
+        
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route("/users/edit-email", methods=["POST"])
+@roles_required('admin')
+def edit_user_email():
+    """Edit a user's email address (admin only)"""
+    try:
+        data = request.json
+        old_email = data.get("old_email")
+        new_email = data.get("new_email")
+        
+        # Validate inputs
+        if not old_email or not new_email:
+            return jsonify({"success": False, "error": "Both old and new email are required"})
+        
+        if old_email == new_email:
+            return jsonify({"success": False, "error": "New email must be different from current email"})
+        
+        # Find user by old email
+        user = user_datastore.find_user(email=old_email)
+        if not user:
+            return jsonify({"success": False, "error": "User not found"})
+        
+        # Check if new email is already taken
+        existing_user = user_datastore.find_user(email=new_email)
+        if existing_user:
+            return jsonify({"success": False, "error": "Email address already in use"})
+        
+        # Update email
+        user.email = new_email
+        db.session.commit()
+        
+        # Log the action
+        AuditLog.log_action(
+            admin_email=current_user.email,
+            action_type="email_changed",
+            target_email=new_email,
+            ip_address=request.remote_addr,
+            old_email=old_email
+        )
+        
+        return jsonify({"success": True})
+        
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route("/users/toggle-status", methods=["POST"])
+@roles_required('admin')
+def toggle_user_status():
+    """Activate or deactivate a user (admin only)"""
+    try:
+        data = request.json
+        email = data.get("email")
+        active = data.get("active")
+        
+        user = user_datastore.find_user(email=email)
+        if not user:
+            return jsonify({"success": False, "error": "User not found"})
+        
+        if email == current_user.email:
+            return jsonify({"success": False, "error": "Cannot deactivate your own account"})
+        
+        user_datastore.activate_user(user) if active else user_datastore.deactivate_user(user)
+        db.session.commit()
+        
+        # Log the action
+        AuditLog.log_action(
+            admin_email=current_user.email,
+            action_type="user_activated" if active else "user_deactivated",
+            target_email=email,
+            ip_address=request.remote_addr
+        )
+        
+        return jsonify({"success": True})
+        
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route("/users/delete", methods=["POST"])
+@roles_required('admin')
+def delete_user():
+    """Delete a user (admin only)"""
+    try:
+        data = request.json
+        email = data.get("email")
+        
+        user = user_datastore.find_user(email=email)
+        if not user:
+            return jsonify({"success": False, "error": "User not found"})
+        
+        if email == current_user.email:
+            return jsonify({"success": False, "error": "Cannot delete your own account"})
+        
+        # Log the action before deletion
+        AuditLog.log_action(
+            admin_email=current_user.email,
+            action_type="user_deleted",
+            target_email=email,
+            ip_address=request.remote_addr
+        )
+        
+        user_datastore.delete_user(user)
+        db.session.commit()
+        
+        return jsonify({"success": True})
+        
+    except Exception as e:
         return jsonify({"success": False, "error": str(e)})
 
 if __name__ == "__main__":
