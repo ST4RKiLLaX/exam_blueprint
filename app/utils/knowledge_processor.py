@@ -210,7 +210,7 @@ def create_embeddings(chunks: List[str], batch_size: int = 32, provider: str = "
 
     # For Gemini, we need to embed one at a time (no batch support in wrapper yet)
     # For OpenAI, we can batch but use individual calls for consistency
-    for chunk in chunks:
+    for idx, chunk in enumerate(chunks, 1):
         try:
             vector = create_embedding(chunk, provider=provider, model=model)
             if embedding_dim is None:
@@ -223,8 +223,7 @@ def create_embeddings(chunks: List[str], batch_size: int = 32, provider: str = "
                 embedding_dim = SUPPORTED_PROVIDERS.get(provider, {}).get("embedding_dimensions", DEFAULT_EMBEDDING_DIM)
             embeddings.append(np.zeros(embedding_dim, dtype="float32"))
 
-        processed = min(start_idx + batch_size, total_chunks)
-        print(f"🧠 Embedded {processed}/{total_chunks} chunks")
+        print(f"🧠 Embedded {idx}/{total_chunks} chunks")
 
     if not embeddings:
         return np.zeros((0, embedding_dim or DEFAULT_EMBEDDING_DIM), dtype="float32")

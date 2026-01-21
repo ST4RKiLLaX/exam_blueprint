@@ -8,22 +8,14 @@
     <div class="flex items-center justify-between">
         <div>
             <h1 class="text-3xl font-bold text-gray-900">📚 Knowledge Base Management</h1>
-            <p class="text-gray-600 mt-1">Manage your AI agents' knowledge sources and categories</p>
+            <p class="text-gray-600 mt-1">Manage your AI agents' knowledge sources</p>
         </div>
-        <div class="flex space-x-3">
-            <button onclick="showCategoryModal()" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors">
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path>
-                </svg>
-                Manage Categories
-            </button>
-            <button onclick="showUploadModal()" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
+        <button onclick="showUploadModal()" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
                 </svg>
                 Upload Knowledge Base
             </button>
-        </div>
     </div>
 
     <!-- Filters & Search -->
@@ -35,12 +27,6 @@
                        oninput="filterKnowledgeBases()">
             </div>
             <div class="flex gap-3">
-                <select id="categoryFilter" onchange="filterKnowledgeBases()" class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                    <option value="">All Categories</option>
-                    {% for category in categories %}
-                    <option value="{{ category.name }}">{{ category.name }}{% if category.is_event %} (Event){% endif %}</option>
-                    {% endfor %}
-                </select>
                 <select id="accessFilter" onchange="filterKnowledgeBases()" class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
                     <option value="">All Access Types</option>
                     <option value="shared">🌐 Shared</option>
@@ -60,7 +46,6 @@
     <div class="grid gap-6" id="knowledgeBasesGrid">
         {% for kb in knowledge_bases %}
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 kb-card" 
-             data-category="{{ kb.category }}" 
              data-access="{{ kb.access_type }}" 
              data-status="{{ kb.status }}"
              data-name="{{ kb.title.lower() }}"
@@ -108,18 +93,16 @@
                     </div>
                     {% endif %}
                     
-                    <div class="flex items-center space-x-4 text-sm text-gray-500">
-                        <span>📂 {{ kb.category }}{% if kb.is_events %} (Event){% endif %}</span>
+                    <div class="flex items-center flex-wrap gap-2 text-sm text-gray-500">
+                        {% if kb.cissp_type %}
+                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                            📚 CISSP: {{ kb.cissp_type }}{% if kb.cissp_domain %} - {{ kb.cissp_domain }}{% endif %}
+                        </span>
+                        {% endif %}
                         <span>{% if kb.kb_type == 'url' %}🌐{% else %}📄{% endif %} {{ kb.kb_type }}</span>
                         <span>📅 {{ kb.created_at[:10] }}</span>
                         {% if kb.chunks_count %}
                         <span>🧩 {{ kb.chunks_count }} chunks</span>
-                        {% endif %}
-                        {% if kb.kb_type == 'url' and kb.refresh_schedule and kb.refresh_schedule != 'manual' %}
-                        <span>🔄 {{ kb.refresh_schedule }}</span>
-                        {% endif %}
-                        {% if kb.kb_type == 'url' and kb.last_refreshed %}
-                        <span>🕒 Last: {{ kb.last_refreshed[:16].replace('T', ' ') }}</span>
                         {% endif %}
                     </div>
                 </div>
@@ -132,7 +115,7 @@
                         </svg>
                     </button>
                     <div id="dropdown-{{ kb.id }}" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
-                        <button onclick="editKnowledgeBase('{{ kb.id }}', '{{ kb.title }}', '{{ kb.description }}', '{{ kb.category }}', '{{ kb.access_type }}', {{ kb.is_events|lower }}, '{{ kb.kb_type }}', '{{ kb.refresh_schedule|default("manual") }}')" 
+                        <button onclick="editKnowledgeBase('{{ kb.id }}', '{{ kb.title }}', '{{ kb.description }}', '{{ kb.access_type }}', '{{ kb.kb_type }}', '{{ kb.cissp_type or "" }}', '{{ kb.cissp_domain or "" }}', '{{ kb.embedding_provider or "openai" }}')" 
                                 class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center">
                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
@@ -146,15 +129,6 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
                             </svg>
                             Reprocess
-                        </button>
-                        {% endif %}
-                        {% if kb.kb_type == 'url' %}
-                        <button onclick="refreshKnowledgeBase('{{ kb.id }}')" 
-                                class="w-full text-left px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 flex items-center">
-                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-                            </svg>
-                            🔄 Refresh Now
                         </button>
                         {% endif %}
                         <button onclick="deleteKnowledgeBase('{{ kb.id }}', '{{ kb.title }}')" 
@@ -227,34 +201,22 @@
                 <p class="text-xs text-gray-500 mt-1">💡 If left empty, AI will analyze the content and create a helpful summary automatically</p>
             </div>
             
-            <div class="grid grid-cols-2 gap-4">
-                <div>
-                    <label for="category" class="block text-sm font-medium text-gray-700 mb-1">Category</label>
-                    <select id="category" name="category" required
-                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                        {% for category in categories %}
-                        <option value="{{ category.name }}">{{ category.name }}{% if category.is_event %} (Event){% endif %}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                
-                <div>
-                    <label for="access_type" class="block text-sm font-medium text-gray-700 mb-1">Access Type</label>
-                    <select id="access_type" name="access_type" required
-                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                        <option value="shared">🌐 Shared</option>
-                        <option value="exclusive">🔒 Exclusive</option>
-                    </select>
-                </div>
+            <div class="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                <p class="text-xs text-amber-700 font-medium flex items-center">
+                    <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/>
+                    </svg>
+                    Processing Time: Large documents (100+ pages) may take 2-5 minutes. Please do not refresh or upload again.
+                </p>
             </div>
             
-            <!-- Event Category Checkbox -->
             <div>
-                <label class="flex items-center">
-                    <input type="checkbox" name="is_events" class="mr-2 text-blue-600 rounded">
-                    <span class="text-sm font-medium text-gray-700">📅 Event Data Source</span>
-                    <span class="ml-2 text-xs text-gray-500">(contains scheduled events like classes, exams)</span>
-                </label>
+                <label for="access_type" class="block text-sm font-medium text-gray-700 mb-1">Access Type</label>
+                <select id="access_type" name="access_type" required
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                    <option value="shared">🌐 Shared</option>
+                    <option value="exclusive">🔒 Exclusive</option>
+                </select>
             </div>
             
             <!-- CISSP Type Selection -->
@@ -332,24 +294,10 @@
                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                        placeholder="https://example.com/data-source">
                 <p class="text-xs text-gray-500 mt-1">URL to fetch knowledge data from</p>
-                
-                <!-- Refresh Schedule -->
-                <div class="mt-4">
-                    <label for="refresh_schedule" class="block text-sm font-medium text-gray-700 mb-2">🔄 Refresh Schedule</label>
-                    <select id="refresh_schedule" name="refresh_schedule" 
-                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                        <option value="manual">Manual Only</option>
-                        <option value="on_use">Refresh on Each Use</option>
-                        <option value="hourly">Every Hour</option>
-                        <option value="daily">Daily</option>
-                        <option value="weekly">Weekly</option>
-                    </select>
-                    <p class="text-xs text-gray-500 mt-1">How often to refresh content from the URL</p>
-                </div>
             </div>
             
             <div class="flex justify-end space-x-3 pt-4">
-                <button type="button" onclick="hideUploadModal()" 
+                <button type="button" id="uploadCancelBtn" onclick="hideUploadModal()" 
                         class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
                     Cancel
                 </button>
@@ -401,48 +349,50 @@
                 <p class="text-xs text-gray-500 mt-1">📝 This description helps AI agents understand what knowledge is available in this source</p>
             </div>
             
-            <div class="grid grid-cols-2 gap-4">
-                <div>
-                    <label for="edit_category" class="block text-sm font-medium text-gray-700 mb-1">Category</label>
-                    <select id="edit_category" name="category" required
-                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                        {% for category in categories %}
-                        <option value="{{ category.name }}">{{ category.name }}{% if category.is_event %} (Event){% endif %}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                
-                <div>
-                    <label for="edit_access_type" class="block text-sm font-medium text-gray-700 mb-1">Access Type</label>
-                    <select id="edit_access_type" name="access_type" required
-                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                        <option value="shared">🌐 Shared</option>
-                        <option value="exclusive">🔒 Exclusive</option>
-                    </select>
-                </div>
-            </div>
-            
-            <!-- Event Category Checkbox -->
             <div>
-                <label class="flex items-center">
-                    <input type="checkbox" id="edit_is_events" name="is_events" class="mr-2 text-blue-600 rounded">
-                    <span class="text-sm font-medium text-gray-700">📅 Event Data Source</span>
-                    <span class="ml-2 text-xs text-gray-500">(contains scheduled events like classes, exams)</span>
-                </label>
+                <label for="edit_access_type" class="block text-sm font-medium text-gray-700 mb-1">Access Type</label>
+                <select id="edit_access_type" name="access_type" required
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                    <option value="shared">🌐 Shared</option>
+                    <option value="exclusive">🔒 Exclusive</option>
+                </select>
             </div>
             
-            <!-- Refresh Schedule (only for URL knowledge bases) -->
-            <div id="edit_refresh_section" style="display: none;">
-                <label for="edit_refresh_schedule" class="block text-sm font-medium text-gray-700 mb-2">🔄 Refresh Schedule</label>
-                <select id="edit_refresh_schedule" name="refresh_schedule" 
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                    <option value="manual">Manual Only</option>
-                    <option value="on_use">Refresh on Each Use</option>
-                    <option value="hourly">Every Hour</option>
-                    <option value="daily">Daily</option>
-                    <option value="weekly">Weekly</option>
+            <!-- CISSP Settings (Display Only) -->
+            <div id="edit_cissp_section" style="display: none;">
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        CISSP Settings (Read-Only)
+                    </label>
+                    <div class="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                            <span class="text-gray-600">Type:</span>
+                            <span id="edit_cissp_type_display" class="ml-2 font-medium">-</span>
+                        </div>
+                        <div>
+                            <span class="text-gray-600">Domain:</span>
+                            <span id="edit_cissp_domain_display" class="ml-2 font-medium">-</span>
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-2">
+                        CISSP settings cannot be changed after creation
+                    </p>
+                </div>
+            </div>
+            
+            <!-- Embedding Provider (Editable) -->
+            <div>
+                <label for="edit_embedding_provider" class="block text-sm font-medium text-gray-700 mb-2">
+                    Embedding Provider
+                </label>
+                <select id="edit_embedding_provider" name="embedding_provider" 
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                    <option value="openai">OpenAI (text-embedding-3-large)</option>
+                    <option value="gemini">Google Gemini (text-embedding-004)</option>
                 </select>
-                <p class="text-xs text-gray-500 mt-1">How often to refresh content from the URL</p>
+                <p class="text-xs text-red-600 mt-1">
+                    Warning: Changing provider requires reprocessing (automatic)
+                </p>
             </div>
             
             <div class="flex justify-end space-x-3 pt-4">
@@ -459,69 +409,6 @@
     </div>
 </div>
 
-<!-- Category Management Modal -->
-<div id="categoryModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-    <div class="bg-white rounded-xl shadow-xl max-w-2xl w-full p-6">
-        <div class="flex items-center justify-between mb-4">
-            <h2 class="text-xl font-semibold text-gray-900">Manage Categories</h2>
-            <button onclick="hideCategoryModal()" class="text-gray-400 hover:text-gray-600">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                </svg>
-            </button>
-        </div>
-        
-        <!-- Add New Category -->
-        <form method="post" class="mb-6 p-4 bg-gray-50 rounded-lg">
-            <input type="hidden" name="action" value="add_category">
-            <h3 class="text-sm font-medium text-gray-900 mb-3">Add New Category</h3>
-            <div class="grid grid-cols-2 gap-4">
-                <input type="text" name="category_name" placeholder="Category name" required
-                       class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                <input type="text" name="category_description" placeholder="Description (optional)"
-                       class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-            </div>
-            <div class="mt-3">
-                <label class="flex items-center">
-                    <input type="checkbox" name="is_event" class="mr-2 text-blue-600 rounded">
-                    <span class="text-sm font-medium text-gray-700">📅 Event Category</span>
-                    <span class="ml-2 text-xs text-gray-500">(for scheduled events like classes, exams)</span>
-                </label>
-            </div>
-            <button type="submit" class="mt-3 px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700">
-                Add Category
-            </button>
-        </form>
-        
-        <!-- Existing Categories -->
-        <div class="space-y-2 max-h-64 overflow-y-auto">
-            {% for category in categories %}
-            <div class="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg">
-                <div>
-                    <h4 class="font-medium text-gray-900">
-                        {{ category.name }}
-                        {% if category.is_event %}
-                        <span class="ml-2 px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">📅 Event</span>
-                        {% endif %}
-                    </h4>
-                    {% if category.description %}
-                    <p class="text-sm text-gray-600">{{ category.description }}</p>
-                    {% endif %}
-                </div>
-                <form method="post" class="inline">
-                    <input type="hidden" name="action" value="remove_category">
-                    <input type="hidden" name="category_id" value="{{ category.id }}">
-                    <button type="submit" onclick="return confirm('Delete category {{ category.name }}?')"
-                            class="text-red-600 hover:text-red-700 text-sm">
-                        Delete
-                    </button>
-                </form>
-            </div>
-            {% endfor %}
-        </div>
-    </div>
-</div>
-
 <script>
 // Modal Management
 function showUploadModal() {
@@ -529,6 +416,11 @@ function showUploadModal() {
 }
 
         function hideUploadModal() {
+            const submitBtn = document.getElementById('uploadSubmitBtn');
+            // Don't allow closing if processing is active
+            if (submitBtn.disabled) {
+                return;
+            }
             document.getElementById('uploadModal').classList.add('hidden');
         }
         
@@ -571,26 +463,33 @@ function showUploadModal() {
         
         function showUploadProgress() {
             const submitBtn = document.getElementById('uploadSubmitBtn');
+            const cancelBtn = document.getElementById('uploadCancelBtn');
             const btnText = document.getElementById('uploadBtnText');
             const spinner = document.getElementById('uploadSpinner');
             
-            // Disable the button and show loading state
+            // Disable both buttons and show loading state
             submitBtn.disabled = true;
+            cancelBtn.disabled = true;
+            cancelBtn.classList.add('opacity-50', 'cursor-not-allowed');
             btnText.textContent = 'Processing...';
             spinner.classList.remove('hidden');
             
-            // Show page-level progress indicator
-            showPageProgress('Uploading and processing knowledge base...');
+            // Show page-level progress indicator with elapsed time
+            let elapsed = 0;
+            showPageProgress('Processing knowledge base... 0s elapsed');
             
-            // Optional: Add a timeout to reset if something goes wrong
-            setTimeout(function() {
-                if (submitBtn.disabled) {
-                    submitBtn.disabled = false;
-                    btnText.textContent = 'Upload & Process';
-                    spinner.classList.add('hidden');
-                    hidePageProgress();
-                }
-            }, 30000); // Reset after 30 seconds if still processing
+            // Update elapsed time every second
+            const timer = setInterval(() => {
+                elapsed++;
+                const minutes = Math.floor(elapsed / 60);
+                const seconds = elapsed % 60;
+                const timeStr = minutes > 0 
+                    ? `${minutes}m ${seconds}s` 
+                    : `${seconds}s`;
+                showPageProgress(`Processing knowledge base... ${timeStr} elapsed`);
+            }, 1000);
+            
+            // Timer will automatically stop when page reloads after server response
         }
         
         function showPageProgress(message) {
@@ -621,14 +520,6 @@ function showUploadModal() {
             }
         }
 
-function showCategoryModal() {
-    document.getElementById('categoryModal').classList.remove('hidden');
-}
-
-function hideCategoryModal() {
-    document.getElementById('categoryModal').classList.add('hidden');
-}
-
 function showEditModal() {
     document.getElementById('editModal').classList.remove('hidden');
 }
@@ -638,22 +529,24 @@ function hideEditModal() {
 }
 
 // Edit Knowledge Base
-function editKnowledgeBase(id, title, description, category, accessType, isEvents, kbType, refreshSchedule) {
+function editKnowledgeBase(id, title, description, accessType, kbType, cisspType, cisspDomain, embeddingProvider) {
     document.getElementById('edit_kb_id').value = id;
     document.getElementById('edit_title').value = title;
     document.getElementById('edit_description').value = description;
-    document.getElementById('edit_category').value = category;
     document.getElementById('edit_access_type').value = accessType;
-    document.getElementById('edit_is_events').checked = isEvents;
     
-    // Show/hide refresh schedule section based on knowledge base type
-    const refreshSection = document.getElementById('edit_refresh_section');
-    if (kbType === 'url') {
-        refreshSection.style.display = 'block';
-        document.getElementById('edit_refresh_schedule').value = refreshSchedule || 'manual';
+    // CISSP section (display only if set)
+    const cisspSection = document.getElementById('edit_cissp_section');
+    if (cisspType) {
+        cisspSection.style.display = 'block';
+        document.getElementById('edit_cissp_type_display').textContent = cisspType || '-';
+        document.getElementById('edit_cissp_domain_display').textContent = cisspDomain || '-';
     } else {
-        refreshSection.style.display = 'none';
+        cisspSection.style.display = 'none';
     }
+    
+    // Embedding provider
+    document.getElementById('edit_embedding_provider').value = embeddingProvider || 'openai';
     
     showEditModal();
 }
@@ -692,24 +585,6 @@ function reprocessKnowledgeBase(id) {
     }
 }
 
-function refreshKnowledgeBase(id) {
-    if (confirm('Refresh this URL knowledge base with the latest content?')) {
-        showPageProgress();
-        fetch('/knowledge_bases', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-            body: `action=refresh&kb_id=${id}`
-        }).then(() => {
-            hidePageProgress();
-            location.reload();
-        }).catch(() => {
-            hidePageProgress();
-            alert('Error refreshing knowledge base');
-        });
-    }
-}
-
-
 function deleteKnowledgeBase(id, title) {
     if (confirm(`Delete knowledge base "${title}"? This action cannot be undone.`)) {
         fetch('/knowledge_bases', {
@@ -723,7 +598,6 @@ function deleteKnowledgeBase(id, title) {
 // Filtering
 function filterKnowledgeBases() {
     const search = document.getElementById('searchInput').value.toLowerCase();
-    const category = document.getElementById('categoryFilter').value;
     const access = document.getElementById('accessFilter').value;
     const status = document.getElementById('statusFilter').value;
     
@@ -734,11 +608,10 @@ function filterKnowledgeBases() {
         const matchesSearch = !search || 
             card.dataset.name.includes(search) || 
             card.dataset.description.includes(search);
-        const matchesCategory = !category || card.dataset.category === category;
         const matchesAccess = !access || card.dataset.access === access;
         const matchesStatus = !status || card.dataset.status === status;
         
-        if (matchesSearch && matchesCategory && matchesAccess && matchesStatus) {
+        if (matchesSearch && matchesAccess && matchesStatus) {
             card.style.display = 'block';
             visibleCount++;
         } else {

@@ -6,7 +6,7 @@ from app.agents.agent import generate_reply
 
 from app.config.knowledge_config import (
     load_knowledge_config, add_knowledge_base, remove_knowledge_base, 
-    get_active_knowledge_bases, update_embedding_status, get_knowledge_bases_by_category,
+    get_active_knowledge_bases, update_embedding_status,
     save_knowledge_config, cleanup_orphaned_kb_references
 )
 from app.utils.knowledge_processor import process_knowledge_base
@@ -346,10 +346,8 @@ def knowledge_bases():
             # Handle file upload or URL source
             title = request.form.get('title', '').strip()
             description = request.form.get('description', '').strip()
-            category = request.form.get('category', 'general')
             access_type = request.form.get('access_type', 'shared')
             source_type = request.form.get('source_type', 'file')
-            is_events = request.form.get('is_events') == 'on'  # Checkbox value
             
             # Get CISSP metadata
             cissp_type = request.form.get('cissp_type', '').strip()
@@ -366,7 +364,6 @@ def knowledge_bases():
                 if source_type == 'url':
                     # Handle URL source
                     source_url = request.form.get('source_url', '').strip()
-                    refresh_schedule = request.form.get('refresh_schedule', 'manual')
                     if not source_url:
                         flash('Source URL is required', 'error')
                         return redirect(request.url)
@@ -378,9 +375,7 @@ def knowledge_bases():
                         kb_type="url",
                         source=source_url,
                         access_type=access_type,
-                        category=category,
-                        is_events=is_events,
-                        refresh_schedule=refresh_schedule,
+                        category="general",
                         cissp_type=cissp_type if cissp_type else None,
                         cissp_domain=cissp_domain if cissp_domain else None,
                         embedding_provider=embedding_provider
@@ -436,9 +431,7 @@ def knowledge_bases():
                         kb_type="document",
                         source=upload_path,
                         access_type=access_type,
-                        category=category,
-                        is_events=is_events,
-                        refresh_schedule="manual",  # Files don't have refresh schedules
+                        category="general",
                         cissp_type=cissp_type if cissp_type else None,
                         cissp_domain=cissp_domain if cissp_domain else None,
                         embedding_provider=embedding_provider
@@ -478,10 +471,8 @@ def knowledge_bases():
             kb_id = request.form.get('kb_id')
             title = request.form.get('title', '').strip()
             description = request.form.get('description', '').strip()
-            category = request.form.get('category', 'general')
             access_type = request.form.get('access_type', 'shared')
-            is_events = request.form.get('is_events') == 'on'  # Checkbox value
-            refresh_schedule = request.form.get('refresh_schedule', 'manual')
+            new_embedding_provider = request.form.get('embedding_provider', 'openai')
             
             if kb_id and title:
                 # Update knowledge base properties
@@ -489,28 +480,42 @@ def knowledge_bases():
                 kb_found = False
                 for kb in config.get('knowledge_bases', []):
                     if kb.get('id') == kb_id:
-                        # Only update refresh_schedule for URL knowledge bases
+                        old_embedding_provider = kb.get('embedding_provider', 'openai')
+                        
                         update_data = {
                             'title': title,
                             'description': description,
-                            'category': category,
+                            'category': 'general',  # Fixed default
                             'access_type': access_type,
-                            'is_events': is_events,
+                            'embedding_provider': new_embedding_provider,
                         }
-                        
-                        # Add refresh schedule for URL knowledge bases
-                        if kb.get('type') == 'url':
-                            from app.config.knowledge_config import calculate_next_refresh
-                            update_data['refresh_schedule'] = refresh_schedule
-                            update_data['next_refresh'] = calculate_next_refresh(refresh_schedule, kb.get('last_refreshed'))
                         
                         kb.update(update_data)
                         kb_found = True
+                        
+                        # If embedding provider changed, trigger reprocess
+                        if new_embedding_provider != old_embedding_provider:
+                            save_knowledge_config(config)
+                            flash(f'Embedding provider changed to {new_embedding_provider}. Reprocessing knowledge base...', 'info')
+                            # Trigger reprocess with new provider
+                            from app.utils.knowledge_processor import process_knowledge_base
+                            try:
+                                process_knowledge_base(
+                                    kb_id=kb_id,
+                                    kb_type=kb.get('type'),
+                                    source=kb.get('source'),
+                                    embedding_provider=new_embedding_provider
+                                )
+                                flash('Knowledge base reprocessed successfully', 'success')
+                            except Exception as e:
+                                flash(f'Reprocessing failed: {str(e)}', 'error')
+                        
                         break
                 
                 if kb_found:
                     save_knowledge_config(config)
-                    flash(f'Knowledge base "{title}" updated successfully!', 'success')
+                    if new_embedding_provider == old_embedding_provider:
+                        flash(f'Knowledge base "{title}" updated successfully!', 'success')
                 else:
                     flash('Knowledge base not found', 'error')
             else:
@@ -549,41 +554,6 @@ def knowledge_bases():
                             flash('Knowledge base reprocessing failed!', 'error')
                     except Exception as e:
                         flash(f'Error reprocessing knowledge base: {str(e)}', 'error')
-                else:
-                    flash('Knowledge base not found', 'error')
-        
-        elif action == "refresh":
-            # Handle URL knowledge base refresh
-            kb_id = request.form.get('kb_id')
-            if kb_id:
-                config = load_knowledge_config()
-                kb_info = None
-                for kb in config.get('knowledge_bases', []):
-                    if kb.get('id') == kb_id:
-                        kb_info = kb
-                        break
-                
-                if kb_info and kb_info.get('type') == 'url':
-                    try:
-                        from app.utils.knowledge_processor import process_knowledge_base
-                        from app.config.knowledge_config import mark_knowledge_base_refreshed
-                        
-                        # Refresh the URL knowledge base
-                        update_embedding_status(kb_id, "processing")
-                        success, _ = process_knowledge_base(kb_id, "url", kb_info['source'])
-                        if success:
-                            # Mark as refreshed and update next refresh time
-                            mark_knowledge_base_refreshed(kb_id)
-                            update_embedding_status(kb_id, "completed")
-                            flash(f'Knowledge base "{kb_info["title"]}" refreshed successfully!', 'success')
-                        else:
-                            update_embedding_status(kb_id, "failed")
-                            flash(f'Failed to refresh knowledge base "{kb_info["title"]}"', 'error')
-                    except Exception as e:
-                        update_embedding_status(kb_id, "failed")
-                        flash(f'Error refreshing knowledge base: {str(e)}', 'error')
-                elif kb_info:
-                    flash('Only URL knowledge bases can be refreshed', 'error')
                 else:
                     flash('Knowledge base not found', 'error')
         
@@ -629,17 +599,15 @@ def knowledge_bases():
             'id': kb_id,
             'title': kb_info.get('title', 'Untitled'),
             'description': kb_info.get('description', ''),
-            'category': kb_info.get('category', 'general'),
             'access_type': kb_info.get('access_type', 'shared'),
             'status': kb_info.get('status', 'active'),
             'kb_type': kb_info.get('type', 'document'),  # Note: 'type' not 'kb_type' in the config
             'created_at': kb_info.get('created_at', ''),
-            'refresh_schedule': kb_info.get('refresh_schedule', 'manual'),
-            'last_refreshed': kb_info.get('last_refreshed'),
-            'next_refresh': kb_info.get('next_refresh'),
             'assigned_agents': assigned_agents,
             'chunks_count': chunks_count,
-            'is_events': kb_info.get('is_events', False)
+            'cissp_type': kb_info.get('cissp_type'),
+            'cissp_domain': kb_info.get('cissp_domain'),
+            'embedding_provider': kb_info.get('embedding_provider', 'openai')
         })
     
     # Sort by creation date (newest first)
@@ -677,12 +645,8 @@ def knowledge():
                 filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
                 file.save(filepath)
                 
-                # Check if this is an event source
-                is_events = request.form.get('is_events') == 'true'
-                
                 # Add to knowledge base configuration
-                kb_id = add_knowledge_base(title, description, "file", filepath, 
-                                         is_events=is_events)
+                kb_id = add_knowledge_base(title, description, "file", filepath)
                 
                 # Process the knowledge base
                 update_embedding_status(kb_id, "processing")
@@ -701,30 +665,23 @@ def knowledge():
             url = request.form.get('url', '').strip()
             title = request.form.get('url_title', '').strip()
             description = request.form.get('url_description', '').strip()
-            is_events = request.form.get('is_events') == 'true'
             
             if not url or not title:
                 flash('URL and title are required', 'error')
                 return redirect(request.url)
             
             # Add to knowledge base configuration
-            kb_id = add_knowledge_base(title, description, "url", url, 
-                                     is_events=is_events)
+            kb_id = add_knowledge_base(title, description, "url", url)
             
-            # For event URLs, we don't need to process embeddings
-            if is_events:
+            # Process the knowledge base
+            update_embedding_status(kb_id, "processing")
+            success, _ = process_knowledge_base(kb_id, "url", url)
+            if success:
                 update_embedding_status(kb_id, "completed")
-                flash(f'Event source "{title}" added successfully!', 'success')
+                flash(f'Knowledge base "{title}" added and processed successfully!', 'success')
             else:
-                # Process the knowledge base for non-event URLs
-                update_embedding_status(kb_id, "processing")
-                success, _ = process_knowledge_base(kb_id, "url", url)
-                if success:
-                    update_embedding_status(kb_id, "completed")
-                    flash(f'Knowledge base "{title}" added and processed successfully!', 'success')
-                else:
-                    update_embedding_status(kb_id, "failed")
-                    flash(f'Knowledge base "{title}" added but processing failed.', 'error')
+                update_embedding_status(kb_id, "failed")
+                flash(f'Knowledge base "{title}" added but processing failed.', 'error')
         
         elif action == "remove":
             # Handle knowledge base removal
