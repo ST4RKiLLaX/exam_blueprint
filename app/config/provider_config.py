@@ -24,17 +24,16 @@ SUPPORTED_PROVIDERS = {
     "gemini": {
         "name": "Google Gemini",
         "generation_models": [
-            "gemini-3-pro",
-            "gemini-3-flash",
+            "gemini-3-pro-preview",
             "gemini-3-flash-preview",
             "gemini-2.5-pro",
             "gemini-2.5-flash",
             "gemini-2.5-flash-lite"
         ],
-        "embedding_models": ["text-embedding-004", "text-embedding-preview-0815"],
+        "embedding_models": ["text-embedding-004"],
         "default_embedding_model": "text-embedding-004",
         "embedding_dimensions": 768,  # Gemini default
-        "supports_thinking": ["gemini-3-pro", "gemini-2.5-pro"]
+        "supports_thinking": ["gemini-3-pro-preview", "gemini-2.5-pro"]
     }
 }
 

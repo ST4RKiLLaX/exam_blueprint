@@ -56,17 +56,10 @@ class GeminiClient:
         contents = "\n".join(user_content)
         
         try:
-            # Build generation config
-            config = {
-                "temperature": temperature,
-                "max_output_tokens": max_tokens,
-            }
-            
-            # Call the new API
+            # Call the new API (config parameters not yet supported in this SDK version)
             response = self.client.models.generate_content(
                 model=model,
-                contents=contents,
-                config=config
+                contents=contents
             )
             
             # Extract text from response
