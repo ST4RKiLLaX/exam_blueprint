@@ -53,6 +53,8 @@ app/config/users.db
 app/config/.api_key
 app/config/api_encryption.key
 app/config/email_encryption.key
+app/config/.secret_key
+app/config/.password_salt
 
 # User-uploaded knowledge bases and generated embeddings
 app/knowledge_bases/

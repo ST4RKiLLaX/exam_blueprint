@@ -23,9 +23,21 @@ from app.models.audit_log import AuditLog
 
 app = Flask(__name__)
 
-# Generate secure secret keys
-app.secret_key = os.environ.get('SECRET_KEY', secrets.token_hex(32))
-app.config['SECURITY_PASSWORD_SALT'] = os.environ.get('SECURITY_PASSWORD_SALT', secrets.token_hex(32))
+# Generate secure secret keys (persistent across restarts)
+def get_or_create_secret(filename, key_name):
+    """Get or create a persistent secret key"""
+    secret_file = os.path.join(os.path.dirname(__file__), '..', 'config', filename)
+    if os.path.exists(secret_file):
+        with open(secret_file, 'r') as f:
+            return f.read().strip()
+    else:
+        secret = secrets.token_hex(32)
+        with open(secret_file, 'w') as f:
+            f.write(secret)
+        return secret
+
+app.secret_key = os.environ.get('SECRET_KEY', get_or_create_secret('.secret_key', 'SECRET_KEY'))
+app.config['SECURITY_PASSWORD_SALT'] = os.environ.get('SECURITY_PASSWORD_SALT', get_or_create_secret('.password_salt', 'SECURITY_PASSWORD_SALT'))
 
 # Database configuration
 # Calculate absolute path to app/config/users.db

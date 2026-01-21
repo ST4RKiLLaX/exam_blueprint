@@ -177,9 +177,9 @@ def calculate_text_overlap(text1: str, text2: str) -> float:
 
 def cissp_two_stage_retrieval(query: str, blueprint: dict, agent) -> list:
     """
-    CISSP-specific two-stage retrieval: Outline KB → Domain-specific CBK KB.
+    CISSP-specific two-stage retrieval: Golden Key KB (or Outline KB) → Domain-specific CBK KB.
     
-    Stage A: Retrieve 1-2 chunks from Outline KB for scope
+    Stage A: Retrieve 1-2 chunks from Golden Key KB for hot topics (falls back to Outline KB)
     Stage B: Retrieve 2-4 chunks from domain-specific CBK KB for content
     
     Args:
@@ -198,12 +198,22 @@ def cissp_two_stage_retrieval(query: str, blueprint: dict, agent) -> list:
     # Get all agent's assigned KBs
     knowledge_bases = get_knowledge_bases_for_agent(agent.agent_id, agent.knowledge_bases)
     
-    # Find Outline KB (cissp_type == "outline")
+    # Find Golden Key KB (priority - matches "golden" in title, case-insensitive)
+    golden_key_kb = None
+    for kb in knowledge_bases:
+        if "golden" in kb.get("title", "").lower():
+            golden_key_kb = kb
+            break
+    
+    # Find Outline KB (cissp_type == "outline") - fallback if no Golden Key
     outline_kb = None
     for kb in knowledge_bases:
         if kb.get("cissp_type") == "outline":
             outline_kb = kb
             break
+    
+    # Determine Stage A KB: Golden Key takes priority, fall back to Outline
+    stage_a_kb = golden_key_kb if golden_key_kb else outline_kb
     
     # Find Domain CBK KB (cissp_type == "cbk" AND cissp_domain matches blueprint)
     domain_cbk_kb = None
@@ -214,23 +224,24 @@ def cissp_two_stage_retrieval(query: str, blueprint: dict, agent) -> list:
             break
     
     formatted_results = []
-    outline_chunks_raw = []
+    stage_a_chunks_raw = []
     
-    # Stage A: Retrieve from Outline KB (if available)
-    if outline_kb:
-        outline_results = search_knowledge_base(outline_kb["id"], query, top_k=2)
-        if outline_results:
+    # Stage A: Retrieve from Golden Key or Outline KB (if available)
+    if stage_a_kb:
+        stage_a_results = search_knowledge_base(stage_a_kb["id"], query, top_k=2)
+        if stage_a_results:
             # Extract just the chunk text for subtopic extraction
-            outline_chunks_raw = [chunk for chunk, distance, kb_id in outline_results]
+            stage_a_chunks_raw = [chunk for chunk, distance, kb_id in stage_a_results]
             
-            # Format outline chunks with source
-            for chunk, distance, kb_id in outline_results:
+            # Format chunks with source
+            for chunk, distance, kb_id in stage_a_results:
                 if distance <= agent.min_similarity_threshold:
-                    formatted_chunk = f"{chunk}\n[Source: {outline_kb.get('title', 'CISSP Outline')}]"
+                    kb_title = stage_a_kb.get('title', 'CISSP Golden Key' if golden_key_kb else 'CISSP Outline')
+                    formatted_chunk = f"{chunk}\n[Source: {kb_title}]"
                     formatted_results.append(formatted_chunk)
     
-    # Extract subtopic from outline chunks
-    subtopic = extract_subtopic_from_outline(outline_chunks_raw)
+    # Extract subtopic from Stage A chunks (Golden Key or Outline)
+    subtopic = extract_subtopic_from_outline(stage_a_chunks_raw)
     
     # Stage B: Retrieve from Domain CBK KB (if available)
     if domain_cbk_kb:
