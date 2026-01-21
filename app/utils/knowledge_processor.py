@@ -78,7 +78,7 @@ def extract_text_from_docx(file_path):
                 continue
             yield paragraph_text
         if not doc.paragraphs:
-            print(f"⚠️ No paragraphs found in DOCX: {file_path}")
+            print(f"[WARN] No paragraphs found in DOCX: {file_path}")
     except Exception as e:
         print(f"Error extracting text from DOCX (paragraph stream) at {file_path}: {e}")
         return
@@ -155,7 +155,7 @@ def chunk_text(
         raise ValueError("overlap_tokens must be smaller than max_tokens")
 
     if not tiktoken:
-        print("⚠️ tiktoken not installed; falling back to character-based chunking")
+        print("[WARN] tiktoken not installed; falling back to character-based chunking")
         buffer = ""
         for segment in text_stream:
             if not segment:

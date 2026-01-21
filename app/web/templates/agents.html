@@ -59,12 +59,18 @@
                     {% endif %}
                 </div>
                 
-                <!-- Embed Button -->
+                <!-- Embed Buttons -->
                 <div class="flex space-x-2">
                     <a href="/embed-code/{{ agent.agent_id }}" 
                        class="flex-1 bg-purple-50 hover:bg-purple-100 text-purple-700 px-3 py-2 rounded text-sm font-medium transition-colors text-center">
                         🔗 Embed Chat
                     </a>
+                    <a href="/quiz-code/{{ agent.agent_id }}" 
+                       class="flex-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-3 py-2 rounded text-sm font-medium transition-colors text-center">
+                        📝 Quiz Embed
+                    </a>
+                </div>
+                <div class="flex space-x-2">
                     <a href="/test" 
                        class="flex-1 bg-orange-50 hover:bg-orange-100 text-orange-700 px-3 py-2 rounded text-sm font-medium transition-colors text-center">
                         💬 Test Chat

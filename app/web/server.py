@@ -983,6 +983,95 @@ def embed_code_generator(agent_id):
     except Exception as e:
         return str(e), 500
 
+@app.route("/quiz/<agent_id>")
+def quiz_widget(agent_id):
+    """Render quiz widget for a specific agent"""
+    try:
+        from app.models.agent import agent_manager
+        agent = agent_manager.get_agent(agent_id)
+        
+        if not agent:
+            return "Agent not found", 404
+        
+        return render_template("quiz_widget.html", 
+                             agent=agent,
+                             agent_id=agent_id)
+        
+    except Exception as e:
+        return str(e), 500
+
+@app.route("/quiz-code/<agent_id>")
+def quiz_embed_code_generator(agent_id):
+    """Generate embed code for quiz widget"""
+    try:
+        from app.models.agent import agent_manager
+        agent = agent_manager.get_agent(agent_id)
+        
+        if not agent:
+            return "Agent not found", 404
+        
+        # Generate different embed code options
+        base_url = request.host_url.rstrip('/')
+        
+        embed_codes = {
+            "iframe": f'<iframe src="{base_url}/quiz/{agent_id}" width="450" height="650" frameborder="0"></iframe>',
+            "javascript": f'''<script>
+// Add this to your HTML body section
+(function() {{
+    var iframe = document.createElement('iframe');
+    iframe.src = '{base_url}/quiz/{agent_id}';
+    iframe.width = '450';
+    iframe.height = '650';
+    iframe.frameBorder = '0';
+    iframe.style.border = 'none';
+    iframe.style.borderRadius = '10px';
+    iframe.style.boxShadow = '0 4px 20px rgba(0,0,0,0.15)';
+    document.body.appendChild(iframe);
+}})();
+</script>''',
+            "direct_link": f'{base_url}/quiz/{agent_id}'
+        }
+        
+        return render_template("quiz_embed_generator.html", 
+                             agent=agent,
+                             agent_id=agent_id,
+                             embed_codes=embed_codes,
+                             base_url=base_url)
+        
+    except Exception as e:
+        return str(e), 500
+
+@app.route("/api/quiz/<agent_id>/generate", methods=["POST"])
+def generate_quiz_questions(agent_id):
+    """Generate quiz questions using the agent"""
+    try:
+        data = request.json or {}
+        count = data.get("count", 5)
+        session_id = data.get("session_id")
+        
+        # Get agent object directly from agent_manager
+        from app.models.agent import agent_manager
+        agent = agent_manager.get_agent(agent_id)
+        
+        if not agent:
+            return jsonify({"success": False, "error": "Agent not found"})
+        
+        from app.agents.agent import generate_quiz_questions_for_agent
+        
+        questions = generate_quiz_questions_for_agent(agent, count)
+        
+        return jsonify({
+            "success": True,
+            "questions": questions,
+            "session_id": session_id
+        })
+        
+    except Exception as e:
+        print(f"[ERROR] Error generating quiz questions: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"success": False, "error": str(e)})
+
 if __name__ == "__main__":
     try:
         # Use environment variables or default to 0.0.0.0 for network access
@@ -991,4 +1080,4 @@ if __name__ == "__main__":
         debug = os.environ.get('FLASK_DEBUG', 'True').lower() == 'true'
         app.run(debug=debug, host=host, port=port)
     except KeyboardInterrupt:
-        print("\n⏹️ Shutting down...")
+        print("\n[INFO] Shutting down...")

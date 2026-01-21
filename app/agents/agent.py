@@ -51,7 +51,7 @@ def truncate_history_by_tokens(history: list, max_tokens: int, encoding_name: st
     try:
         encoding = tiktoken.get_encoding(encoding_name)
     except Exception as e:
-        print(f"⚠️ Warning: Could not load tiktoken encoding '{encoding_name}': {e}")
+        print(f"[WARN] Could not load tiktoken encoding '{encoding_name}': {e}")
         print("Falling back to message count limit (last 5 messages)")
         return history[-5:]
     
@@ -71,7 +71,7 @@ def truncate_history_by_tokens(history: list, max_tokens: int, encoding_name: st
         try:
             message_tokens = len(encoding.encode(formatted_message))
         except Exception as e:
-            print(f"⚠️ Warning: Could not encode message: {e}")
+            print(f"[WARN] Could not encode message: {e}")
             # Rough estimate: ~4 chars per token
             message_tokens = len(formatted_message) // 4
         
@@ -90,7 +90,7 @@ def truncate_history_by_tokens(history: list, max_tokens: int, encoding_name: st
                     truncated_message["content"] = truncated_content + "... [truncated]"
                     selected_messages.append(truncated_message)
                 except Exception as e:
-                    print(f"⚠️ Warning: Could not truncate message: {e}")
+                    print(f"[WARN] Could not truncate message: {e}")
                     # Fall back to character truncation
                     char_limit = max_tokens * 4  # Rough estimate
                     truncated_message = message.copy()
@@ -265,7 +265,13 @@ def search_agent_knowledge_bases(query, agent, top_k=3):
     # Check if agent has CISSP mode enabled
     if hasattr(agent, 'enable_cissp_mode') and agent.enable_cissp_mode:
         # Use blueprint from request context (set by generate_reply)
-        blueprint = getattr(g, 'current_blueprint', None)
+        try:
+            try:
+                blueprint = getattr(g, 'current_blueprint', None)
+            except RuntimeError:
+                blueprint = None
+        except RuntimeError:
+            blueprint = None
         if blueprint:
             return cissp_two_stage_retrieval(query, blueprint, agent)
     
@@ -307,7 +313,7 @@ def search_agent_knowledge_bases(query, agent, top_k=3):
                 if kb_results:
                     all_results.extend(kb_results)
         except Exception as e:
-            print(f"⚠️ Error searching {provider} knowledge bases: {e}")
+            print(f"[ERROR] Searching {provider} knowledge bases: {e}")
     
     if not all_results:
         return []
@@ -391,7 +397,10 @@ def build_prompt(message_body, history=None, agent=None):
     agent_instructions = f"\nAGENT INSTRUCTIONS:\n---\n{agent_prompt}\n"
     
     # 2.5. Blueprint constraint (if CISSP mode)
-    blueprint_constraint = getattr(g, 'blueprint_constraint', None)
+    try:
+        blueprint_constraint = getattr(g, 'blueprint_constraint', None)
+    except RuntimeError:
+        blueprint_constraint = None
     if blueprint_constraint:
         agent_instructions += f"\n{blueprint_constraint}\n"
     
@@ -431,7 +440,7 @@ CURRENT MESSAGE:
 Reply:
 """
 
-def generate_reply(message_body, history=None, agent=None):
+def generate_reply(message_body, history=None, agent=None, skip_post_processing=False):
     """
     Generate a reply from an AI agent based on the user's message.
     
@@ -439,6 +448,7 @@ def generate_reply(message_body, history=None, agent=None):
         message_body: The user's message/query
         history: Optional conversation history
         agent: Agent configuration object
+        skip_post_processing: If True, return raw response without post-processing (for JSON output)
     
     Returns:
         Generated reply string
@@ -452,15 +462,15 @@ def generate_reply(message_body, history=None, agent=None):
     provider = getattr(agent, 'provider', 'openai')
     
     if provider == "gemini":
-        return _generate_with_gemini(message_body, history, agent)
+        return _generate_with_gemini(message_body, history, agent, skip_post_processing)
     elif provider == "openai":
-        return _generate_with_openai(message_body, history, agent)
+        return _generate_with_openai(message_body, history, agent, skip_post_processing)
     else:
-        print(f"⚠️ Unsupported provider: {provider}, falling back to OpenAI")
-        return _generate_with_openai(message_body, history, agent)
+        print(f"[WARN] Unsupported provider: {provider}, falling back to OpenAI")
+        return _generate_with_openai(message_body, history, agent, skip_post_processing)
 
 
-def _generate_with_openai(message_body, history=None, agent=None):
+def _generate_with_openai(message_body, history=None, agent=None, skip_post_processing=False):
     """
     Generate reply using OpenAI (Responses API or Chat Completions API).
     This is the original generation logic.
@@ -482,17 +492,26 @@ def _generate_with_openai(message_body, history=None, agent=None):
     if agent and hasattr(agent, 'enable_cissp_mode') and agent.enable_cissp_mode:
         from app.utils.reasoning_controller import select_blueprint, build_blueprint_constraint
         
-        thread_id = getattr(g, 'thread_id', 'default')
+        try:
+            thread_id = getattr(g, 'thread_id', 'default')
+        except RuntimeError:
+            thread_id = 'default'
         blueprint = select_blueprint(thread_id, message_body, agent.blueprint_history_depth)
         
-        # Store in request context for retrieval function to access
-        g.current_blueprint = blueprint
+        # Store in request context for retrieval function to access (if in request context)
+        try:
+            g.current_blueprint = blueprint
+        except RuntimeError:
+            pass
         
         # Build constraint text
         blueprint_constraint = build_blueprint_constraint(blueprint)
         
-        # Store constraint for prompt injection
-        g.blueprint_constraint = blueprint_constraint
+        # Store constraint for prompt injection (if in request context)
+        try:
+            g.blueprint_constraint = blueprint_constraint
+        except RuntimeError:
+            pass
 
     prompt = build_prompt(message_body, history=history, agent=agent)
     
@@ -561,6 +580,10 @@ def _generate_with_openai(message_body, history=None, agent=None):
         # Call Responses API
         response = _get_openai_client().responses.create(**api_params)
         raw_response = response.output_text.strip()
+        
+        if skip_post_processing:
+            return raw_response
+        
         processed, validation_ok = post_process_response(raw_response, agent)
         
         # If validation failed and agent has validation rules, retry once
@@ -615,7 +638,10 @@ def _generate_with_openai(message_body, history=None, agent=None):
                 
                 if current_embedding is not None:
                     # Get thread ID from request context (if available)
-                    thread_id = getattr(g, 'thread_id', 'default')
+                    try:
+                        thread_id = getattr(g, 'thread_id', 'default')
+                    except RuntimeError:
+                        thread_id = 'default'
                     
                     # Get cached embeddings for this thread
                     if thread_id not in SEMANTIC_CACHE:
@@ -632,7 +658,7 @@ def _generate_with_openai(message_body, history=None, agent=None):
                     )
                     
                     # Log similarity for monitoring
-                    print(f"🔍 Semantic check: similarity={max_sim:.3f}, threshold={threshold:.3f}, regenerated={is_repetitive}")
+                    print(f"[DEBUG] Semantic check: similarity={max_sim:.3f}, threshold={threshold:.3f}, regenerated={is_repetitive}")
                     
                     if is_repetitive:
                         # Regenerate with constraint
@@ -656,7 +682,7 @@ Do not reuse the same control objective or decision logic.
                             if new_signature:
                                 current_embedding = generate_signature_embedding(new_signature)
                         except Exception as e:
-                            print(f"⚠️ Semantic retry failed: {e}")
+                            print(f"[WARN] Semantic retry failed: {e}")
                             pass  # Keep first attempt
                     
                     # Store embedding in cache (limit to last N)
@@ -707,6 +733,10 @@ Do not reuse the same control objective or decision logic.
         # Call Chat Completions API
         response = _get_openai_client().chat.completions.create(**api_params)
         raw_response = response.choices[0].message.content.strip()
+        
+        if skip_post_processing:
+            return raw_response
+        
         processed, validation_ok = post_process_response(raw_response, agent)
         
         # If validation failed and agent has validation rules, retry once
@@ -761,7 +791,10 @@ Do not reuse the same control objective or decision logic.
                 
                 if current_embedding is not None:
                     # Get thread ID from request context (if available)
-                    thread_id = getattr(g, 'thread_id', 'default')
+                    try:
+                        thread_id = getattr(g, 'thread_id', 'default')
+                    except RuntimeError:
+                        thread_id = 'default'
                     
                     # Get cached embeddings for this thread
                     if thread_id not in SEMANTIC_CACHE:
@@ -778,7 +811,7 @@ Do not reuse the same control objective or decision logic.
                     )
                     
                     # Log similarity for monitoring
-                    print(f"🔍 Semantic check: similarity={max_sim:.3f}, threshold={threshold:.3f}, regenerated={is_repetitive}")
+                    print(f"[DEBUG] Semantic check: similarity={max_sim:.3f}, threshold={threshold:.3f}, regenerated={is_repetitive}")
                     
                     if is_repetitive:
                         # Regenerate with constraint
@@ -802,7 +835,7 @@ Do not reuse the same control objective or decision logic.
                             if new_signature:
                                 current_embedding = generate_signature_embedding(new_signature)
                         except Exception as e:
-                            print(f"⚠️ Semantic retry failed: {e}")
+                            print(f"[WARN] Semantic retry failed: {e}")
                             pass  # Keep first attempt
                     
                     # Store embedding in cache (limit to last N)
@@ -819,15 +852,21 @@ Do not reuse the same control objective or decision logic.
         # Store blueprint after successful generation (only for CISSP mode)
         if agent and hasattr(agent, 'enable_cissp_mode') and agent.enable_cissp_mode:
             from app.utils.reasoning_controller import store_blueprint
-            thread_id = getattr(g, 'thread_id', 'default')
-            blueprint = getattr(g, 'current_blueprint', None)
+            try:
+                thread_id = getattr(g, 'thread_id', 'default')
+            except RuntimeError:
+                thread_id = 'default'
+            try:
+                blueprint = getattr(g, 'current_blueprint', None)
+            except RuntimeError:
+                blueprint = None
             if blueprint:
                 store_blueprint(thread_id, blueprint, agent.blueprint_history_depth)
         
         return processed
 
 
-def _generate_with_gemini(message_body, history=None, agent=None):
+def _generate_with_gemini(message_body, history=None, agent=None, skip_post_processing=False):
     """
     Generate reply using Google Gemini API.
     """
@@ -850,17 +889,26 @@ def _generate_with_gemini(message_body, history=None, agent=None):
     if agent and hasattr(agent, 'enable_cissp_mode') and agent.enable_cissp_mode:
         from app.utils.reasoning_controller import select_blueprint, build_blueprint_constraint
         
-        thread_id = getattr(g, 'thread_id', 'default')
+        try:
+            thread_id = getattr(g, 'thread_id', 'default')
+        except RuntimeError:
+            thread_id = 'default'
         blueprint = select_blueprint(thread_id, message_body, agent.blueprint_history_depth)
         
-        # Store in request context for retrieval function to access
-        g.current_blueprint = blueprint
+        # Store in request context for retrieval function to access (if in request context)
+        try:
+            g.current_blueprint = blueprint
+        except RuntimeError:
+            pass
         
         # Build constraint text
         blueprint_constraint = build_blueprint_constraint(blueprint)
         
-        # Store constraint for prompt injection
-        g.blueprint_constraint = blueprint_constraint
+        # Store constraint for prompt injection (if in request context)
+        try:
+            g.blueprint_constraint = blueprint_constraint
+        except RuntimeError:
+            pass
 
     prompt = build_prompt(message_body, history=history, agent=agent)
     
@@ -892,6 +940,10 @@ def _generate_with_gemini(message_body, history=None, agent=None):
         )
         
         raw_response = response.text
+        
+        if skip_post_processing:
+            return raw_response
+        
         processed, validation_ok = post_process_response(raw_response, agent)
         
         # If validation failed and agent has validation rules, retry once
@@ -924,7 +976,10 @@ def _generate_with_gemini(message_body, history=None, agent=None):
                 
                 if current_embedding is not None:
                     # Get thread ID from request context (if available)
-                    thread_id = getattr(g, 'thread_id', 'default')
+                    try:
+                        thread_id = getattr(g, 'thread_id', 'default')
+                    except RuntimeError:
+                        thread_id = 'default'
                     
                     # Get cached embeddings for this thread
                     if thread_id not in SEMANTIC_CACHE:
@@ -941,7 +996,7 @@ def _generate_with_gemini(message_body, history=None, agent=None):
                     )
                     
                     # Log similarity for monitoring
-                    print(f"🔍 Semantic check: similarity={max_sim:.3f}, threshold={threshold:.3f}, regenerated={is_repetitive}")
+                    print(f"[DEBUG] Semantic check: similarity={max_sim:.3f}, threshold={threshold:.3f}, regenerated={is_repetitive}")
                     
                     if is_repetitive:
                         # Regenerate with constraint
@@ -969,7 +1024,7 @@ Do not reuse the same control objective or decision logic.
                             if new_signature:
                                 current_embedding = generate_signature_embedding(new_signature)
                         except Exception as e:
-                            print(f"⚠️ Semantic retry failed: {e}")
+                            print(f"[WARN] Semantic retry failed: {e}")
                             pass  # Keep first attempt
                     
                     # Store embedding in cache (limit to last N)
@@ -986,16 +1041,144 @@ Do not reuse the same control objective or decision logic.
         # Store blueprint after successful generation (only for CISSP mode)
         if agent and hasattr(agent, 'enable_cissp_mode') and agent.enable_cissp_mode:
             from app.utils.reasoning_controller import store_blueprint
-            thread_id = getattr(g, 'thread_id', 'default')
-            blueprint = getattr(g, 'current_blueprint', None)
+            try:
+                thread_id = getattr(g, 'thread_id', 'default')
+            except RuntimeError:
+                thread_id = 'default'
+            try:
+                blueprint = getattr(g, 'current_blueprint', None)
+            except RuntimeError:
+                blueprint = None
             if blueprint:
                 store_blueprint(thread_id, blueprint, agent.blueprint_history_depth)
         
         return processed
         
     except Exception as e:
-        print(f"⚠️ Gemini generation error: {e}")
+        print(f"[ERROR] Gemini generation error: {e}")
         return f"Error generating response with Gemini: {str(e)}"
+
+
+def generate_quiz_questions_for_agent(agent, count=5):
+    """
+    Generate multiple-choice questions using the agent's KB and configuration.
+    Returns structured JSON with questions, options, correct answers, and explanations.
+    
+    Args:
+        agent: Agent object with configuration
+        count: Number of questions to generate
+        
+    Returns:
+        List of question dictionaries
+    """
+    import json
+    import uuid
+    
+    # Build specialized quiz generation prompt
+    quiz_prompt = f"""Generate exactly {count} multiple-choice questions based on your knowledge base.
+
+For each question:
+1. Create a scenario-based question testing high-level understanding
+2. Provide exactly 4 options (A, B, C, D)
+3. One option must be the BEST answer
+4. Include a 2-3 sentence explanation of why the correct answer is best
+
+Return ONLY valid JSON in this exact format:
+[
+  {{
+    "question": "Question text here",
+    "options": {{
+      "A": "Option A text",
+      "B": "Option B text",
+      "C": "Option C text",
+      "D": "Option D text"
+    }},
+    "correct": "A",
+    "explanation": "Explanation of why A is the best answer"
+  }}
+]
+
+Do not include any text before or after the JSON array."""
+
+    try:
+        # Temporarily override token limits for quiz generation
+        # Each question ~300-400 tokens, so 5 questions need ~2000 tokens minimum
+        original_max_tokens = agent.max_tokens
+        original_max_completion_tokens = agent.max_completion_tokens
+        original_max_output_tokens = agent.max_output_tokens
+        
+        # Set high enough limit for multiple questions
+        required_tokens = count * 400 + 200  # ~400 tokens per question + buffer
+        agent.max_tokens = max(required_tokens, 2500)
+        agent.max_completion_tokens = max(required_tokens, 2500)
+        agent.max_output_tokens = max(required_tokens, 2500)
+        
+        try:
+            # Generate questions using the agent's reply generation
+            # Skip post-processing to get raw JSON output
+            response = generate_reply(quiz_prompt, history=None, agent=agent, skip_post_processing=True)
+        finally:
+            # Always restore original token limits
+            agent.max_tokens = original_max_tokens
+            agent.max_completion_tokens = original_max_completion_tokens
+            agent.max_output_tokens = original_max_output_tokens
+        
+        # Try to extract JSON from the response
+        # Sometimes the model includes markdown code blocks
+        json_start = response.find('[')
+        json_end = response.rfind(']') + 1
+        
+        if json_start == -1 or json_end == 0:
+            raise ValueError("No JSON array found in response")
+        
+        json_str = response[json_start:json_end]
+        questions_data = json.loads(json_str)
+        
+        # Add unique IDs to each question
+        questions = []
+        for q in questions_data:
+            questions.append({
+                "question_id": str(uuid.uuid4()),
+                "question_text": q.get("question", ""),
+                "options": q.get("options", {}),
+                "correct_answer": q.get("correct", ""),
+                "explanation": q.get("explanation", "")
+            })
+        
+        return questions
+        
+    except json.JSONDecodeError as e:
+        print(f"[WARN] JSON parsing error: {e}")
+        print(f"Response was: {response[:500]}")
+        # Return a fallback error structure
+        return [{
+            "question_id": str(uuid.uuid4()),
+            "question_text": "Unable to generate questions at this time.",
+            "options": {
+                "A": "Please try again",
+                "B": "Check agent configuration",
+                "C": "Verify knowledge base",
+                "D": "Contact support"
+            },
+            "correct_answer": "A",
+            "explanation": "There was an error generating questions. Please try again or check the agent configuration."
+        }]
+    except Exception as e:
+        print(f"[WARN] Quiz generation error: {e}")
+        import traceback
+        traceback.print_exc()
+        return [{
+            "question_id": str(uuid.uuid4()),
+            "question_text": f"Error: {str(e)}",
+            "options": {
+                "A": "Try again",
+                "B": "Check logs",
+                "C": "Verify setup",
+                "D": "Contact admin"
+            },
+            "correct_answer": "A",
+            "explanation": f"An error occurred: {str(e)}"
+        }]
 
 
 # Manual test

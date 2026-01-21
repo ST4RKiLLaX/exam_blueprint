@@ -1,0 +1,221 @@
+{% extends "base.html" %}
+
+{% block title %}Quiz Embed Code Generator - {{ agent.name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-8">
+    <!-- Header -->
+    <div class="text-center">
+        <h1 class="text-3xl font-bold text-gray-900 mb-2">📝 Quiz Embed Code Generator</h1>
+        <p class="text-gray-600">Generate embed codes to add interactive quizzes to your website</p>
+    </div>
+
+    <!-- Agent Info -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div class="flex items-center space-x-4">
+            <div class="w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-600 rounded-full flex items-center justify-center">
+                <span class="text-white font-bold text-3xl">🎓</span>
+            </div>
+            <div>
+                <h2 class="text-2xl font-bold text-gray-900">{{ agent.name }} Quiz</h2>
+                <p class="text-gray-600">Interactive multiple-choice questions with instant feedback</p>
+                <div class="flex items-center space-x-2 mt-2">
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        Active
+                    </span>
+                    <span class="text-sm text-gray-500">{{ agent.knowledge_bases|length }} knowledge bases</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Embed Options -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Iframe Embed -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div class="flex items-center space-x-2 mb-4">
+                <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                </svg>
+                <h3 class="text-lg font-semibold text-gray-900">Iframe Embed</h3>
+            </div>
+            <p class="text-sm text-gray-600 mb-4">Simple iframe that can be added to any HTML page</p>
+            <div class="bg-gray-50 rounded-lg p-3 mb-4 max-h-32 overflow-y-auto">
+                <code class="text-xs text-gray-800 break-all">{{ embed_codes.iframe }}</code>
+            </div>
+            <button onclick="copyToClipboard('{{ embed_codes.iframe }}')" class="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors">
+                Copy Code
+            </button>
+        </div>
+
+        <!-- JavaScript Embed -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div class="flex items-center space-x-2 mb-4">
+                <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path>
+                </svg>
+                <h3 class="text-lg font-semibold text-gray-900">JavaScript Embed</h3>
+            </div>
+            <p class="text-sm text-gray-600 mb-4">Dynamic script loading for more control</p>
+            <div class="bg-gray-50 rounded-lg p-3 mb-4 max-h-32 overflow-y-auto">
+                <code class="text-xs text-gray-800 break-all">{{ embed_codes.javascript }}</code>
+            </div>
+            <button onclick="copyToClipboard('{{ embed_codes.javascript }}')" class="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors">
+                Copy Code
+            </button>
+        </div>
+
+        <!-- Direct Link -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div class="flex items-center space-x-2 mb-4">
+                <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path>
+                </svg>
+                <h3 class="text-lg font-semibold text-gray-900">Direct Link</h3>
+            </div>
+            <p class="text-sm text-gray-600 mb-4">Direct URL to the quiz widget</p>
+            <div class="bg-gray-50 rounded-lg p-3 mb-4">
+                <code class="text-xs text-gray-800 break-all">{{ embed_codes.direct_link }}</code>
+            </div>
+            <button onclick="copyToClipboard('{{ embed_codes.direct_link }}')" class="w-full bg-purple-600 text-white py-2 px-4 rounded-lg hover:bg-purple-700 transition-colors">
+                Copy URL
+            </button>
+        </div>
+    </div>
+
+    <!-- Configuration Options -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">⚙️ Configuration Options</h3>
+        <p class="text-sm text-gray-600 mb-4">Customize your quiz widget with URL parameters</p>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="border border-gray-200 rounded-lg p-4">
+                <h4 class="font-semibold text-gray-900 mb-2">Display Mode</h4>
+                <p class="text-sm text-gray-600 mb-2">Choose how questions are displayed</p>
+                <code class="text-xs bg-gray-100 px-2 py-1 rounded">?mode=one</code> - One at a time<br>
+                <code class="text-xs bg-gray-100 px-2 py-1 rounded">?mode=all</code> - All at once
+            </div>
+            
+            <div class="border border-gray-200 rounded-lg p-4">
+                <h4 class="font-semibold text-gray-900 mb-2">Question Count</h4>
+                <p class="text-sm text-gray-600 mb-2">Number of questions to generate</p>
+                <code class="text-xs bg-gray-100 px-2 py-1 rounded">?count=10</code> - Generate 10 questions
+            </div>
+        </div>
+        
+        <div class="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <p class="text-sm text-gray-700">
+                <strong>Example:</strong> 
+                <code class="text-xs bg-white px-2 py-1 rounded border">{{ base_url }}/quiz/{{ agent_id }}?mode=all&count=10</code>
+            </p>
+        </div>
+    </div>
+
+    <!-- Preview Section -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">🎯 Live Preview</h3>
+        <p class="text-sm text-gray-600 mb-4">See how the quiz widget will look on your website</p>
+        
+        <div class="border border-gray-200 rounded-lg bg-gray-50 p-4">
+            <iframe 
+                src="/quiz/{{ agent_id }}" 
+                width="100%" 
+                height="650" 
+                frameborder="0"
+                class="rounded-lg shadow-sm">
+            </iframe>
+        </div>
+    </div>
+
+    <!-- Implementation Guide -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">📖 Implementation Guide</h3>
+        
+        <div class="space-y-4">
+            <div>
+                <h4 class="font-semibold text-gray-900 mb-2">1. Choose Your Embed Method</h4>
+                <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                    <li><strong>Iframe</strong> - Easiest option, works on any HTML page</li>
+                    <li><strong>JavaScript</strong> - More flexible, allows for dynamic positioning</li>
+                    <li><strong>Direct Link</strong> - Open quiz in a new page or window</li>
+                </ul>
+            </div>
+            
+            <div>
+                <h4 class="font-semibold text-gray-900 mb-2">2. Copy the Code</h4>
+                <p class="text-sm text-gray-600">
+                    Click the "Copy Code" button on your chosen embed method above.
+                </p>
+            </div>
+            
+            <div>
+                <h4 class="font-semibold text-gray-900 mb-2">3. Paste into Your Website</h4>
+                <p class="text-sm text-gray-600 mb-2">
+                    Add the code to your HTML where you want the quiz to appear:
+                </p>
+                <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                    <li>For <strong>Iframe</strong>: Paste in the <code class="bg-gray-100 px-1 rounded">&lt;body&gt;</code> section</li>
+                    <li>For <strong>JavaScript</strong>: Paste in the <code class="bg-gray-100 px-1 rounded">&lt;body&gt;</code> section</li>
+                </ul>
+            </div>
+            
+            <div>
+                <h4 class="font-semibold text-gray-900 mb-2">4. Features</h4>
+                <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                    <li>✅ Instant feedback with explanations</li>
+                    <li>✅ Score tracking in browser</li>
+                    <li>✅ Two display modes (one-at-a-time or all-at-once)</li>
+                    <li>✅ Mobile-responsive design</li>
+                    <li>✅ No backend integration required</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Back Button -->
+    <div class="text-center">
+        <a href="/agents" class="inline-flex items-center text-gray-600 hover:text-gray-900 transition-colors">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+            </svg>
+            Back to Agents
+        </a>
+    </div>
+</div>
+
+<script>
+function copyToClipboard(text) {
+    // Create temporary textarea
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    
+    // Select and copy
+    textarea.select();
+    document.execCommand('copy');
+    
+    // Clean up
+    document.body.removeChild(textarea);
+    
+    // Show feedback
+    showCopyFeedback();
+}
+
+function showCopyFeedback() {
+    // Create notification
+    const notification = document.createElement('div');
+    notification.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50';
+    notification.innerHTML = '✓ Copied to clipboard!';
+    document.body.appendChild(notification);
+    
+    // Remove after 2 seconds
+    setTimeout(() => {
+        notification.style.opacity = '0';
+        notification.style.transition = 'opacity 0.3s';
+        setTimeout(() => document.body.removeChild(notification), 300);
+    }, 2000);
+}
+</script>
+{% endblock %}

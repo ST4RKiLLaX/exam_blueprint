@@ -405,7 +405,7 @@ def generate_signature_embedding(signature_text: str) -> Optional[np.ndarray]:
         embedding = create_embedding(signature_text, provider="openai")
         return embedding
     except Exception as e:
-        print(f"⚠️ Embedding generation failed: {e}")
+        print(f"[ERROR] Embedding generation failed: {e}")
         return None
 
 

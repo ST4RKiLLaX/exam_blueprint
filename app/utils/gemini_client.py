@@ -8,7 +8,7 @@ try:
     from google import genai
 except ImportError:
     genai = None
-    print("⚠️ google-genai not installed. Install with: pip install google-genai")
+    print("[WARN] google-genai not installed. Install with: pip install google-genai")
 
 from app.config.provider_config import get_provider_api_key
 
@@ -65,7 +65,7 @@ class GeminiClient:
             # Extract text from response
             return GeminiResponse(response.text)
         except Exception as e:
-            print(f"⚠️ Gemini generation error: {e}")
+            print(f"[ERROR] Gemini generation error: {e}")
             raise
     
     def embed_content(self, model: str, content: str):
@@ -98,7 +98,7 @@ class GeminiClient:
             
             return GeminiEmbeddingResponse(embedding)
         except Exception as e:
-            print(f"⚠️ Gemini embedding error: {e}")
+            print(f"[ERROR] Gemini embedding error: {e}")
             raise
 
 class GeminiResponse:
