@@ -1101,11 +1101,15 @@ Return ONLY valid JSON in this exact format:
 Do not include any text before or after the JSON array."""
 
     try:
-        # Temporarily override token limits for quiz generation
+        # Temporarily override token limits AND formatting for quiz generation
         # Each question ~300-400 tokens, so 5 questions need ~2000 tokens minimum
         original_max_tokens = agent.max_tokens
         original_max_completion_tokens = agent.max_completion_tokens
         original_max_output_tokens = agent.max_output_tokens
+        original_formatting = agent.formatting
+        
+        # Disable agent's formatting rules to allow JSON output
+        agent.formatting = ""
         
         # Set high enough limit for multiple questions
         required_tokens = count * 400 + 200  # ~400 tokens per question + buffer
@@ -1118,10 +1122,11 @@ Do not include any text before or after the JSON array."""
             # Skip post-processing to get raw JSON output
             response = generate_reply(quiz_prompt, history=None, agent=agent, skip_post_processing=True)
         finally:
-            # Always restore original token limits
+            # Always restore original settings
             agent.max_tokens = original_max_tokens
             agent.max_completion_tokens = original_max_completion_tokens
             agent.max_output_tokens = original_max_output_tokens
+            agent.formatting = original_formatting
         
         # Try to extract JSON from the response
         # Sometimes the model includes markdown code blocks
@@ -1129,6 +1134,10 @@ Do not include any text before or after the JSON array."""
         json_end = response.rfind(']') + 1
         
         if json_start == -1 or json_end == 0:
+            print(f"[ERROR] Quiz generation failed - no JSON array found")
+            print(f"[ERROR] Response length: {len(response)}")
+            print(f"[ERROR] First 500 chars: {response[:500]}")
+            print(f"[ERROR] Last 500 chars: {response[-500:]}")
             raise ValueError("No JSON array found in response")
         
         json_str = response[json_start:json_end]
