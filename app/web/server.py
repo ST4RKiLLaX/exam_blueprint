@@ -1,10 +1,8 @@
-from flask import Flask, render_template, request, redirect, flash, url_for, jsonify
+from flask import Flask, render_template, request, redirect, flash, url_for, jsonify, g
 from flask_cors import CORS
 import os
 from werkzeug.utils import secure_filename
-from app.agents.email_agent import generate_reply
-from app.email.thread_store import load_store, get_history, add_inbound, add_outbound
-from email.utils import make_msgid
+from app.agents.agent import generate_reply
 
 from app.config.knowledge_config import (
     load_knowledge_config, add_knowledge_base, remove_knowledge_base, 
@@ -12,11 +10,7 @@ from app.config.knowledge_config import (
     save_knowledge_config, cleanup_orphaned_kb_references
 )
 from app.utils.knowledge_processor import process_knowledge_base
-from app.models.event_category import load_event_categories, add_event_category, remove_event_category
 from app.api.agent_api import AgentAPI
-from app.api.email_account_api import EmailAccountAPI
-from app.api.task_api import TaskAPI
-from app.services.task_scheduler import task_scheduler
 from app.models.chat_session import chat_session_manager
 
 app = Flask(__name__)
@@ -54,29 +48,23 @@ def allowed_file(filename):
 
 @app.route("/")
 def home():
-    # Ensure task scheduler is started
-    ensure_scheduler_started()
-    
-    # Get dynamic stats for dashboard
+    # Load agents for chat interface
+    from app.api.agent_api import AgentAPI
     from app.config.model_config import get_current_model
     from app.config.knowledge_config import load_knowledge_config
-    from app.models.event_category import load_event_categories
     
-    # Get current model
+    agents_result = AgentAPI.get_all_agents()
+    agents = agents_result.get("agents", []) if agents_result["success"] else []
+    
+    # Get stats for system overview
     current_model = get_current_model()
-    
-    # Count knowledge bases
     kb_config = load_knowledge_config()
     kb_count = len([kb for kb in kb_config.get('knowledge_bases', []) if kb.get('status') == 'active'])
     
-    # Count event categories
-    event_categories = load_event_categories()
-    event_count = len([cat for cat in event_categories if cat.is_event])
-    
-    return render_template("dashboard.html", 
+    return render_template("test.html", 
+                         agents=agents,
                          current_model=current_model,
-                         kb_count=kb_count,
-                         event_count=event_count)
+                         kb_count=kb_count)
 
 @app.route("/agents", methods=["GET", "POST"])
 def agents():
@@ -90,6 +78,81 @@ def agents():
             # Get selected knowledge bases
             selected_kbs = request.form.getlist("knowledge_bases")
             
+            # Get provider selection
+            provider = request.form.get("provider", "openai")
+            provider_model = request.form.get("provider_model", "gpt-5.2")
+            
+            # Get model parameters (with defaults)
+            model = request.form.get("model", "gpt-5.2")
+            temperature = float(request.form.get("temperature", 0.9))
+            frequency_penalty = float(request.form.get("frequency_penalty", 0.7))
+            presence_penalty = float(request.form.get("presence_penalty", 0.5))
+            max_tokens = int(request.form.get("max_tokens", 1000))
+            top_p_str = request.form.get("top_p", "")
+            top_p = float(top_p_str) if top_p_str else None
+            
+            # Get model-specific parameters
+            max_completion_tokens_str = request.form.get("max_completion_tokens", "")
+            max_completion_tokens = int(max_completion_tokens_str) if max_completion_tokens_str else None
+            
+            max_output_tokens_str = request.form.get("max_output_tokens", "")
+            max_output_tokens = int(max_output_tokens_str) if max_output_tokens_str else None
+            
+            reasoning_effort = request.form.get("reasoning_effort", "")
+            reasoning_effort = reasoning_effort if reasoning_effort else None
+            
+            verbosity = request.form.get("verbosity", "")
+            verbosity = verbosity if verbosity else None
+            
+            stop_str = request.form.get("stop", "")
+            stop = stop_str.split(",") if stop_str else None
+            
+            # Get knowledge base search parameters
+            max_knowledge_chunks_str = request.form.get("max_knowledge_chunks", "7")
+            max_knowledge_chunks = int(max_knowledge_chunks_str) if max_knowledge_chunks_str else 7
+            
+            min_similarity_threshold_str = request.form.get("min_similarity_threshold", "1.0")
+            min_similarity_threshold = float(min_similarity_threshold_str) if min_similarity_threshold_str else 1.0
+            
+            conversation_history_tokens_str = request.form.get("conversation_history_tokens", "1000")
+            conversation_history_tokens = int(conversation_history_tokens_str) if conversation_history_tokens_str else 1000
+            
+            # Get post-processing rules from form
+            post_processing_rules = {}
+            if request.form.get("trim_preamble") == "on":
+                post_processing_rules["trim_preamble"] = True
+            if request.form.get("trim_signoff") == "on":
+                post_processing_rules["trim_signoff"] = True
+            if request.form.get("remove_disclaimers") == "on":
+                post_processing_rules["remove_disclaimers"] = True
+            if request.form.get("strip_markdown") == "on":
+                post_processing_rules["strip_markdown"] = True
+            
+            enforce_format = request.form.get("enforce_format", "")
+            if enforce_format:
+                post_processing_rules["enforce_format"] = enforce_format
+            
+            validation = request.form.get("validation", "")
+            if validation:
+                post_processing_rules["validation"] = validation
+            
+            max_sentences_str = request.form.get("max_sentences", "")
+            if max_sentences_str:
+                try:
+                    post_processing_rules["max_sentences"] = int(max_sentences_str)
+                except ValueError:
+                    pass
+            
+            # Get semantic detection settings
+            enable_semantic = request.form.get("enable_semantic_detection") == "on"
+            semantic_threshold_str = request.form.get("semantic_similarity_threshold", "0.90")
+            semantic_depth_str = request.form.get("semantic_history_depth", "5")
+            
+            # Get CISSP settings
+            enable_cissp = request.form.get("enable_cissp_mode") == "on"
+            blueprint_depth_str = request.form.get("blueprint_history_depth", "8")
+            blueprint_depth = int(blueprint_depth_str) if blueprint_depth_str else 8
+            
             # Create new agent
             result = AgentAPI.create_agent(
                 name=request.form.get("name", "").strip(),
@@ -97,7 +160,29 @@ def agents():
                 style=request.form.get("style", "").strip(),
                 prompt=request.form.get("prompt", "").strip(),
                 formatting=request.form.get("formatting", "").strip(),
-                knowledge_bases=selected_kbs
+                knowledge_bases=selected_kbs,
+                provider=provider,
+                provider_model=provider_model,
+                model=model,
+                temperature=temperature,
+                frequency_penalty=frequency_penalty,
+                presence_penalty=presence_penalty,
+                max_tokens=max_tokens,
+                top_p=top_p,
+                max_completion_tokens=max_completion_tokens,
+                max_output_tokens=max_output_tokens,
+                reasoning_effort=reasoning_effort,
+                verbosity=verbosity,
+                stop=stop,
+                max_knowledge_chunks=max_knowledge_chunks,
+                min_similarity_threshold=min_similarity_threshold,
+                conversation_history_tokens=conversation_history_tokens,
+                post_processing_rules=post_processing_rules,
+                enable_semantic_detection=enable_semantic,
+                semantic_similarity_threshold=float(semantic_threshold_str) if semantic_threshold_str else 0.90,
+                semantic_history_depth=int(semantic_depth_str) if semantic_depth_str else 5,
+                enable_cissp_mode=enable_cissp,
+                blueprint_history_depth=blueprint_depth
             )
             if result["success"]:
                 flash(result["message"], "success")
@@ -108,18 +193,111 @@ def agents():
             # Get selected knowledge bases
             selected_kbs = request.form.getlist("knowledge_bases")
             
+            # Get provider selection
+            provider = request.form.get("provider", "")
+            provider_model = request.form.get("provider_model", "")
+            
+            # Get model parameters
+            model = request.form.get("model", "")
+            temperature_str = request.form.get("temperature", "")
+            frequency_penalty_str = request.form.get("frequency_penalty", "")
+            presence_penalty_str = request.form.get("presence_penalty", "")
+            max_tokens_str = request.form.get("max_tokens", "")
+            top_p_str = request.form.get("top_p", "")
+            
+            # Get model-specific parameters
+            max_completion_tokens_str = request.form.get("max_completion_tokens", "")
+            max_output_tokens_str = request.form.get("max_output_tokens", "")
+            reasoning_effort = request.form.get("reasoning_effort", "")
+            verbosity = request.form.get("verbosity", "")
+            stop_str = request.form.get("stop", "")
+            
+            # Get knowledge base search parameters
+            max_knowledge_chunks_str = request.form.get("max_knowledge_chunks", "")
+            min_similarity_threshold_str = request.form.get("min_similarity_threshold", "")
+            conversation_history_tokens_str = request.form.get("conversation_history_tokens", "")
+            
+            # Get post-processing rules from form
+            post_processing_rules = {}
+            if request.form.get("trim_preamble") == "on":
+                post_processing_rules["trim_preamble"] = True
+            if request.form.get("trim_signoff") == "on":
+                post_processing_rules["trim_signoff"] = True
+            if request.form.get("remove_disclaimers") == "on":
+                post_processing_rules["remove_disclaimers"] = True
+            if request.form.get("strip_markdown") == "on":
+                post_processing_rules["strip_markdown"] = True
+            
+            enforce_format = request.form.get("enforce_format", "")
+            if enforce_format:
+                post_processing_rules["enforce_format"] = enforce_format
+            
+            validation = request.form.get("validation", "")
+            if validation:
+                post_processing_rules["validation"] = validation
+            
+            max_sentences_str = request.form.get("max_sentences", "")
+            if max_sentences_str:
+                try:
+                    post_processing_rules["max_sentences"] = int(max_sentences_str)
+                except ValueError:
+                    pass
+            
+            # Get semantic detection settings
+            enable_semantic = request.form.get("enable_semantic_detection") == "on"
+            semantic_threshold_str = request.form.get("semantic_similarity_threshold", "")
+            semantic_depth_str = request.form.get("semantic_history_depth", "")
+            
+            # Get CISSP settings
+            enable_cissp = request.form.get("enable_cissp_mode") == "on"
+            blueprint_depth_str = request.form.get("blueprint_history_depth", "")
+            
+            # Convert to appropriate types (explicitly handle empty values as None)
+            update_params = {
+                "name": request.form.get("name", "").strip(),
+                "personality": request.form.get("personality", "").strip(),
+                "style": request.form.get("style", "").strip(),
+                "prompt": request.form.get("prompt", "").strip(),
+                "formatting": request.form.get("formatting", "").strip(),
+                "status": request.form.get("status"),
+                "knowledge_bases": selected_kbs,
+                # Provider selection
+                "provider": provider if provider else None,
+                "provider_model": provider_model if provider_model else None,
+                # Model parameters - all explicitly set to allow clearing (except model which is required)
+                "temperature": float(temperature_str) if temperature_str else None,
+                "frequency_penalty": float(frequency_penalty_str) if frequency_penalty_str else None,
+                "presence_penalty": float(presence_penalty_str) if presence_penalty_str else None,
+                "max_tokens": int(max_tokens_str) if max_tokens_str else None,
+                "top_p": float(top_p_str) if top_p_str else None,
+                # Model-specific parameters
+                "max_completion_tokens": int(max_completion_tokens_str) if max_completion_tokens_str else None,
+                "max_output_tokens": int(max_output_tokens_str) if max_output_tokens_str else None,
+                "reasoning_effort": reasoning_effort if reasoning_effort else None,
+                "verbosity": verbosity if verbosity else None,
+                "stop": stop_str.split(",") if stop_str else None,
+                # Knowledge base search parameters
+                "max_knowledge_chunks": int(max_knowledge_chunks_str) if max_knowledge_chunks_str else None,
+                "min_similarity_threshold": float(min_similarity_threshold_str) if min_similarity_threshold_str else None,
+                "conversation_history_tokens": int(conversation_history_tokens_str) if conversation_history_tokens_str else None,
+                # Post-processing rules
+                "post_processing_rules": post_processing_rules if post_processing_rules else None,
+                # Semantic detection
+                "enable_semantic_detection": enable_semantic,
+                "semantic_similarity_threshold": float(semantic_threshold_str) if semantic_threshold_str else None,
+                "semantic_history_depth": int(semantic_depth_str) if semantic_depth_str else None,
+                # CISSP settings
+                "enable_cissp_mode": enable_cissp,
+                "blueprint_history_depth": int(blueprint_depth_str) if blueprint_depth_str else None
+            }
+            
+            # Add model only if specified (required field, shouldn't be cleared)
+            if model:
+                update_params["model"] = model
+            
             # Update existing agent
             agent_id = request.form.get("agent_id")
-            result = AgentAPI.update_agent(
-                agent_id,
-                name=request.form.get("name", "").strip(),
-                personality=request.form.get("personality", "").strip(),
-                style=request.form.get("style", "").strip(),
-                prompt=request.form.get("prompt", "").strip(),
-                formatting=request.form.get("formatting", "").strip(),
-                status=request.form.get("status"),
-                knowledge_bases=selected_kbs
-            )
+            result = AgentAPI.update_agent(agent_id, **update_params)
             if result["success"]:
                 flash(result["message"], "success")
             else:
@@ -155,396 +333,6 @@ def agents():
     
     return render_template("agents.html", agents=agents_data, knowledge_bases=knowledge_bases)
 
-@app.route("/api/threads", methods=["GET"])
-def get_threads():
-    """Get all email threads"""
-    from app.email.thread_store import load_store
-    
-    store = load_store()
-    threads = store.get("threads", {})
-    
-    # Format threads for display
-    thread_list = []
-    for thread_key, thread_data in threads.items():
-        messages = thread_data.get("messages", [])
-        if messages:
-            # Get the latest message for preview
-            latest_msg = messages[-1]
-            first_msg = messages[0]
-            
-            thread_list.append({
-                "thread_key": thread_key,
-                "participant": first_msg.get("from", "Unknown"),
-                "subject": first_msg.get("subject", "No Subject"),
-                "message_count": len(messages),
-                "last_activity": latest_msg.get("content", "")[:100] + "..." if len(latest_msg.get("content", "")) > 100 else latest_msg.get("content", ""),
-                "last_role": latest_msg.get("role", "unknown")
-            })
-    
-    # Sort by message count (most active first)
-    thread_list.sort(key=lambda x: x["message_count"], reverse=True)
-    
-    return jsonify({"success": True, "threads": thread_list})
-
-@app.route("/api/threads/<thread_key>", methods=["GET"])
-def get_thread_details(thread_key):
-    """Get detailed view of a specific thread"""
-    from app.email.thread_store import load_store
-    
-    store = load_store()
-    thread = store.get("threads", {}).get(thread_key)
-    
-    if not thread:
-        return jsonify({"success": False, "error": "Thread not found"}), 404
-    
-    return jsonify({"success": True, "thread": thread})
-
-@app.route("/api/threads/<thread_key>", methods=["DELETE"])
-def delete_thread(thread_key):
-    """Delete a specific thread"""
-    from app.email.thread_store import load_store, save_store
-    
-    store = load_store()
-    threads = store.get("threads", {})
-    msg_index = store.get("message_index", {})
-    
-    if thread_key not in threads:
-        return jsonify({"success": False, "error": "Thread not found"}), 404
-    
-    # Remove thread
-    thread_data = threads.pop(thread_key)
-    
-    # Remove message IDs from index
-    for message in thread_data.get("messages", []):
-        msg_id = message.get("message_id")
-        if msg_id and msg_id in msg_index:
-            del msg_index[msg_id]
-    
-    save_store(store)
-    
-    return jsonify({"success": True, "message": "Thread deleted successfully"})
-
-@app.route("/api/threads", methods=["DELETE"])
-def clear_all_threads():
-    """Clear all email threads"""
-    from app.email.thread_store import load_store, save_store
-    
-    store = load_store()
-    thread_count = len(store.get("threads", {}))
-    
-    # Clear all threads and message index
-    store["threads"] = {}
-    store["message_index"] = {}
-    
-    save_store(store)
-    
-    return jsonify({"success": True, "message": f"Cleared {thread_count} threads successfully"})
-
-@app.route("/email_accounts", methods=["GET", "POST"])
-def email_accounts():
-    if request.method == "POST":
-        action = request.form.get("action")
-        
-        if action == "create":
-            # Create new email account
-            result = EmailAccountAPI.create_account(
-                name=request.form.get("name", "").strip(),
-                email_address=request.form.get("email_address", "").strip(),
-                imap_host=request.form.get("imap_host", "").strip(),
-                imap_port=int(request.form.get("imap_port", 993)),
-                smtp_host=request.form.get("smtp_host", "").strip(),
-                smtp_port=int(request.form.get("smtp_port", 587)),
-                username=request.form.get("username", "").strip(),
-                password=request.form.get("password", "").strip(),
-                imap_ssl="on" in request.form.getlist("imap_ssl"),
-                smtp_ssl="on" in request.form.getlist("smtp_ssl")
-            )
-            if result["success"]:
-                flash(result["message"], "success")
-            else:
-                flash(result["error"], "error")
-        
-        elif action == "update":
-            # Update existing email account
-            account_id = request.form.get("account_id")
-            result = EmailAccountAPI.update_account(
-                account_id,
-                name=request.form.get("name", "").strip(),
-                email_address=request.form.get("email_address", "").strip(),
-                imap_host=request.form.get("imap_host", "").strip(),
-                imap_port=int(request.form.get("imap_port", 993)),
-                smtp_host=request.form.get("smtp_host", "").strip(),
-                smtp_port=int(request.form.get("smtp_port", 587)),
-                username=request.form.get("username", "").strip(),
-                password=request.form.get("password", "").strip() if request.form.get("password", "").strip() else None,
-                imap_ssl="on" in request.form.getlist("imap_ssl"),
-                smtp_ssl="on" in request.form.getlist("smtp_ssl"),
-                status=request.form.get("status")
-            )
-            if result["success"]:
-                flash(result["message"], "success")
-            else:
-                flash(result["error"], "error")
-        
-        elif action == "delete":
-            # Delete email account
-            account_id = request.form.get("account_id")
-            result = EmailAccountAPI.delete_account(account_id)
-            if result["success"]:
-                flash(result["message"], "success")
-            else:
-                flash(result["error"], "error")
-        
-        elif action == "test_connection":
-            # Test email account connection
-            account_id = request.form.get("account_id")
-            result = EmailAccountAPI.test_connection(account_id)
-            if result["success"]:
-                flash(result["message"], "success")
-            else:
-                flash(f"Connection failed: {result['error']}", "error")
-        
-        return redirect(url_for('email_accounts'))
-    
-    # GET request - show email accounts
-    accounts_result = EmailAccountAPI.get_accounts_with_agent_info()
-    accounts_data = accounts_result.get("accounts", []) if accounts_result["success"] else []
-    
-    agents_result = AgentAPI.get_all_agents()
-    agents_data = agents_result.get("agents", []) if agents_result["success"] else []
-    
-    return render_template("email_accounts.html", accounts=accounts_data, agents=agents_data)
-
-@app.route("/tasks", methods=["GET", "POST"])
-def tasks():
-    if request.method == "POST":
-        action = request.form.get("action")
-        
-        if action == "create":
-            # Create new task
-            result = TaskAPI.create_task(
-                name=request.form.get("name", "").strip(),
-                task_type=request.form.get("task_type", ""),
-                description=request.form.get("description", "").strip(),
-                agent_id=request.form.get("agent_id", ""),
-                email_account_id=request.form.get("email_account_id", ""),
-                schedule_type=request.form.get("schedule_type", "minutes"),
-                schedule_interval=int(request.form.get("schedule_interval", 15)),
-                schedule_time=request.form.get("schedule_time", "").strip(),
-                business_hours_only=request.form.get("business_hours_only") == "on"
-            )
-            if result["success"]:
-                flash(result["message"], "success")
-            else:
-                flash(result["error"], "error")
-        
-        elif action == "update":
-            # Update existing task
-            task_id = request.form.get("task_id")
-            result = TaskAPI.update_task(
-                task_id,
-                name=request.form.get("name", "").strip(),
-                description=request.form.get("description", "").strip(),
-                agent_id=request.form.get("agent_id", ""),
-                email_account_id=request.form.get("email_account_id", ""),
-                schedule_type=request.form.get("schedule_type", "minutes"),
-                schedule_interval=int(request.form.get("schedule_interval", 15)),
-                schedule_time=request.form.get("schedule_time", "").strip(),
-                business_hours_only=request.form.get("business_hours_only") == "on",
-                status=request.form.get("status")
-            )
-            if result["success"]:
-                flash(result["message"], "success")
-            else:
-                flash(result["error"], "error")
-        
-        elif action == "delete":
-            # Delete task
-            task_id = request.form.get("task_id")
-            result = TaskAPI.delete_task(task_id)
-            if result["success"]:
-                flash(result["message"], "success")
-            else:
-                flash(result["error"], "error")
-        
-        elif action == "pause":
-            # Pause task
-            task_id = request.form.get("task_id")
-            result = TaskAPI.pause_task(task_id)
-            if result["success"]:
-                flash(result["message"], "success")
-            else:
-                flash(result["error"], "error")
-        
-        elif action == "resume":
-            # Resume task
-            task_id = request.form.get("task_id")
-            result = TaskAPI.resume_task(task_id)
-            if result["success"]:
-                flash(result["message"], "success")
-            else:
-                flash(result["error"], "error")
-        
-        elif action == "run_now":
-            # Run task immediately
-            task_id = request.form.get("task_id")
-            result = TaskAPI.run_task_now(task_id)
-            if result["success"]:
-                flash(f"Task executed successfully", "success")
-            else:
-                flash(f"Task execution failed: {result['error']}", "error")
-        
-        return redirect(url_for('tasks'))
-    
-    # GET request - show tasks
-    tasks_result = TaskAPI.get_all_tasks()
-    tasks_data = tasks_result.get("tasks", []) if tasks_result["success"] else []
-    
-    agents_result = AgentAPI.get_all_agents()
-    agents_data = agents_result.get("agents", []) if agents_result["success"] else []
-    
-    accounts_result = EmailAccountAPI.get_all_accounts()
-    accounts_data = accounts_result.get("accounts", []) if accounts_result["success"] else []
-    
-    task_types_result = TaskAPI.get_task_types()
-    task_types_data = task_types_result.get("task_types", []) if task_types_result["success"] else []
-    
-    schedule_types_result = TaskAPI.get_schedule_types()
-    schedule_types_data = schedule_types_result.get("schedule_types", []) if schedule_types_result["success"] else []
-    
-    return render_template("tasks.html", 
-                         tasks=tasks_data, 
-                         agents=agents_data, 
-                         accounts=accounts_data,
-                         task_types=task_types_data,
-                         schedule_types=schedule_types_data)
-
-@app.route("/test", methods=["GET", "POST"])
-def test():
-    email_input = ""
-    reply_output = ""
-    selected_thread_key = None
-    selected_agent_id = None
-    history_preview = []
-
-    # Load agents for selection
-    from app.api.agent_api import AgentAPI
-    agents_result = AgentAPI.get_all_agents()
-    agents = agents_result.get("agents", []) if agents_result["success"] else []
-
-    # Load existing threads for selection
-    store = load_store()
-    threads = []
-    for key, thread in (store.get("threads", {}) or {}).items():
-        messages = thread.get("messages", [])
-        label = key
-        if messages:
-            first = messages[0]
-            subj = first.get("subject") or ""
-            frm = first.get("from") or first.get("to") or ""
-            if subj or frm:
-                label = f"{subj} — {frm}"
-        threads.append({"key": key, "label": label})
-
-    if request.method == "POST":
-        email_input = request.form["email_body"]
-        selected_agent_id = request.form.get("test_agent")
-        use_thread = request.form.get("use_thread") == "on"
-        selected_thread_key = request.form.get("thread_key") or None
-        test_subject = (request.form.get("test_subject") or "").strip()
-        test_from = (request.form.get("test_from") or "").strip() or "test@example.com"
-
-        # Validate agent selection
-        if not selected_agent_id:
-            flash("Please select an agent to test with.", "error")
-            return render_template(
-                "test.html",
-                email_input=email_input,
-                reply_output="",
-                agents=agents,
-                selected_agent_id=selected_agent_id,
-                threads=threads,
-                selected_thread_key=selected_thread_key,
-                history_preview=history_preview,
-            )
-
-        # Get the selected agent
-        from app.models.agent import agent_manager
-        selected_agent = agent_manager.get_agent(selected_agent_id)
-        if not selected_agent:
-            flash("Selected agent not found.", "error")
-            return render_template(
-                "test.html",
-                email_input=email_input,
-                reply_output="",
-                agents=agents,
-                selected_agent_id=selected_agent_id,
-                threads=threads,
-                selected_thread_key=selected_thread_key,
-                history_preview=history_preview,
-            )
-
-        history = []
-        if use_thread:
-            # Prepare a synthetic inbound email to persist in the thread store
-            in_reply_to = None
-            references = []
-            # If an existing thread is selected, reference its latest message-id to attach
-            if selected_thread_key:
-                sel_thread = (store.get("threads", {}) or {}).get(selected_thread_key)
-                if sel_thread and sel_thread.get("messages"):
-                    last_msg = sel_thread["messages"][-1]
-                    last_mid = last_msg.get("message_id")
-                    if last_mid:
-                        in_reply_to = last_mid
-                        references = [last_mid]
-            # Fallback subject from email body
-            fallback_subject = (email_input[:60] + "…") if len(email_input) > 60 else email_input
-            email_obj = {
-                "subject": test_subject or fallback_subject or "Test Thread",
-                "from": test_from,
-                "body": email_input,
-                "message_id": make_msgid(),
-                "in_reply_to": in_reply_to,
-                "references": references,
-            }
-            # Add inbound; this computes/returns the effective thread key (existing or new)
-            thread_key = add_inbound(email_obj)
-            selected_thread_key = thread_key
-            history = get_history(thread_key, limit=10)
-            history_preview = history
-            # Generate reply with history and persist outbound to the same thread
-            reply_output = generate_reply(email_input, history=history, agent=selected_agent)
-            synthetic_sent_id = make_msgid()
-            add_outbound(thread_key, test_from, email_obj["subject"], reply_output, synthetic_sent_id, in_reply_to=email_obj.get("message_id"), references=[email_obj.get("message_id")])
-            # Reload store and threads for updated dropdown
-            store = load_store()
-            threads = []
-            for key, thread in (store.get("threads", {}) or {}).items():
-                messages = thread.get("messages", [])
-                label = key
-                if messages:
-                    first = messages[0]
-                    subj = first.get("subject") or ""
-                    frm = first.get("from") or first.get("to") or ""
-                    if subj or frm:
-                        label = f"{subj} — {frm}"
-                threads.append({"key": key, "label": label})
-        else:
-            # Generate reply with the selected agent (no history)
-            reply_output = generate_reply(email_input, history=[], agent=selected_agent)
-
-    return render_template(
-        "test.html",
-        email_input=email_input,
-        reply_output=reply_output,
-        agents=agents,
-        selected_agent_id=selected_agent_id,
-        threads=threads,
-        selected_thread_key=selected_thread_key,
-        history_preview=history_preview,
-    )
-
 
 
 
@@ -562,6 +350,13 @@ def knowledge_bases():
             access_type = request.form.get('access_type', 'shared')
             source_type = request.form.get('source_type', 'file')
             is_events = request.form.get('is_events') == 'on'  # Checkbox value
+            
+            # Get CISSP metadata
+            cissp_type = request.form.get('cissp_type', '').strip()
+            cissp_domain = request.form.get('cissp_domain', '').strip()
+            
+            # Get embedding provider
+            embedding_provider = request.form.get('embedding_provider', 'openai')
             
             if not title:
                 flash('Title is required', 'error')
@@ -585,8 +380,10 @@ def knowledge_bases():
                         access_type=access_type,
                         category=category,
                         is_events=is_events,
-                        event_category=category if is_events else None,
-                        refresh_schedule=refresh_schedule
+                        refresh_schedule=refresh_schedule,
+                        cissp_type=cissp_type if cissp_type else None,
+                        cissp_domain=cissp_domain if cissp_domain else None,
+                        embedding_provider=embedding_provider
                     )
                     
                     # Process the knowledge base
@@ -595,7 +392,8 @@ def knowledge_bases():
                     
                     # Generate AI summary if description is empty
                     generate_summary = not description.strip()
-                    success, ai_summary = process_knowledge_base(kb_id, "url", source_url, generate_summary=generate_summary)
+                    success, ai_summary = process_knowledge_base(kb_id, "url", source_url, generate_summary=generate_summary, 
+                                                                 embedding_provider=embedding_provider)
                     
                     if success:
                         update_embedding_status(kb_id, "completed")
@@ -640,8 +438,10 @@ def knowledge_bases():
                         access_type=access_type,
                         category=category,
                         is_events=is_events,
-                        event_category=category if is_events else None,
-                        refresh_schedule="manual"  # Files don't have refresh schedules
+                        refresh_schedule="manual",  # Files don't have refresh schedules
+                        cissp_type=cissp_type if cissp_type else None,
+                        cissp_domain=cissp_domain if cissp_domain else None,
+                        embedding_provider=embedding_provider
                     )
                     
                     # Process the knowledge base
@@ -650,7 +450,8 @@ def knowledge_bases():
                     
                     # Generate AI summary if description is empty
                     generate_summary = not description.strip()
-                    success, ai_summary = process_knowledge_base(kb_id, "file", upload_path, generate_summary=generate_summary)
+                    success, ai_summary = process_knowledge_base(kb_id, "file", upload_path, generate_summary=generate_summary,
+                                                                 embedding_provider=embedding_provider)
                     
                     if success:
                         update_embedding_status(kb_id, "completed")
@@ -695,7 +496,6 @@ def knowledge_bases():
                             'category': category,
                             'access_type': access_type,
                             'is_events': is_events,
-                            'event_category': category if is_events else None
                         }
                         
                         # Add refresh schedule for URL knowledge bases
@@ -787,66 +587,9 @@ def knowledge_bases():
                 else:
                     flash('Knowledge base not found', 'error')
         
-        elif action == "discover_locations":
-            # Handle location discovery for event knowledge bases
-            kb_id = request.form.get('kb_id')
-            if kb_id:
-                try:
-                    from app.utils.knowledge_processor import discover_locations_for_event_kb
-                    
-                    success = discover_locations_for_event_kb(kb_id)
-                    
-                    if success:
-                        return jsonify({
-                            "success": True,
-                            "message": "Location discovery completed! Knowledge base description updated with nearby areas."
-                        })
-                    else:
-                        return jsonify({
-                            "success": False,
-                            "error": "Failed to discover locations. Check if this is an event knowledge base with valid location data."
-                        })
-                        
-                except Exception as e:
-                    return jsonify({
-                        "success": False,
-                        "error": f"Error during location discovery: {str(e)}"
-                    })
-            else:
-                return jsonify({
-                    "success": False,
-                    "error": "Knowledge base ID not provided"
-                })
-        
-        elif action == "add_category":
-            # Handle adding new category
-            from app.models.event_category import add_event_category
-            category_name = request.form.get('category_name', '').strip()
-            category_description = request.form.get('category_description', '').strip()
-            is_event = request.form.get('is_event') == 'on'
-            
-            if not category_name:
-                flash('Category name is required', 'error')
-                return redirect(request.url)
-            
-            category_id = add_event_category(category_name, category_description, is_event)
-            event_type = "Event category" if is_event else "Category"
-            flash(f'{event_type} "{category_name}" added successfully!', 'success')
-        
-        elif action == "remove_category":
-            # Handle removing category
-            from app.models.event_category import remove_event_category
-            category_id = request.form.get('category_id')
-            if category_id:
-                if remove_event_category(category_id):
-                    flash('Category removed successfully!', 'success')
-                else:
-                    flash('Failed to remove category', 'error')
-        
         return redirect(url_for('knowledge_bases'))
     
     # GET request - show knowledge bases
-    from app.models.event_category import load_event_categories
     from app.models.agent import agent_manager
     
     # Get all knowledge bases with enhanced info
@@ -864,12 +607,20 @@ def knowledge_bases():
         
         # Count chunks if available
         chunks_count = None
-        chunks_path = os.path.join(os.path.dirname(__file__), "..", "knowledge_bases", kb_id, "chunks.pkl")
+        base_dir = os.path.join(os.path.dirname(__file__), "..", "knowledge_bases", kb_id)
+        chunks_path = os.path.join(base_dir, "chunks.pkl.gz")
+        if not os.path.exists(chunks_path):
+            chunks_path = os.path.join(base_dir, "chunks.pkl")
         if os.path.exists(chunks_path):
             try:
                 import pickle
-                with open(chunks_path, 'rb') as f:
-                    chunks = pickle.load(f)
+                import gzip
+                if chunks_path.endswith(".gz"):
+                    with gzip.open(chunks_path, 'rb') as f:
+                        chunks = pickle.load(f)
+                else:
+                    with open(chunks_path, 'rb') as f:
+                        chunks = pickle.load(f)
                     chunks_count = len(chunks)
             except:
                 pass
@@ -894,11 +645,9 @@ def knowledge_bases():
     # Sort by creation date (newest first)
     knowledge_bases.sort(key=lambda x: x['created_at'], reverse=True)
     
-    categories = load_event_categories()
     
     return render_template("knowledge_bases.html", 
-                         knowledge_bases=knowledge_bases, 
-                         categories=categories)
+                         knowledge_bases=knowledge_bases)
 
 @app.route("/knowledge", methods=["GET", "POST"])
 def knowledge():
@@ -930,11 +679,10 @@ def knowledge():
                 
                 # Check if this is an event source
                 is_events = request.form.get('is_events') == 'true'
-                event_category = request.form.get('event_category', '').strip() if is_events else None
                 
                 # Add to knowledge base configuration
                 kb_id = add_knowledge_base(title, description, "file", filepath, 
-                                         event_category=event_category, is_events=is_events)
+                                         is_events=is_events)
                 
                 # Process the knowledge base
                 update_embedding_status(kb_id, "processing")
@@ -954,19 +702,14 @@ def knowledge():
             title = request.form.get('url_title', '').strip()
             description = request.form.get('url_description', '').strip()
             is_events = request.form.get('is_events') == 'true'
-            event_category = request.form.get('event_category', '').strip() if is_events else None
             
             if not url or not title:
                 flash('URL and title are required', 'error')
                 return redirect(request.url)
             
-            if is_events and not event_category:
-                flash('Event category is required for event sources', 'error')
-                return redirect(request.url)
-            
             # Add to knowledge base configuration
             kb_id = add_knowledge_base(title, description, "url", url, 
-                                     event_category=event_category, is_events=is_events)
+                                     is_events=is_events)
             
             # For event URLs, we don't need to process embeddings
             if is_events:
@@ -994,8 +737,7 @@ def knowledge():
     
     # GET request - show knowledge bases
     knowledge_bases = get_active_knowledge_bases()
-    event_categories = load_event_categories()
-    return render_template("knowledge.html", knowledge_bases=knowledge_bases, event_categories=event_categories)
+    return render_template("knowledge.html", knowledge_bases=knowledge_bases)
 
 @app.route("/settings", methods=["GET", "POST"])
 def settings():
@@ -1042,6 +784,18 @@ def settings():
                 except Exception as e:
                     flash(f'Error updating API key: {str(e)}', 'error')
         
+        elif action == "update_gemini_key":
+            gemini_key = request.form.get("gemini_api_key", "").strip()
+            if gemini_key and gemini_key != "••••••••":
+                try:
+                    from app.config.provider_config import set_provider_api_key
+                    set_provider_api_key("gemini", gemini_key)
+                    flash('Gemini API key updated successfully!', 'success')
+                except Exception as e:
+                    flash(f'Error updating Gemini API key: {str(e)}', 'error')
+            elif not gemini_key:
+                flash('Gemini API key is required', 'error')
+        
         elif action == "test_api_key":
             api_key = request.form.get("api_key", "").strip()
             try:
@@ -1086,6 +840,11 @@ def settings():
     # Get API key information
     api_info = get_api_key_info()
     
+    # Get Gemini API key info
+    from app.config.provider_config import get_provider_api_key
+    gemini_key = get_provider_api_key("gemini")
+    gemini_key_masked = "••••••••" if gemini_key else ""
+    
     return render_template("settings.html", 
                          current_model=current_model,
                          current_temperature=current_temperature,
@@ -1093,7 +852,8 @@ def settings():
                          api_key_preview=api_info.get('preview'),
                          api_key_updated=api_info.get('last_updated'),
                          api_key_status=api_info.get('test_status'),
-                         api_key_source=api_info.get('source'))
+                         api_key_source=api_info.get('source'),
+                         gemini_key_masked=gemini_key_masked)
 
 # Chat API endpoints for chatbot functionality
 @app.route("/api/chat/session", methods=["POST"])
@@ -1149,7 +909,10 @@ def chat_with_agent(agent_id):
         if session_id:
             history = chat_session_manager.get_chat_history(session_id, limit=10)
         
-        # Generate response using existing email agent logic
+        # Set thread_id in request context for semantic cache
+        g.thread_id = session_id if session_id else 'default'
+        
+        # Generate response using existing agent logic
         response = generate_reply(message, history=history, agent=agent)
         
         # Store the conversation if session exists
@@ -1220,63 +983,6 @@ def embed_code_generator(agent_id):
     except Exception as e:
         return str(e), 500
 
-# Initialize task scheduler when module is imported
-# This ensures it starts regardless of how the Flask app is run
-import atexit
-import os
-
-def start_scheduler():
-    """Start the task scheduler if not already running"""
-    # Only start scheduler in the main process (not in Flask's reloader process)
-    # In debug mode, only start in the reloaded process (WERKZEUG_RUN_MAIN=true)
-    should_start = (
-        not app.debug or  # Always start in production
-        os.environ.get('WERKZEUG_RUN_MAIN') == 'true'  # Only in main process in debug mode
-    )
-    
-    if should_start and not task_scheduler.running:
-        task_scheduler.start()
-        print("🚀 Task scheduler started - automated tasks are now running!")
-        return True
-    return False
-
-def stop_scheduler():
-    """Stop the task scheduler"""
-    if task_scheduler.running:
-        task_scheduler.stop()
-        print("✅ Task scheduler stopped")
-
-# Register cleanup function
-atexit.register(stop_scheduler)
-
-# Initialize scheduler after app setup
-# Use a flag to ensure it only starts once
-_scheduler_initialized = False
-
-def ensure_scheduler_started():
-    """Ensure the task scheduler is started (call this from routes)"""
-    global _scheduler_initialized
-    if not _scheduler_initialized:
-        start_scheduler()
-        _scheduler_initialized = True
-
-# Start scheduler immediately when not in debug mode
-if not app.debug:
-    start_scheduler()
-    _scheduler_initialized = True
-
-@app.route("/api/scheduler/status")
-def scheduler_status():
-    """Get scheduler status for debugging"""
-    return jsonify({
-        "running": task_scheduler.running,
-        "thread_alive": task_scheduler.thread.is_alive() if task_scheduler.thread else False,
-        "check_interval": task_scheduler.check_interval,
-        "werkzeug_run_main": os.environ.get('WERKZEUG_RUN_MAIN'),
-        "debug_mode": app.debug
-    })
-
-
 if __name__ == "__main__":
     try:
         # Use environment variables or default to 0.0.0.0 for network access
@@ -1286,4 +992,3 @@ if __name__ == "__main__":
         app.run(debug=debug, host=host, port=port)
     except KeyboardInterrupt:
         print("\n⏹️ Shutting down...")
-        stop_scheduler()

@@ -84,24 +84,3 @@ def secure_search_agent_knowledge_bases(query, agent, top_k=3):
     
     return all_results
 
-def secure_search_location_filtered_knowledge_bases(query, agent, filtered_kb_ids, top_k=3):
-    """
-    SECURE SEARCH: Implicit deny - agents can ONLY access their assigned knowledge bases.
-    Location filtering only applies within authorized KBs.
-    """
-    if not agent:
-        print("🚫 SECURITY: No agent specified - denying all knowledge base access")
-        return []
-    
-    # STRICT: Only agent-assigned knowledge bases, filtered by location
-    knowledge_bases = secure_knowledge_base_access(agent, filtered_kb_ids)
-    
-    from app.utils.knowledge_processor import search_knowledge_base
-    
-    all_results = []
-    for kb in knowledge_bases:
-        kb_results = search_knowledge_base(kb["id"], query, top_k)
-        if kb_results:
-            all_results.extend(kb_results)
-    
-    return all_results

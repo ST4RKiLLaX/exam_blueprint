@@ -1,6 +1,6 @@
 {
-  "chat_model": "gpt-4-turbo",
+  "chat_model": "gpt-5.2",
   "temperature": 0.5,
   "max_tokens": 1000,
-  "updated_at": "2025-08-30T17:19:08.674904"
+  "updated_at": "2026-01-19T14:00:52.486772"
 }

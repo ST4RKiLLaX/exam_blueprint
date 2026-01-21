@@ -1,12 +1,12 @@
+tiktoken
 openai
+google-genai
 python-docx
 beautifulsoup4
 requests
 faiss-cpu
 tqdm
-email-validator
 python-dotenv
-imap-tools
 flask
 flask-cors
 jinja2

@@ -8,7 +8,7 @@
         <div class="flex items-center justify-between mb-6">
             <div>
                 <h1 class="text-2xl font-bold text-gray-900">System Settings</h1>
-                <p class="text-gray-600 mt-1">Configure AI models, pricing, and system preferences</p>
+                <p class="text-gray-600 mt-1">Configure API keys and system maintenance</p>
             </div>
         </div>
 
@@ -22,103 +22,10 @@
             {% endif %}
         {% endwith %}
 
-        <!-- AI Model Configuration -->
-        <div class="mb-8">
-            <h2 class="text-xl font-semibold text-gray-900 mb-4">🤖 AI Model Configuration</h2>
-            
-            <form method="POST" class="space-y-6">
-                <input type="hidden" name="action" value="update_model">
-                
-                <div class="bg-gray-50 rounded-lg p-6">
-                    <label for="chat_model" class="block text-sm font-medium text-gray-700 mb-3">
-                        Chat Model Selection
-                    </label>
-                    
-                    <select id="chat_model" name="chat_model" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                        <option value="gpt-5" {% if current_model == 'gpt-5' %}selected{% endif %}>
-                            GPT-5 - Latest & Most Advanced ($0.10/1K tokens) 🚀
-                        </option>
-                        <option value="gpt-4o" {% if current_model == 'gpt-4o' %}selected{% endif %}>
-                            GPT-4o - High Performance ($0.05/1K tokens) ⚡
-                        </option>
-                        <option value="gpt-4-turbo" {% if current_model == 'gpt-4-turbo' %}selected{% endif %}>
-                            GPT-4 Turbo - Fast & Efficient ($0.03/1K tokens) 💨
-                        </option>
-                        <option value="gpt-4" {% if current_model == 'gpt-4' %}selected{% endif %}>
-                            GPT-4 - Reliable Standard ($0.06/1K tokens) 🔧
-                        </option>
-                        <option value="gpt-3.5-turbo" {% if current_model == 'gpt-3.5-turbo' %}selected{% endif %}>
-                            GPT-3.5 Turbo - Cost Effective ($0.002/1K tokens) 💰
-                        </option>
-                    </select>
-                    
-                    <div class="mt-4 p-4 bg-blue-50 rounded-lg">
-                        <h4 class="font-medium text-blue-900 mb-2">💡 Model Comparison</h4>
-                        <div class="text-sm text-blue-800 space-y-1">
-                            <div><strong>GPT-5:</strong> Latest model with PhD-level expertise, best reasoning</div>
-                            <div><strong>GPT-4o:</strong> Optimized for speed and performance, multimodal</div>
-                            <div><strong>GPT-4 Turbo:</strong> Faster responses, good balance of cost/performance</div>
-                            <div><strong>GPT-4:</strong> Original GPT-4, very reliable for complex tasks</div>
-                            <div><strong>GPT-3.5 Turbo:</strong> Most cost-effective, good for simple tasks</div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Cost Estimation -->
-                <div class="bg-yellow-50 rounded-lg p-6">
-                    <h4 class="font-medium text-yellow-900 mb-3">📊 Estimated Monthly Costs</h4>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                        <div class="bg-white p-3 rounded border">
-                            <div class="font-medium text-gray-900">Light Usage</div>
-                            <div class="text-gray-600">~100 emails/month</div>
-                            <div class="text-lg font-bold text-green-600" id="light-cost">$2-15</div>
-                        </div>
-                        <div class="bg-white p-3 rounded border">
-                            <div class="font-medium text-gray-900">Medium Usage</div>
-                            <div class="text-gray-600">~500 emails/month</div>
-                            <div class="text-lg font-bold text-blue-600" id="medium-cost">$10-75</div>
-                        </div>
-                        <div class="bg-white p-3 rounded border">
-                            <div class="font-medium text-gray-900">Heavy Usage</div>
-                            <div class="text-gray-600">~2000 emails/month</div>
-                            <div class="text-lg font-bold text-orange-600" id="heavy-cost">$40-300</div>
-                        </div>
-                    </div>
-                    <p class="text-xs text-yellow-700 mt-2">
-                        *Estimates based on average email length. Actual costs may vary based on email complexity and knowledge base usage.
-                    </p>
-                </div>
-
-                <!-- Temperature Setting -->
-                <div>
-                    <label for="temperature" class="block text-sm font-medium text-gray-700 mb-2">
-                        Response Creativity (Temperature)
-                    </label>
-                    <div class="flex items-center space-x-4">
-                        <span class="text-sm text-gray-500">Conservative</span>
-                        <input type="range" id="temperature" name="temperature" min="0" max="1" step="0.1" 
-                               value="{{ current_temperature or 0.5 }}" 
-                               class="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
-                        <span class="text-sm text-gray-500">Creative</span>
-                        <span id="temp-value" class="text-sm font-medium text-gray-900 min-w-[3rem]">{{ current_temperature or 0.5 }}</span>
-                    </div>
-                    <p class="text-xs text-gray-500 mt-1">
-                        Lower values = more consistent, higher values = more creative responses
-                    </p>
-                </div>
-
-                <div class="flex justify-end">
-                    <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-                        💾 Save Settings
-                    </button>
-                </div>
-            </form>
-        </div>
-
         <!-- Current Usage Stats -->
         <div class="border-t pt-6">
             <h2 class="text-xl font-semibold text-gray-900 mb-4">📈 Usage Statistics</h2>
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div class="bg-blue-50 p-4 rounded-lg">
                     <div class="text-2xl font-bold text-blue-600">{{ stats.total_emails or 0 }}</div>
                     <div class="text-sm text-blue-800">Emails Processed</div>
@@ -130,10 +37,6 @@
                 <div class="bg-purple-50 p-4 rounded-lg">
                     <div class="text-2xl font-bold text-purple-600">{{ stats.knowledge_bases or 0 }}</div>
                     <div class="text-sm text-purple-800">Knowledge Bases</div>
-                </div>
-                <div class="bg-orange-50 p-4 rounded-lg">
-                    <div class="text-2xl font-bold text-orange-600">{{ current_model or 'gpt-5' }}</div>
-                    <div class="text-sm text-orange-800">Current Model</div>
                 </div>
             </div>
         </div>
@@ -159,14 +62,19 @@
         <!-- API Key Management -->
         <div class="border-t pt-6 mt-6">
             <h2 class="text-xl font-semibold text-gray-900 mb-4">🔑 API Key Management</h2>
+            <p class="text-gray-600 mb-6">Configure API keys for different AI providers</p>
             
-            <!-- Current API Key Status -->
-            <div class="bg-gray-50 p-4 rounded-lg mb-4">
-                <div class="flex items-center justify-between mb-3">
-                    <div>
-                        <h4 class="font-medium text-gray-900">OpenAI API Key Status</h4>
-                        <p class="text-sm text-gray-600">Current API key configuration and connection status</p>
-                    </div>
+            <!-- OpenAI API Key Section -->
+            <div class="mb-8">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">OpenAI</h3>
+                
+                <!-- Current API Key Status -->
+                <div class="bg-gray-50 p-4 rounded-lg mb-4">
+                    <div class="flex items-center justify-between mb-3">
+                        <div>
+                            <h4 class="font-medium text-gray-900">API Key Status</h4>
+                            <p class="text-sm text-gray-600">Current API key configuration and connection status</p>
+                        </div>
                     <span id="api-status" class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium 
                         {% if api_key_status == 'valid' %}bg-green-100 text-green-800{% elif api_key_status == 'invalid' %}bg-red-100 text-red-800{% else %}bg-gray-100 text-gray-800{% endif %}">
                         {% if api_key_status == 'valid' %}✅ Valid{% elif api_key_status == 'invalid' %}❌ Invalid{% else %}❓ Unknown{% endif %}
@@ -254,34 +162,52 @@
                     </a>
                 </div>
             </div>
+            </div>
+            
+            <!-- Google Gemini API Key Section -->
+            <div class="mb-8">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">Google Gemini</h3>
+                
+                <!-- Update API Key Form -->
+                <div class="bg-purple-50 p-4 rounded-lg">
+                    <h4 class="font-medium text-purple-900 mb-3">Configure Gemini API Key</h4>
+                    <form method="POST" class="space-y-4">
+                        <input type="hidden" name="action" value="update_gemini_key">
+                        
+                        <div>
+                            <label for="gemini_api_key" class="block text-sm font-medium text-gray-700 mb-2">
+                                Gemini API Key
+                            </label>
+                            <div class="relative">
+                                <input type="password" id="gemini_api_key" name="gemini_api_key" 
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 font-mono text-sm"
+                                       placeholder="AIzaSy..." 
+                                       value="{{gemini_key_masked}}"
+                                       autocomplete="new-password">
+                                <button type="button" onclick="toggleGeminiKeyVisibility()" 
+                                        class="absolute right-3 top-2 text-gray-400 hover:text-gray-600">
+                                    <span id="gemini-eye-icon">👁️</span>
+                                </button>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-1">
+                                Your API key will be securely stored. Get your key from 
+                                <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-purple-600 hover:text-purple-800">Google AI Studio</a>
+                            </p>
+                        </div>
+
+                        <div class="flex items-center space-x-3">
+                            <button type="submit" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
+                                🔐 Update Gemini API Key
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
         </div>
     </div>
 </div>
 
 <script>
-// Update temperature display
-document.getElementById('temperature').addEventListener('input', function() {
-    document.getElementById('temp-value').textContent = this.value;
-});
-
-// Update cost estimates based on model selection
-document.getElementById('chat_model').addEventListener('change', function() {
-    const model = this.value;
-    const costs = {
-        'gpt-5': { light: '$15', medium: '$75', heavy: '$300' },
-        'gpt-4o': { light: '$7', medium: '$35', heavy: '$150' },
-        'gpt-4-turbo': { light: '$5', medium: '$25', heavy: '$100' },
-        'gpt-4': { light: '$9', medium: '$45', heavy: '$180' },
-        'gpt-3.5-turbo': { light: '$2', medium: '$10', heavy: '$40' }
-    };
-    
-    if (costs[model]) {
-        document.getElementById('light-cost').textContent = costs[model].light;
-        document.getElementById('medium-cost').textContent = costs[model].medium;
-        document.getElementById('heavy-cost').textContent = costs[model].heavy;
-    }
-});
-
 // API Key Management Functions
 function toggleApiKeyVisibility() {
     const input = document.getElementById('api_key');
@@ -378,6 +304,20 @@ async function updateAndTestApiKey(event) {
 // API Key Delete Confirmation
 function confirmDeleteApiKey() {
     return confirm('⚠️ Are you sure you want to delete the API key?\n\nThis will prevent the application from making API calls until a new key is configured.\n\nThis action cannot be undone.');
+}
+
+// Gemini Key Management Functions
+function toggleGeminiKeyVisibility() {
+    const input = document.getElementById('gemini_api_key');
+    const eyeIcon = document.getElementById('gemini-eye-icon');
+    
+    if (input.type === 'password') {
+        input.type = 'text';
+        eyeIcon.textContent = '🙈';
+    } else {
+        input.type = 'password';
+        eyeIcon.textContent = '👁️';
+    }
 }
 </script>
 {% endblock %}

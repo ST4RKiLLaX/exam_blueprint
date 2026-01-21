@@ -1,183 +1,34 @@
 {% extends "base.html" %}
 
-{% block title %}Test & Chat with Agents{% endblock %}
+{% block title %}Generate Questions{% endblock %}
 
 {% block content %}
 <div class="max-w-6xl mx-auto space-y-8">
     <!-- Header -->
     <div class="text-center">
-        <h1 class="text-3xl font-bold text-gray-900 mb-2">🧪 Test & Chat with Agents</h1>
-        <p class="text-gray-600">Test your AI agents with email scenarios or chat with them in real-time</p>
+        <h1 class="text-3xl font-bold text-gray-900 mb-2">❓ Generate Questions</h1>
+        <p class="text-gray-600">AI-powered question generation from your knowledge bases</p>
     </div>
 
-    <!-- Tab Navigation -->
-    <div class="flex space-x-1 bg-gray-100 p-1 rounded-lg max-w-md mx-auto">
-        <button onclick="showTab('email')" id="email-tab" class="tab-button flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors bg-white text-blue-600 shadow-sm">
-            ✉️ Email Testing
-        </button>
-        <button onclick="showTab('chat')" id="chat-tab" class="tab-button flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors text-gray-600 hover:text-gray-900">
-            💬 Live Chat
-        </button>
-    </div>
-
-    <!-- Email Testing Section -->
-    <div id="email-section">
-        <!-- Test Form -->
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h3 class="text-lg font-semibold text-gray-900 mb-4">✉️ Test Agent Reply</h3>
-            
-            <form method="POST" class="space-y-4">
-                <!-- Agent Selection -->
-                <div>
-                    <label for="test_agent" class="block text-sm font-medium text-gray-700 mb-2">Select Agent</label>
-                    <select id="test_agent" name="test_agent" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                        <option value="">-- Choose an agent --</option>
-                        {% for agent in agents %}
-                        <option value="{{ agent.agent_id }}" {% if agent.agent_id == selected_agent_id %}selected{% endif %}>
-                            {{ agent.name }} ({{ agent.knowledge_bases|length }} KBs)
-                        </option>
-                        {% endfor %}
-                    </select>
-                </div>
-
-                <!-- Thread Selection -->
-                <div>
-                    <label class="flex items-center space-x-2">
-                        <input type="checkbox" id="use_thread" name="use_thread" onchange="toggleThreadSelect(this)" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
-                        <span class="text-sm font-medium text-gray-700">Use existing thread context</span>
-                    </label>
-                </div>
-
-                <div id="thread_select_container" class="hidden">
-                    <label for="thread_key" class="block text-sm font-medium text-gray-700 mb-2">Select Thread</label>
-                    <select id="thread_key" name="thread_key" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                        <option value="">-- Choose a thread --</option>
-                        {% for thread in threads %}
-                        <option value="{{ thread.key }}" {% if thread.key == selected_thread_key %}selected{% endif %}>
-                            {{ thread.label }}
-                        </option>
-                        {% endfor %}
-                    </select>
-                </div>
-
-                <!-- Email Input -->
-                <div>
-                    <label for="email_body" class="block text-sm font-medium text-gray-700 mb-2">Email Content</label>
-                    <textarea id="email_body" name="email_body" rows="6" required 
-                              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                              placeholder="Enter the email content you want to test...">{{ email_input }}</textarea>
-                </div>
-
-                <!-- Optional Fields -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label for="test_subject" class="block text-sm font-medium text-gray-700 mb-2">Subject (optional)</label>
-                        <input type="text" id="test_subject" name="test_subject" 
-                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                               placeholder="Email subject">
-                    </div>
-                    <div>
-                        <label for="test_from" class="block text-sm font-medium text-gray-700 mb-2">From (optional)</label>
-                        <input type="text" id="test_from" name="test_from" 
-                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                               placeholder="sender@example.com">
-                    </div>
-                </div>
-
-                <!-- Submit Button -->
-                <div class="flex justify-end">
-                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors">
-                        🚀 Generate Reply
-                    </button>
-                </div>
-            </form>
-
-            <!-- Reply Output -->
-            {% if reply_output %}
-            <div class="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-                <h4 class="font-medium text-green-900 mb-2">🤖 Agent Reply:</h4>
-                <div class="text-green-800 whitespace-pre-wrap">{{ reply_output }}</div>
+    <!-- Guidance Banner -->
+    <div class="bg-blue-50 border border-blue-200 rounded-xl p-4">
+        <div class="flex items-start space-x-3">
+            <div class="flex-shrink-0">
+                <svg class="w-5 h-5 text-blue-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
             </div>
-            {% endif %}
-
-            <!-- Thread History Preview -->
-            {% if history_preview %}
-            <div class="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <h4 class="font-medium text-blue-900 mb-2">📚 Thread History:</h4>
-                <div class="space-y-2 text-sm">
-                    {% for msg in history_preview %}
-                    <div class="flex space-x-2">
-                        <span class="font-medium text-blue-800">{{ msg.role }}:</span>
-                        <span class="text-blue-700">{{ msg.content[:100] }}{% if msg.content|length > 100 %}...{% endif %}</span>
-                    </div>
-                    {% endfor %}
-                </div>
-            </div>
-            {% endif %}
-        </div>
-
-        <!-- Sample Emails -->
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h4 class="text-lg font-semibold text-gray-900 mb-4">💡 Sample Emails to Test</h4>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div class="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                    <h4 class="font-medium text-blue-900 mb-2">Course Information</h4>
-                    <p class="text-sm text-blue-700 mb-3">
-                        "I'm interested in your CNA training program. Can you tell me about the course schedule, cost, and requirements?"
-                    </p>
-                    <button 
-                        onclick="document.getElementById('email_body').value='I\\'m interested in your CNA training program. Can you tell me about the course schedule, cost, and requirements?'"
-                        class="text-xs text-blue-600 hover:text-blue-700 font-medium"
-                    >
-                        Use this sample
-                    </button>
-                </div>
-                
-                <div class="p-4 bg-green-50 rounded-lg border border-green-200">
-                    <h4 class="font-medium text-green-900 mb-2">Registration Process</h4>
-                    <p class="text-sm text-green-700 mb-3">
-                        "How do I register for the CNA program? What documents do I need and what's the deadline?"
-                    </p>
-                    <button 
-                        onclick="document.getElementById('email_body').value='How do I register for the CNA program? What documents do I need and what\\'s the deadline?'"
-                        class="text-xs text-green-600 hover:text-green-700 font-medium"
-                    >
-                        Use this sample
-                    </button>
-                </div>
-                
-                <div class="p-4 bg-purple-50 rounded-lg border border-purple-200">
-                    <h4 class="font-medium text-purple-900 mb-2">Eligibility Question</h4>
-                    <p class="text-sm text-purple-700 mb-3">
-                        "I don't have a high school diploma. Am I still eligible for the CNA training program?"
-                    </p>
-                    <button 
-                        onclick="document.getElementById('email_body').value='I don\\'t have a high school diploma. Am I still eligible for the CNA training program?'"
-                        class="text-xs text-purple-600 hover:text-purple-700 font-medium"
-                    >
-                        Use this sample
-                    </button>
-                </div>
-                
-                <div class="p-4 bg-orange-50 rounded-lg border border-orange-200">
-                    <h4 class="font-medium text-orange-900 mb-2">Refund Request</h4>
-                    <p class="text-sm text-orange-700 mb-3">
-                        "I need to request a refund for my course. What's the process and who should I contact?"
-                    </p>
-                    <button 
-                        onclick="document.getElementById('email_body').value='I need to request a refund for my course. What\\'s the process and who should I contact?'"
-                        class="text-xs text-orange-600 hover:text-orange-700 font-medium"
-                    >
-                        Use this sample
-                    </button>
-                </div>
+            <div class="flex-1">
+                <p class="text-sm text-blue-800">
+                    <strong>How it works:</strong> Your agent uses its assigned knowledge bases to generate relevant questions based on your prompt.
+                </p>
             </div>
         </div>
     </div>
 
     <!-- Live Chat Interface -->
-    <div id="chat-section" class="hidden bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <h3 class="text-lg font-semibold text-gray-900 mb-4">💬 Live Chat with Agent</h3>
+    <div id="chat-section" class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">❓ Question Generator</h3>
         
         <!-- Agent Selection for Chat -->
         <div class="mb-6">
@@ -196,21 +47,23 @@
         <div class="border border-gray-200 rounded-lg bg-gray-50">
             <!-- Chat Messages -->
             <div id="chat-messages" class="h-96 overflow-y-auto p-4 space-y-4">
-                <div class="text-center text-gray-500 text-sm">
-                    Select an agent and start chatting below
+                <div class="text-center text-gray-500 text-sm py-8">
+                    <div class="mb-2">👆 Select an agent</div>
+                    <div class="text-xs">Then enter a prompt to generate questions</div>
                 </div>
             </div>
             
             <!-- Chat Input -->
             <div class="border-t border-gray-200 p-4 bg-white">
-                <div class="flex space-x-3">
-                    <input 
-                        type="text" 
+                <div class="flex space-x-3 items-end">
+                    <textarea 
                         id="chat-input" 
-                        placeholder="Type your message..." 
-                        class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        onkeypress="handleChatKeyPress(event)"
-                    >
+                        placeholder="Enter your prompt to generate questions... (Shift+Enter for new line, Enter to send)" 
+                        class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none overflow-hidden"
+                        rows="1"
+                        onkeydown="handleChatKeyPress(event)"
+                        oninput="autoResizeInput(this)"
+                    ></textarea>
                     <button 
                         onclick="sendChatMessage()" 
                         id="chat-send-btn"
@@ -231,39 +84,6 @@
 </div>
 
 <script>
-    // Tab functionality
-    function showTab(tabName) {
-        // Hide all sections
-        document.getElementById('email-section').classList.add('hidden');
-        document.getElementById('chat-section').classList.add('hidden');
-        
-        // Remove active state from all tabs
-        document.querySelectorAll('.tab-button').forEach(btn => {
-            btn.classList.remove('bg-white', 'text-blue-600', 'shadow-sm');
-            btn.classList.add('text-gray-600', 'hover:text-gray-900');
-        });
-        
-        // Show selected section and activate tab
-        if (tabName === 'email') {
-            document.getElementById('email-section').classList.remove('hidden');
-            document.getElementById('email-tab').classList.add('bg-white', 'text-blue-600', 'shadow-sm');
-            document.getElementById('email-tab').classList.remove('text-gray-600', 'hover:text-gray-900');
-        } else if (tabName === 'chat') {
-            document.getElementById('chat-section').classList.remove('hidden');
-            document.getElementById('chat-tab').classList.add('bg-white', 'text-blue-600', 'shadow-sm');
-            document.getElementById('chat-tab').classList.remove('text-gray-600', 'hover:text-gray-900');
-        }
-    }
-
-    function toggleThreadSelect(cb) {
-        var container = document.getElementById('thread_select_container');
-        if (cb.checked) {
-            container.classList.remove('hidden');
-        } else {
-            container.classList.add('hidden');
-        }
-    }
-
     // Chat functionality
     let chatSessionId = null;
     let currentAgentId = null;
@@ -288,8 +108,26 @@
     }
 
     function handleChatKeyPress(event) {
-        if (event.key === 'Enter') {
+        // Enter without Shift = send message
+        // Shift+Enter = new line
+        if (event.key === 'Enter' && !event.shiftKey) {
+            event.preventDefault();
             sendChatMessage();
+        }
+    }
+
+    function autoResizeInput(textarea) {
+        // Reset height to auto to get the correct scrollHeight
+        textarea.style.height = 'auto';
+        // Set height to scrollHeight, with a max of 200px
+        const newHeight = Math.min(textarea.scrollHeight, 200);
+        textarea.style.height = newHeight + 'px';
+        
+        // If content exceeds max height, show scrollbar
+        if (textarea.scrollHeight > 200) {
+            textarea.style.overflowY = 'auto';
+        } else {
+            textarea.style.overflowY = 'hidden';
         }
     }
 
@@ -314,6 +152,13 @@
         addChatMessage('user', message);
         input.value = '';
         
+        // Reset textarea height
+        input.style.height = 'auto';
+        
+        // Show thinking indicator
+        showThinkingIndicator();
+        updateChatStatus('Processing...');
+        
         try {
             // Initialize session if needed
             if (!chatSessionId || currentAgentId !== agentSelect.value) {
@@ -335,6 +180,9 @@
             
             const data = await response.json();
             
+            // Remove thinking indicator
+            removeThinkingIndicator();
+            
             if (data.success) {
                 addChatMessage('assistant', data.response);
                 updateChatStatus(`Chatting with ${data.agent_name}`);
@@ -343,6 +191,8 @@
                 updateChatStatus('Error occurred');
             }
         } catch (error) {
+            // Remove thinking indicator on error
+            removeThinkingIndicator();
             addChatMessage('error', 'Sorry, I encountered an error. Please try again.');
             updateChatStatus('Connection error');
             console.error('Chat error:', error);
@@ -382,25 +232,127 @@
 
     function addChatMessage(role, content) {
         const messagesDiv = document.getElementById('chat-messages');
+        const wrapper = document.createElement('div');
+        wrapper.className = 'flex';
+
+        const messageContainer = document.createElement('div');
+        messageContainer.className = 'relative group';
+        
         const messageDiv = document.createElement('div');
         
-        let bgColor, textColor, alignment;
+        let bgColor, wrapperAlignment, copyBtnClass;
         if (role === 'user') {
-            bgColor = 'bg-blue-600 text-white ml-auto';
-            alignment = 'text-right';
+            bgColor = 'bg-blue-600 text-white';
+            wrapperAlignment = 'justify-end';
+            copyBtnClass = 'absolute top-2 right-2 p-1.5 text-blue-200 hover:text-white hover:bg-blue-500 rounded transition-colors opacity-0 group-hover:opacity-100';
         } else if (role === 'assistant') {
             bgColor = 'bg-white text-gray-800 border border-gray-200';
-            alignment = 'text-left';
+            wrapperAlignment = 'justify-start';
+            copyBtnClass = 'absolute top-2 right-2 p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors opacity-0 group-hover:opacity-100';
         } else {
             bgColor = 'bg-red-100 text-red-800 border border-red-200';
-            alignment = 'text-left';
+            wrapperAlignment = 'justify-start';
+            copyBtnClass = '';
         }
         
-        messageDiv.className = `max-w-xs ${bgColor} rounded-lg px-3 py-2 ${alignment}`;
+        wrapper.classList.add(wrapperAlignment);
+        messageDiv.className = `${bgColor} rounded-lg px-3 py-2 whitespace-pre-wrap break-words max-w-full md:max-w-3xl`;
         messageDiv.innerHTML = content.replace(/\n/g, '<br>');
         
-        messagesDiv.appendChild(messageDiv);
+        // Add copy button for user and assistant messages
+        if (role === 'user' || role === 'assistant') {
+            const copyBtn = document.createElement('button');
+            copyBtn.className = copyBtnClass;
+            copyBtn.innerHTML = `
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                </svg>
+            `;
+            copyBtn.title = role === 'user' ? 'Copy question' : 'Copy response';
+            copyBtn.onclick = (e) => {
+                e.stopPropagation();
+                copyToClipboard(content, copyBtn, role);
+            };
+            messageContainer.appendChild(copyBtn);
+        }
+        
+        messageContainer.appendChild(messageDiv);
+        wrapper.appendChild(messageContainer);
+        messagesDiv.appendChild(wrapper);
         messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+
+    function copyToClipboard(text, button, role) {
+        navigator.clipboard.writeText(text).then(() => {
+            // Visual feedback
+            const originalHTML = button.innerHTML;
+            const originalTitle = button.title;
+            button.innerHTML = `
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+            `;
+            
+            // Different styles for user vs assistant messages
+            if (role === 'user') {
+                button.classList.remove('text-blue-200', 'hover:text-white', 'hover:bg-blue-500');
+                button.classList.add('text-white', 'bg-blue-500');
+            } else {
+                button.classList.remove('text-gray-400', 'hover:text-gray-600', 'hover:bg-gray-100');
+                button.classList.add('text-green-600', 'bg-green-50');
+            }
+            
+            button.title = 'Copied!';
+            
+            setTimeout(() => {
+                button.innerHTML = originalHTML;
+                
+                // Restore original styles
+                if (role === 'user') {
+                    button.classList.remove('text-white', 'bg-blue-500');
+                    button.classList.add('text-blue-200', 'hover:text-white', 'hover:bg-blue-500');
+                } else {
+                    button.classList.remove('text-green-600', 'bg-green-50');
+                    button.classList.add('text-gray-400', 'hover:text-gray-600', 'hover:bg-gray-100');
+                }
+                
+                button.title = originalTitle;
+            }, 2000);
+        }).catch(err => {
+            console.error('Failed to copy text:', err);
+            alert('Failed to copy to clipboard');
+        });
+    }
+
+    function showThinkingIndicator() {
+        const messagesDiv = document.getElementById('chat-messages');
+        const wrapper = document.createElement('div');
+        wrapper.className = 'flex justify-start';
+        wrapper.id = 'thinking-indicator';
+        
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'bg-gray-100 text-gray-600 border border-gray-200 rounded-lg px-4 py-3 max-w-full md:max-w-3xl';
+        messageDiv.innerHTML = `
+            <div class="flex items-center space-x-2">
+                <div class="flex space-x-1">
+                    <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0ms"></div>
+                    <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 150ms"></div>
+                    <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 300ms"></div>
+                </div>
+                <span class="text-sm italic">Thinking...</span>
+            </div>
+        `;
+        
+        wrapper.appendChild(messageDiv);
+        messagesDiv.appendChild(wrapper);
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+
+    function removeThinkingIndicator() {
+        const thinkingIndicator = document.getElementById('thinking-indicator');
+        if (thinkingIndicator) {
+            thinkingIndicator.remove();
+        }
     }
 
     function updateChatStatus(status) {
@@ -413,18 +365,22 @@
 
     // Initialize on page load
     (function() {
-        const useThread = document.getElementById('use_thread');
-        const threadKey = '{{ selected_thread_key or '' }}';
-        if (threadKey) {
-            useThread.checked = true;
-            toggleThreadSelect(useThread);
-        }
-        
         // Debug: Check what agents are loaded
         console.log('Agents loaded:', {{ agents|tojson }});
-        
-        // Show email tab by default
-        showTab('email');
     })();
 </script>
+
+<!-- System Overview -->
+<div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mt-8">
+    <h2 class="text-xl font-semibold text-gray-900 mb-4">System Overview</h2>
+    <div class="grid grid-cols-1 md:grid-cols-1 gap-6">
+        <div class="text-center">
+            <div class="text-3xl font-bold text-blue-600">{{ kb_count }}</div>
+            <div class="text-sm text-gray-500">Knowledge Bases</div>
+        </div>
+    </div>
+    <div class="mt-4 text-center text-sm text-gray-500">
+        <p>Model parameters are now configured per-agent in the Agents section</p>
+    </div>
+</div>
 {% endblock %}

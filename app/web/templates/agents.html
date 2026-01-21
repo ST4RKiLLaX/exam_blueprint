@@ -111,6 +111,18 @@
                         class="tab-button border-b-2 py-4 px-1 text-sm font-medium text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300">
                     📚 Knowledge Bases
                 </button>
+                <button type="button" 
+                        onclick="switchTab('create', 'parameters')" 
+                        id="create-tab-parameters"
+                        class="tab-button border-b-2 py-4 px-1 text-sm font-medium text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300">
+                    ⚙️ Model Parameters
+                </button>
+                <button type="button" 
+                        onclick="switchTab('create', 'postprocessing')" 
+                        id="create-tab-postprocessing"
+                        class="tab-button border-b-2 py-4 px-1 text-sm font-medium text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300">
+                    ✨ Post-Processing
+                </button>
             </nav>
         </div>
         
@@ -128,30 +140,34 @@
                     
                     <div>
                         <label for="createPersonality" class="block text-sm font-medium text-gray-700 mb-1">Personality</label>
-                        <textarea id="createPersonality" name="personality" rows="4" 
+                        <textarea id="createPersonality" name="personality" 
                                   placeholder="Describe the agent's personality and behavior..."
-                                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                                  class="auto-resize-textarea w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none overflow-hidden"
+                                  style="min-height: 60px;"></textarea>
                     </div>
                     
                     <div>
                         <label for="createStyle" class="block text-sm font-medium text-gray-700 mb-1">Communication Style</label>
-                        <textarea id="createStyle" name="style" rows="3" 
+                        <textarea id="createStyle" name="style" 
                                   placeholder="How should the agent communicate?"
-                                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                                  class="auto-resize-textarea w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none overflow-hidden"
+                                  style="min-height: 60px;"></textarea>
                     </div>
                     
                     <div>
                         <label for="createPrompt" class="block text-sm font-medium text-gray-700 mb-1">Special Instructions</label>
-                        <textarea id="createPrompt" name="prompt" rows="4" 
+                        <textarea id="createPrompt" name="prompt" 
                                   placeholder="Any specific instructions or rules for this agent..."
-                                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                                  class="auto-resize-textarea w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none overflow-hidden"
+                                  style="min-height: 60px;"></textarea>
                     </div>
                     
                     <div>
                         <label for="createFormatting" class="block text-sm font-medium text-gray-700 mb-1">Formatting Rules</label>
-                        <textarea id="createFormatting" name="formatting" rows="3" 
+                        <textarea id="createFormatting" name="formatting" 
                                   placeholder="How should the agent format responses? (e.g., use bullet points, numbered lists, specific headers, etc.)"
-                                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                                  class="auto-resize-textarea w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none overflow-hidden"
+                                  style="min-height: 60px;"></textarea>
                     </div>
                 </div>
                 
@@ -199,6 +215,321 @@
                         </div>
                     </div>
                 </div>
+                
+                <!-- Model Parameters Tab Content -->
+                <div id="create-tab-parameters-content" class="tab-content hidden">
+                    <div class="space-y-6">
+                        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                            <p class="text-sm text-blue-800">
+                                <strong>💡 Tip:</strong> These parameters control how the AI generates responses. Defaults are optimized for question generation.
+                            </p>
+                        </div>
+                        
+                        <div>
+                            <label for="createProvider" class="block text-sm font-medium text-gray-700 mb-2">Generation Provider</label>
+                            <select id="createProvider" name="provider" onchange="updateCreateProviderModels()" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="openai" selected>OpenAI</option>
+                                <option value="gemini">Google Gemini</option>
+                            </select>
+                            <p class="text-xs text-gray-500 mt-1">Choose which AI provider to use for text generation</p>
+                        </div>
+                        
+                        <div>
+                            <label for="createProviderModel" class="block text-sm font-medium text-gray-700 mb-2">AI Model</label>
+                            <select id="createProviderModel" name="provider_model" onchange="updateCreateParameterVisibility()" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <!-- Populated by JavaScript -->
+                            </select>
+                        </div>
+                        
+                        <!-- Keep old model field for backward compatibility (hidden) -->
+                        <input type="hidden" id="createModel" name="model" value="gpt-5.2">
+                        
+                        <div>
+                            <label for="createTemperature" class="block text-sm font-medium text-gray-700 mb-2">
+                                Temperature (Creativity): <span id="createTempValue" class="font-mono">0.9</span>
+                            </label>
+                            <input type="range" id="createTemperature" name="temperature" min="0" max="2" step="0.1" value="0.9" 
+                                   class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                                   oninput="document.getElementById('createTempValue').textContent = this.value">
+                            <p class="text-xs text-gray-500 mt-1">
+                                <strong>Higher (1.0-2.0):</strong> More creative, diverse, and unpredictable responses<br>
+                                <strong>Lower (0.0-0.5):</strong> More focused, consistent, and deterministic responses<br>
+                                <strong>Recommended:</strong> 0.9 for question generation, 0.3-0.5 for factual answers
+                            </p>
+                        </div>
+                        
+                        <div id="createFreqPenaltyDiv" data-models="gpt-4.1,gpt-4.1-mini,gpt-4o,gpt-4o-mini,gpt-3.5-turbo,gpt-5.1,gpt-5">
+                            <label for="createFreqPenalty" class="block text-sm font-medium text-gray-700 mb-2">
+                                Frequency Penalty (Reduce Repetition): <span id="createFreqValue" class="font-mono">0.7</span>
+                            </label>
+                            <input type="range" id="createFreqPenalty" name="frequency_penalty" min="0" max="2" step="0.1" value="0.7" 
+                                   class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                                   oninput="document.getElementById('createFreqValue').textContent = this.value">
+                            <p class="text-xs text-gray-500 mt-1">
+                                <strong>Higher (0.5-2.0):</strong> Strongly discourages repeating the same words/phrases<br>
+                                <strong>Lower (0.0-0.3):</strong> Allows more repetition in responses<br>
+                                <strong>Recommended:</strong> 0.7 to prevent "What is X?", "What is Y?" patterns in questions
+                            </p>
+                        </div>
+                        
+                        <div id="createPresPenaltyDiv" data-models="gpt-4.1,gpt-4.1-mini,gpt-4o,gpt-4o-mini,gpt-3.5-turbo,gpt-5.1,gpt-5">
+                            <label for="createPresPenalty" class="block text-sm font-medium text-gray-700 mb-2">
+                                Presence Penalty (Topic Diversity): <span id="createPresValue" class="font-mono">0.5</span>
+                            </label>
+                            <input type="range" id="createPresPenalty" name="presence_penalty" min="0" max="2" step="0.1" value="0.5" 
+                                   class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                                   oninput="document.getElementById('createPresValue').textContent = this.value">
+                            <p class="text-xs text-gray-500 mt-1">
+                                <strong>Higher (0.5-2.0):</strong> Encourages exploring new topics and concepts<br>
+                                <strong>Lower (0.0-0.3):</strong> Allows staying focused on the same topics<br>
+                                <strong>Recommended:</strong> 0.5 for diverse questions across different aspects
+                            </p>
+                        </div>
+                        
+                        <div id="createMaxTokensDiv" data-models="gpt-4.1,gpt-4.1-mini,gpt-4o,gpt-4o-mini,gpt-3.5-turbo">
+                            <label for="createMaxTokens" class="block text-sm font-medium text-gray-700 mb-2">Maximum Response Length (max_tokens)</label>
+                            <input type="number" id="createMaxTokens" name="max_tokens" min="100" max="4000" value="1000" 
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <p class="text-xs text-gray-500 mt-1">For GPT-4.x and GPT-3.5 models. Approximate words: ~750 (1 token ≈ 0.75 words)</p>
+                        </div>
+                        
+                        <div id="createMaxCompletionTokensDiv" data-models="gpt-5.2,gpt-5.1,gpt-5" style="display:none;">
+                            <label for="createMaxCompletionTokens" class="block text-sm font-medium text-gray-700 mb-2">Maximum Completion Tokens</label>
+                            <input type="number" id="createMaxCompletionTokens" name="max_completion_tokens" min="100" max="4000" placeholder="1000" 
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <p class="text-xs text-gray-500 mt-1">For GPT-5.x models. Maximum tokens in the completion.</p>
+                        </div>
+                        
+                        <div id="createMaxOutputTokensDiv" data-models="gpt-5.2" style="display:none;">
+                            <label for="createMaxOutputTokens" class="block text-sm font-medium text-gray-700 mb-2">Maximum Output Tokens (GPT-5.2 only)</label>
+                            <input type="number" id="createMaxOutputTokens" name="max_output_tokens" min="100" max="4000" placeholder="Optional" 
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <p class="text-xs text-gray-500 mt-1">GPT-5.2 specific parameter for output token limit.</p>
+                        </div>
+                        
+                        <div id="createReasoningEffortDiv" data-models="gpt-5.2,gpt-5.1,gpt-5" style="display:none;">
+                            <label for="createReasoningEffort" class="block text-sm font-medium text-gray-700 mb-2">Reasoning Effort (Optional)</label>
+                            <select id="createReasoningEffort" name="reasoning_effort" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="">None (default)</option>
+                                <option value="low">Low</option>
+                                <option value="medium">Medium</option>
+                                <option value="high">High</option>
+                                <option value="xhigh">Extra High</option>
+                            </select>
+                            <p class="text-xs text-gray-500 mt-1">For GPT-5.x models. Controls reasoning depth.</p>
+                        </div>
+                        
+                        <div id="createVerbosityDiv" data-models="gpt-5.2" style="display:none;">
+                            <label for="createVerbosity" class="block text-sm font-medium text-gray-700 mb-2">Verbosity (GPT-5.2 only)</label>
+                            <select id="createVerbosity" name="verbosity" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="">Default</option>
+                                <option value="low">Low</option>
+                                <option value="medium">Medium</option>
+                                <option value="high">High</option>
+                            </select>
+                            <p class="text-xs text-gray-500 mt-1">Controls response verbosity level (low, medium, or high).</p>
+                        </div>
+                        
+                        <div>
+                            <label for="createTopP" class="block text-sm font-medium text-gray-700 mb-2">Top P (Nucleus Sampling) - Optional</label>
+                            <input type="number" id="createTopP" name="top_p" min="0" max="1" step="0.05" placeholder="Leave empty to use temperature" 
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <p class="text-xs text-gray-500 mt-1">
+                                <strong>What it does:</strong> Controls randomness by limiting token choices to top probability mass<br>
+                                <strong>Higher (0.9-1.0):</strong> More diverse word choices<br>
+                                <strong>Lower (0.1-0.5):</strong> More focused, predictable word choices<br>
+                                <strong>Note:</strong> Don't use with temperature - pick one or the other (leave empty for temperature)
+                            </p>
+                        </div>
+                        
+                        <div>
+                            <label for="createMaxKnowledgeChunks" class="block text-sm font-medium text-gray-700 mb-2">Max Knowledge Chunks</label>
+                            <input type="number" id="createMaxKnowledgeChunks" name="max_knowledge_chunks" min="1" max="20" value="7" 
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <p class="text-xs text-gray-500 mt-1">
+                                <strong>What it does:</strong> Total number of relevant chunks to retrieve across ALL knowledge bases<br>
+                                <strong>Lower (1-5):</strong> More focused context, faster processing<br>
+                                <strong>Higher (10-20):</strong> More comprehensive context, may include less relevant information<br>
+                                <strong>Default:</strong> 7 chunks provides good balance
+                            </p>
+                        </div>
+                        
+                        <div>
+                            <label for="createMinSimilarityThreshold" class="block text-sm font-medium text-gray-700 mb-2">Min Similarity Threshold</label>
+                            <input type="number" id="createMinSimilarityThreshold" name="min_similarity_threshold" min="0.1" max="3.0" step="0.1" value="1.0" 
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <p class="text-xs text-gray-500 mt-1">
+                                <strong>What it does:</strong> Quality gate - filters chunks by L2 distance (lower distance = more similar)<br>
+                                <strong>Lower (0.5-0.7):</strong> Very strict, only highly relevant chunks<br>
+                                <strong>Moderate (0.9-1.1):</strong> Balanced quality filtering (recommended)<br>
+                                <strong>Higher (1.3-2.0):</strong> More permissive, includes loosely related content<br>
+                                <strong>Default:</strong> 1.0 filters out tangentially related content
+                            </p>
+                        </div>
+                        
+                        <div>
+                            <label for="createConversationHistoryTokens" class="block text-sm font-medium text-gray-700 mb-2">Conversation History Token Budget</label>
+                            <input type="number" id="createConversationHistoryTokens" name="conversation_history_tokens" min="100" max="3000" step="100" value="1000" 
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <p class="text-xs text-gray-500 mt-1">
+                                <strong>What it does:</strong> Maximum tokens for conversation history (not including current message)<br>
+                                <strong>Lower (100-500):</strong> Minimal context, focuses on instructions<br>
+                                <strong>Moderate (500-1500):</strong> Balanced recent context (recommended)<br>
+                                <strong>Higher (1500-3000):</strong> Extended conversation memory<br>
+                                <strong>Default:</strong> 1000 tokens (~650 words)
+                            </p>
+                        </div>
+                        
+                        <!-- CISSP Question Generation Section -->
+                        <div class="border-t pt-4">
+                            <h4 class="font-medium text-gray-900 mb-3">CISSP Question Generation</h4>
+                            
+                            <label class="flex items-center mb-3">
+                                <input type="checkbox" id="createEnableCisspMode" 
+                                       name="enable_cissp_mode" checked
+                                       class="mr-2 h-4 w-4 text-blue-600 rounded">
+                                <span class="text-sm text-gray-700">Enable CISSP Mode (Two-Stage Retrieval + Reasoning Controller)</span>
+                            </label>
+                            
+                            <div id="createCisspSettings" class="ml-6">
+                                <label for="createBlueprintDepth" class="block text-sm font-medium text-gray-700 mb-2">
+                                    Blueprint History Depth
+                                </label>
+                                <input type="number" id="createBlueprintDepth" 
+                                       name="blueprint_history_depth"
+                                       min="3" max="15" value="8"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <p class="text-xs text-gray-500 mt-1">
+                                    Track last N blueprints for rotation. Controls question type and domain diversity. (8 recommended)
+                                </p>
+                            </div>
+                            
+                            <script>
+                                // Show/hide CISSP settings based on checkbox
+                                document.getElementById('createEnableCisspMode').addEventListener('change', function() {
+                                    document.getElementById('createCisspSettings').classList.toggle('hidden', !this.checked);
+                                });
+                            </script>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Post-Processing Tab Content -->
+                <div id="create-tab-postprocessing-content" class="tab-content hidden">
+                    <div class="space-y-4">
+                        <p class="text-sm text-gray-600">
+                            Post-processing rules are applied programmatically after the LLM generates a response, ensuring consistent output format and removing common verbosity patterns.
+                        </p>
+                        
+                        <div class="border-t pt-4">
+                            <h4 class="font-medium text-gray-900 mb-3">Common Filters</h4>
+                            <div class="space-y-2">
+                                <label class="flex items-center">
+                                    <input type="checkbox" name="trim_preamble" class="mr-2 h-4 w-4 text-blue-600 rounded">
+                                    <span class="text-sm text-gray-700">Trim AI Preambles (removes "As an AI assistant..." etc.)</span>
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="checkbox" name="trim_signoff" class="mr-2 h-4 w-4 text-blue-600 rounded">
+                                    <span class="text-sm text-gray-700">Trim Sign-offs (removes "I hope this helps..." etc.)</span>
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="checkbox" name="remove_disclaimers" class="mr-2 h-4 w-4 text-blue-600 rounded">
+                                    <span class="text-sm text-gray-700">Remove Disclaimers (removes "Please note:" and similar)</span>
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="checkbox" name="strip_markdown" class="mr-2 h-4 w-4 text-blue-600 rounded">
+                                    <span class="text-sm text-gray-700">Strip Markdown Formatting</span>
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="border-t pt-4">
+                            <h4 class="font-medium text-gray-900 mb-3">Format Enforcement</h4>
+                            <div>
+                                <label for="createEnforceFormat" class="block text-sm font-medium text-gray-700 mb-2">Output Format</label>
+                                <select id="createEnforceFormat" name="enforce_format" 
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <option value="">None</option>
+                                    <option value="questions_only">Questions Only</option>
+                                    <option value="numbered_list">Numbered List</option>
+                                    <option value="qa_pairs">Q&A Pairs</option>
+                                    <option value="bullet_points">Bullet Points</option>
+                                </select>
+                                <p class="text-xs text-gray-500 mt-1">
+                                    Extract or convert response to a specific format
+                                </p>
+                            </div>
+                        </div>
+                        
+                        <div class="border-t pt-4">
+                            <h4 class="font-medium text-gray-900 mb-3">Validation</h4>
+                            <div>
+                                <label for="createValidation" class="block text-sm font-medium text-gray-700 mb-2">Response Validation</label>
+                                <select id="createValidation" name="validation" 
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <option value="">None</option>
+                                    <option value="mcq_only">Multiple Choice (A/B/C/D only)</option>
+                                    <option value="yes_no_only">Yes/No Only</option>
+                                    <option value="numeric_only">Numeric Only</option>
+                                </select>
+                                <p class="text-xs text-gray-500 mt-1">
+                                    Validate and extract specific answer formats
+                                </p>
+                            </div>
+                        </div>
+                        
+                        <div class="border-t pt-4">
+                            <h4 class="font-medium text-gray-900 mb-3">Length Control</h4>
+                            <div>
+                                <label for="createMaxSentences" class="block text-sm font-medium text-gray-700 mb-2">Max Sentences</label>
+                                <input type="number" id="createMaxSentences" name="max_sentences" min="1" max="50" placeholder="Leave empty for no limit" 
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <p class="text-xs text-gray-500 mt-1">
+                                    Limit response to specified number of sentences
+                                </p>
+                            </div>
+                        </div>
+                        
+                        <div class="border-t pt-4">
+                            <h4 class="font-medium text-gray-900 mb-3">Semantic Repetition Detection</h4>
+                            
+                            <label class="flex items-center mb-3">
+                                <input type="checkbox" id="createEnableSemanticDetection" 
+                                       name="enable_semantic_detection" 
+                                       class="mr-2 h-4 w-4 text-blue-600 rounded">
+                                <span class="text-sm text-gray-700">Enable Semantic Similarity Check</span>
+                            </label>
+                            
+                            <div id="createSemanticSettings" class="ml-6 space-y-3 hidden">
+                                <div>
+                                    <label for="createSemanticThreshold" class="block text-sm font-medium text-gray-700 mb-2">
+                                        Similarity Threshold
+                                    </label>
+                                    <input type="number" id="createSemanticThreshold" 
+                                           name="semantic_similarity_threshold" 
+                                           min="0.70" max="0.95" step="0.01" value="0.90" 
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <p class="text-xs text-gray-500 mt-1">
+                                        Higher = stricter (0.90 recommended, tune down to 0.87-0.89 if needed)
+                                    </p>
+                                </div>
+                                
+                                <div>
+                                    <label for="createSemanticDepth" class="block text-sm font-medium text-gray-700 mb-2">
+                                        Check Last N Questions
+                                    </label>
+                                    <input type="number" id="createSemanticDepth" 
+                                           name="semantic_history_depth" 
+                                           min="3" max="10" value="5" 
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <p class="text-xs text-gray-500 mt-1">
+                                        Compare against last N questions (5 recommended)
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
             <div class="p-6 border-t flex justify-end space-x-3">
                 <button type="button" onclick="hideCreateModal()" class="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors">Cancel</button>
@@ -230,6 +561,18 @@
                         class="tab-button border-b-2 py-4 px-1 text-sm font-medium text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300">
                     📚 Knowledge Bases
                 </button>
+                <button type="button" 
+                        onclick="switchTab('edit', 'parameters')" 
+                        id="edit-tab-parameters"
+                        class="tab-button border-b-2 py-4 px-1 text-sm font-medium text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300">
+                    ⚙️ Model Parameters
+                </button>
+                <button type="button" 
+                        onclick="switchTab('edit', 'postprocessing')" 
+                        id="edit-tab-postprocessing"
+                        class="tab-button border-b-2 py-4 px-1 text-sm font-medium text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300">
+                    ✨ Post-Processing
+                </button>
             </nav>
         </div>
         
@@ -258,26 +601,30 @@
                     
                     <div>
                         <label for="editPersonality" class="block text-sm font-medium text-gray-700 mb-1">Personality</label>
-                        <textarea id="editPersonality" name="personality" rows="4"
-                                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                        <textarea id="editPersonality" name="personality"
+                                  class="auto-resize-textarea w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none overflow-hidden"
+                                  style="min-height: 60px;"></textarea>
                     </div>
                     
                     <div>
                         <label for="editStyle" class="block text-sm font-medium text-gray-700 mb-1">Communication Style</label>
-                        <textarea id="editStyle" name="style" rows="3"
-                                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                        <textarea id="editStyle" name="style"
+                                  class="auto-resize-textarea w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none overflow-hidden"
+                                  style="min-height: 60px;"></textarea>
                     </div>
                     
                     <div>
                         <label for="editPrompt" class="block text-sm font-medium text-gray-700 mb-1">Special Instructions</label>
-                        <textarea id="editPrompt" name="prompt" rows="4"
-                                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                        <textarea id="editPrompt" name="prompt"
+                                  class="auto-resize-textarea w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none overflow-hidden"
+                                  style="min-height: 60px;"></textarea>
                     </div>
                     
                     <div>
                         <label for="editFormatting" class="block text-sm font-medium text-gray-700 mb-1">Formatting Rules</label>
-                        <textarea id="editFormatting" name="formatting" rows="3"
-                                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                        <textarea id="editFormatting" name="formatting"
+                                  class="auto-resize-textarea w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none overflow-hidden"
+                                  style="min-height: 60px;"></textarea>
                     </div>
                 </div>
                 
@@ -325,6 +672,321 @@
                         </div>
                     </div>
                 </div>
+                
+                <!-- Model Parameters Tab Content -->
+                <div id="edit-tab-parameters-content" class="tab-content hidden">
+                    <div class="space-y-6">
+                        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                            <p class="text-sm text-blue-800">
+                                <strong>💡 Tip:</strong> These parameters control how the AI generates responses. Adjust based on your needs.
+                            </p>
+                        </div>
+                        
+                        <div>
+                            <label for="editProvider" class="block text-sm font-medium text-gray-700 mb-2">Generation Provider</label>
+                            <select id="editProvider" name="provider" onchange="updateEditProviderModels()" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="openai">OpenAI</option>
+                                <option value="gemini">Google Gemini</option>
+                            </select>
+                            <p class="text-xs text-gray-500 mt-1">Choose which AI provider to use for text generation</p>
+                        </div>
+                        
+                        <div>
+                            <label for="editProviderModel" class="block text-sm font-medium text-gray-700 mb-2">AI Model</label>
+                            <select id="editProviderModel" name="provider_model" onchange="updateEditParameterVisibility()" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <!-- Populated by JavaScript -->
+                            </select>
+                        </div>
+                        
+                        <!-- Keep old model field for backward compatibility (hidden) -->
+                        <input type="hidden" id="editModel" name="model" value="">
+                        
+                        <div>
+                            <label for="editTemperature" class="block text-sm font-medium text-gray-700 mb-2">
+                                Temperature (Creativity): <span id="editTempValue" class="font-mono">0.9</span>
+                            </label>
+                            <input type="range" id="editTemperature" name="temperature" min="0" max="2" step="0.1" value="0.9" 
+                                   class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                                   oninput="document.getElementById('editTempValue').textContent = this.value">
+                            <p class="text-xs text-gray-500 mt-1">
+                                <strong>Higher (1.0-2.0):</strong> More creative, diverse, and unpredictable responses<br>
+                                <strong>Lower (0.0-0.5):</strong> More focused, consistent, and deterministic responses<br>
+                                <strong>Recommended:</strong> 0.9 for question generation, 0.3-0.5 for factual answers
+                            </p>
+                        </div>
+                        
+                        <div id="editFreqPenaltyDiv" data-models="gpt-4.1,gpt-4.1-mini,gpt-4o,gpt-4o-mini,gpt-3.5-turbo,gpt-5.1,gpt-5">
+                            <label for="editFreqPenalty" class="block text-sm font-medium text-gray-700 mb-2">
+                                Frequency Penalty (Reduce Repetition): <span id="editFreqValue" class="font-mono">0.7</span>
+                            </label>
+                            <input type="range" id="editFreqPenalty" name="frequency_penalty" min="0" max="2" step="0.1" value="0.7" 
+                                   class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                                   oninput="document.getElementById('editFreqValue').textContent = this.value">
+                            <p class="text-xs text-gray-500 mt-1">
+                                <strong>Higher (0.5-2.0):</strong> Strongly discourages repeating the same words/phrases<br>
+                                <strong>Lower (0.0-0.3):</strong> Allows more repetition in responses<br>
+                                <strong>Recommended:</strong> 0.7 to prevent "What is X?", "What is Y?" patterns in questions
+                            </p>
+                        </div>
+                        
+                        <div id="editPresPenaltyDiv" data-models="gpt-4.1,gpt-4.1-mini,gpt-4o,gpt-4o-mini,gpt-3.5-turbo,gpt-5.1,gpt-5">
+                            <label for="editPresPenalty" class="block text-sm font-medium text-gray-700 mb-2">
+                                Presence Penalty (Topic Diversity): <span id="editPresValue" class="font-mono">0.5</span>
+                            </label>
+                            <input type="range" id="editPresPenalty" name="presence_penalty" min="0" max="2" step="0.1" value="0.5" 
+                                   class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                                   oninput="document.getElementById('editPresValue').textContent = this.value">
+                            <p class="text-xs text-gray-500 mt-1">
+                                <strong>Higher (0.5-2.0):</strong> Encourages exploring new topics and concepts<br>
+                                <strong>Lower (0.0-0.3):</strong> Allows staying focused on the same topics<br>
+                                <strong>Recommended:</strong> 0.5 for diverse questions across different aspects
+                            </p>
+                        </div>
+                        
+                        <div id="editMaxTokensDiv" data-models="gpt-4.1,gpt-4.1-mini,gpt-4o,gpt-4o-mini,gpt-3.5-turbo">
+                            <label for="editMaxTokens" class="block text-sm font-medium text-gray-700 mb-2">Maximum Response Length (max_tokens)</label>
+                            <input type="number" id="editMaxTokens" name="max_tokens" min="100" max="4000" value="1000" 
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <p class="text-xs text-gray-500 mt-1">For GPT-4.x and GPT-3.5 models. Approximate words: ~750 (1 token ≈ 0.75 words)</p>
+                        </div>
+                        
+                        <div id="editMaxCompletionTokensDiv" data-models="gpt-5.2,gpt-5.1,gpt-5" style="display:none;">
+                            <label for="editMaxCompletionTokens" class="block text-sm font-medium text-gray-700 mb-2">Maximum Completion Tokens</label>
+                            <input type="number" id="editMaxCompletionTokens" name="max_completion_tokens" min="100" max="4000" placeholder="1000" 
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <p class="text-xs text-gray-500 mt-1">For GPT-5.x models. Maximum tokens in the completion.</p>
+                        </div>
+                        
+                        <div id="editMaxOutputTokensDiv" data-models="gpt-5.2" style="display:none;">
+                            <label for="editMaxOutputTokens" class="block text-sm font-medium text-gray-700 mb-2">Maximum Output Tokens (GPT-5.2 only)</label>
+                            <input type="number" id="editMaxOutputTokens" name="max_output_tokens" min="100" max="4000" placeholder="Optional" 
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <p class="text-xs text-gray-500 mt-1">GPT-5.2 specific parameter for output token limit.</p>
+                        </div>
+                        
+                        <div id="editReasoningEffortDiv" data-models="gpt-5.2,gpt-5.1,gpt-5" style="display:none;">
+                            <label for="editReasoningEffort" class="block text-sm font-medium text-gray-700 mb-2">Reasoning Effort (Optional)</label>
+                            <select id="editReasoningEffort" name="reasoning_effort" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="">None (default)</option>
+                                <option value="low">Low</option>
+                                <option value="medium">Medium</option>
+                                <option value="high">High</option>
+                                <option value="xhigh">Extra High</option>
+                            </select>
+                            <p class="text-xs text-gray-500 mt-1">For GPT-5.x models. Controls reasoning depth.</p>
+                        </div>
+                        
+                        <div id="editVerbosityDiv" data-models="gpt-5.2" style="display:none;">
+                            <label for="editVerbosity" class="block text-sm font-medium text-gray-700 mb-2">Verbosity (GPT-5.2 only)</label>
+                            <select id="editVerbosity" name="verbosity" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="">Default</option>
+                                <option value="low">Low</option>
+                                <option value="medium">Medium</option>
+                                <option value="high">High</option>
+                            </select>
+                            <p class="text-xs text-gray-500 mt-1">Controls response verbosity level (low, medium, or high).</p>
+                        </div>
+                        
+                        <div>
+                            <label for="editTopP" class="block text-sm font-medium text-gray-700 mb-2">Top P (Nucleus Sampling) - Optional</label>
+                            <input type="number" id="editTopP" name="top_p" min="0" max="1" step="0.05" placeholder="Leave empty" 
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <p class="text-xs text-gray-500 mt-1">
+                                <strong>What it does:</strong> Controls randomness by limiting token choices to top probability mass<br>
+                                <strong>Higher (0.9-1.0):</strong> More diverse word choices<br>
+                                <strong>Lower (0.1-0.5):</strong> More focused, predictable word choices<br>
+                                <strong>Note:</strong> Don't use with temperature - pick one or the other (leave empty for temperature)
+                            </p>
+                        </div>
+                        
+                        <div>
+                            <label for="editMaxKnowledgeChunks" class="block text-sm font-medium text-gray-700 mb-2">Max Knowledge Chunks</label>
+                            <input type="number" id="editMaxKnowledgeChunks" name="max_knowledge_chunks" min="1" max="20" 
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <p class="text-xs text-gray-500 mt-1">
+                                <strong>What it does:</strong> Total number of relevant chunks to retrieve across ALL knowledge bases<br>
+                                <strong>Lower (1-5):</strong> More focused context, faster processing<br>
+                                <strong>Higher (10-20):</strong> More comprehensive context, may include less relevant information<br>
+                                <strong>Default:</strong> 7 chunks provides good balance
+                            </p>
+                        </div>
+                        
+                        <div>
+                            <label for="editMinSimilarityThreshold" class="block text-sm font-medium text-gray-700 mb-2">Min Similarity Threshold</label>
+                            <input type="number" id="editMinSimilarityThreshold" name="min_similarity_threshold" min="0.1" max="3.0" step="0.1" 
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <p class="text-xs text-gray-500 mt-1">
+                                <strong>What it does:</strong> Quality gate - filters chunks by L2 distance (lower distance = more similar)<br>
+                                <strong>Lower (0.5-0.7):</strong> Very strict, only highly relevant chunks<br>
+                                <strong>Moderate (0.9-1.1):</strong> Balanced quality filtering (recommended)<br>
+                                <strong>Higher (1.3-2.0):</strong> More permissive, includes loosely related content<br>
+                                <strong>Default:</strong> 1.0 filters out tangentially related content
+                            </p>
+                        </div>
+                        
+                        <div>
+                            <label for="editConversationHistoryTokens" class="block text-sm font-medium text-gray-700 mb-2">Conversation History Token Budget</label>
+                            <input type="number" id="editConversationHistoryTokens" name="conversation_history_tokens" min="100" max="3000" step="100" 
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <p class="text-xs text-gray-500 mt-1">
+                                <strong>What it does:</strong> Maximum tokens for conversation history (not including current message)<br>
+                                <strong>Lower (100-500):</strong> Minimal context, focuses on instructions<br>
+                                <strong>Moderate (500-1500):</strong> Balanced recent context (recommended)<br>
+                                <strong>Higher (1500-3000):</strong> Extended conversation memory<br>
+                                <strong>Default:</strong> 1000 tokens (~650 words)
+                            </p>
+                        </div>
+                        
+                        <!-- CISSP Question Generation Section -->
+                        <div class="border-t pt-4">
+                            <h4 class="font-medium text-gray-900 mb-3">CISSP Question Generation</h4>
+                            
+                            <label class="flex items-center mb-3">
+                                <input type="checkbox" id="editEnableCisspMode" 
+                                       name="enable_cissp_mode"
+                                       class="mr-2 h-4 w-4 text-blue-600 rounded">
+                                <span class="text-sm text-gray-700">Enable CISSP Mode (Two-Stage Retrieval + Reasoning Controller)</span>
+                            </label>
+                            
+                            <div id="editCisspSettings" class="ml-6">
+                                <label for="editBlueprintDepth" class="block text-sm font-medium text-gray-700 mb-2">
+                                    Blueprint History Depth
+                                </label>
+                                <input type="number" id="editBlueprintDepth" 
+                                       name="blueprint_history_depth"
+                                       min="3" max="15" value="8"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <p class="text-xs text-gray-500 mt-1">
+                                    Track last N blueprints for rotation. Controls question type and domain diversity. (8 recommended)
+                                </p>
+                            </div>
+                            
+                            <script>
+                                // Show/hide CISSP settings based on checkbox
+                                document.getElementById('editEnableCisspMode').addEventListener('change', function() {
+                                    document.getElementById('editCisspSettings').classList.toggle('hidden', !this.checked);
+                                });
+                            </script>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Post-Processing Tab Content -->
+                <div id="edit-tab-postprocessing-content" class="tab-content hidden">
+                    <div class="space-y-4">
+                        <p class="text-sm text-gray-600">
+                            Post-processing rules are applied programmatically after the LLM generates a response, ensuring consistent output format and removing common verbosity patterns.
+                        </p>
+                        
+                        <div class="border-t pt-4">
+                            <h4 class="font-medium text-gray-900 mb-3">Common Filters</h4>
+                            <div class="space-y-2">
+                                <label class="flex items-center">
+                                    <input type="checkbox" id="editTrimPreamble" name="trim_preamble" class="mr-2 h-4 w-4 text-blue-600 rounded">
+                                    <span class="text-sm text-gray-700">Trim AI Preambles (removes "As an AI assistant..." etc.)</span>
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="checkbox" id="editTrimSignoff" name="trim_signoff" class="mr-2 h-4 w-4 text-blue-600 rounded">
+                                    <span class="text-sm text-gray-700">Trim Sign-offs (removes "I hope this helps..." etc.)</span>
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="checkbox" id="editRemoveDisclaimers" name="remove_disclaimers" class="mr-2 h-4 w-4 text-blue-600 rounded">
+                                    <span class="text-sm text-gray-700">Remove Disclaimers (removes "Please note:" and similar)</span>
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="checkbox" id="editStripMarkdown" name="strip_markdown" class="mr-2 h-4 w-4 text-blue-600 rounded">
+                                    <span class="text-sm text-gray-700">Strip Markdown Formatting</span>
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="border-t pt-4">
+                            <h4 class="font-medium text-gray-900 mb-3">Format Enforcement</h4>
+                            <div>
+                                <label for="editEnforceFormat" class="block text-sm font-medium text-gray-700 mb-2">Output Format</label>
+                                <select id="editEnforceFormat" name="enforce_format" 
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <option value="">None</option>
+                                    <option value="questions_only">Questions Only</option>
+                                    <option value="numbered_list">Numbered List</option>
+                                    <option value="qa_pairs">Q&A Pairs</option>
+                                    <option value="bullet_points">Bullet Points</option>
+                                </select>
+                                <p class="text-xs text-gray-500 mt-1">
+                                    Extract or convert response to a specific format
+                                </p>
+                            </div>
+                        </div>
+                        
+                        <div class="border-t pt-4">
+                            <h4 class="font-medium text-gray-900 mb-3">Validation</h4>
+                            <div>
+                                <label for="editValidation" class="block text-sm font-medium text-gray-700 mb-2">Response Validation</label>
+                                <select id="editValidation" name="validation" 
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <option value="">None</option>
+                                    <option value="mcq_only">Multiple Choice (A/B/C/D only)</option>
+                                    <option value="yes_no_only">Yes/No Only</option>
+                                    <option value="numeric_only">Numeric Only</option>
+                                </select>
+                                <p class="text-xs text-gray-500 mt-1">
+                                    Validate and extract specific answer formats
+                                </p>
+                            </div>
+                        </div>
+                        
+                        <div class="border-t pt-4">
+                            <h4 class="font-medium text-gray-900 mb-3">Length Control</h4>
+                            <div>
+                                <label for="editMaxSentences" class="block text-sm font-medium text-gray-700 mb-2">Max Sentences</label>
+                                <input type="number" id="editMaxSentences" name="max_sentences" min="1" max="50" placeholder="Leave empty for no limit" 
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <p class="text-xs text-gray-500 mt-1">
+                                    Limit response to specified number of sentences
+                                </p>
+                            </div>
+                        </div>
+                        
+                        <div class="border-t pt-4">
+                            <h4 class="font-medium text-gray-900 mb-3">Semantic Repetition Detection</h4>
+                            
+                            <label class="flex items-center mb-3">
+                                <input type="checkbox" id="editEnableSemanticDetection" 
+                                       name="enable_semantic_detection" 
+                                       class="mr-2 h-4 w-4 text-blue-600 rounded">
+                                <span class="text-sm text-gray-700">Enable Semantic Similarity Check</span>
+                            </label>
+                            
+                            <div id="editSemanticSettings" class="ml-6 space-y-3 hidden">
+                                <div>
+                                    <label for="editSemanticThreshold" class="block text-sm font-medium text-gray-700 mb-2">
+                                        Similarity Threshold
+                                    </label>
+                                    <input type="number" id="editSemanticThreshold" 
+                                           name="semantic_similarity_threshold" 
+                                           min="0.70" max="0.95" step="0.01" 
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <p class="text-xs text-gray-500 mt-1">
+                                        Higher = stricter (0.90 recommended, tune down to 0.87-0.89 if needed)
+                                    </p>
+                                </div>
+                                
+                                <div>
+                                    <label for="editSemanticDepth" class="block text-sm font-medium text-gray-700 mb-2">
+                                        Check Last N Questions
+                                    </label>
+                                    <input type="number" id="editSemanticDepth" 
+                                           name="semantic_history_depth" 
+                                           min="3" max="10" 
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <p class="text-xs text-gray-500 mt-1">
+                                        Compare against last N questions (5 recommended)
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
             <div class="p-6 border-t flex justify-end space-x-3">
                 <button type="button" onclick="hideEditModal()" class="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors">Cancel</button>
@@ -362,17 +1024,127 @@
 </div>
 
 <script>
+// Auto-resize textarea functionality
+function autoResizeTextarea(textarea) {
+    // Reset height to auto to get the correct scrollHeight
+    textarea.style.height = 'auto';
+    // Set the height to match the content
+    textarea.style.height = Math.max(textarea.scrollHeight, 60) + 'px';
+}
+
+// Initialize all auto-resize textareas
+function initAutoResizeTextareas() {
+    const textareas = document.querySelectorAll('.auto-resize-textarea');
+    textareas.forEach(textarea => {
+        // Auto-resize on input
+        textarea.addEventListener('input', function() {
+            autoResizeTextarea(this);
+        });
+        // Initial resize
+        autoResizeTextarea(textarea);
+    });
+}
+
+// Run on page load
+document.addEventListener('DOMContentLoaded', function() {
+    initAutoResizeTextareas();
+    // Initialize provider models
+    updateCreateProviderModels();
+    updateEditProviderModels();
+});
+
+// Provider model mappings
+const providerModels = {
+    'openai': [
+        {value: 'gpt-5.2', label: 'GPT-5.2 - Latest Generation'},
+        {value: 'gpt-5.1', label: 'GPT-5.1 - Advanced'},
+        {value: 'gpt-5', label: 'GPT-5 - Baseline'},
+        {value: 'gpt-4.1', label: 'GPT-4.1 - Large Context'},
+        {value: 'gpt-4.1-mini', label: 'GPT-4.1 Mini - Efficient'},
+        {value: 'gpt-4o', label: 'GPT-4o - Multimodal'},
+        {value: 'gpt-4o-mini', label: 'GPT-4o Mini - Budget'},
+        {value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo - Legacy'}
+    ],
+    'gemini': [
+        {value: 'gemini-3-pro', label: 'Gemini 3 Pro - Most Intelligent'},
+        {value: 'gemini-3-flash', label: 'Gemini 3 Flash - Frontier Performance'},
+        {value: 'gemini-3-flash-preview', label: 'Gemini 3 Flash Preview'},
+        {value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro - Powerful Reasoning'},
+        {value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash - Balanced (1M Context)'},
+        {value: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash Lite - Fastest'}
+    ]
+};
+
+function updateCreateProviderModels() {
+    const provider = document.getElementById('createProvider').value;
+    const modelSelect = document.getElementById('createProviderModel');
+    const models = providerModels[provider] || [];
+    
+    modelSelect.innerHTML = models.map(m => 
+        `<option value="${m.value}">${m.label}</option>`
+    ).join('');
+    
+    // Update hidden model field for backward compatibility
+    if (modelSelect.value) {
+        document.getElementById('createModel').value = modelSelect.value;
+    }
+    
+    // Trigger parameter visibility update
+    updateCreateParameterVisibility();
+}
+
+function updateEditProviderModels() {
+    const provider = document.getElementById('editProvider').value;
+    const modelSelect = document.getElementById('editProviderModel');
+    const models = providerModels[provider] || [];
+    
+    modelSelect.innerHTML = models.map(m => 
+        `<option value="${m.value}">${m.label}</option>`
+    ).join('');
+    
+    // Update hidden model field for backward compatibility
+    if (modelSelect.value) {
+        document.getElementById('editModel').value = modelSelect.value;
+    }
+    
+    // Trigger parameter visibility update
+    updateEditParameterVisibility();
+}
+
 function showCreateModal() {
     document.getElementById('createAgentModal').classList.remove('hidden');
     document.getElementById('createAgentModal').classList.add('flex');
     // Reset to details tab when opening
     switchTab('create', 'details');
+    // Initialize textareas after a brief delay to ensure they're visible
+    setTimeout(() => {
+        document.querySelectorAll('#createAgentModal .auto-resize-textarea').forEach(textarea => {
+            autoResizeTextarea(textarea);
+        });
+    }, 50);
 }
 
 function hideCreateModal() {
     document.getElementById('createAgentModal').classList.add('hidden');
     document.getElementById('createAgentModal').classList.remove('flex');
 }
+
+// Toggle semantic settings visibility in create modal
+document.addEventListener('DOMContentLoaded', function() {
+    const createCheckbox = document.getElementById('createEnableSemanticDetection');
+    if (createCheckbox) {
+        createCheckbox.addEventListener('change', function() {
+            document.getElementById('createSemanticSettings').classList.toggle('hidden', !this.checked);
+        });
+    }
+    
+    const editCheckbox = document.getElementById('editEnableSemanticDetection');
+    if (editCheckbox) {
+        editCheckbox.addEventListener('change', function() {
+            document.getElementById('editSemanticSettings').classList.toggle('hidden', !this.checked);
+        });
+    }
+});
 
 function editAgentSafe(agentId) {
     // Find the button that was clicked to get the agent data
@@ -400,6 +1172,58 @@ function editAgentSafe(agentId) {
     document.getElementById('editFormatting').value = agentData.formatting || '';
     document.getElementById('editStatus').value = agentData.status || 'active';
     
+    // Populate model parameters
+    // Set provider and provider_model (with fallback to old model field)
+    document.getElementById('editProvider').value = agentData.provider || 'openai';
+    updateEditProviderModels(); // Populate model list for selected provider
+    document.getElementById('editProviderModel').value = agentData.provider_model || agentData.model || 'gpt-5.2';
+    document.getElementById('editModel').value = agentData.provider_model || agentData.model || 'gpt-5.2'; // Hidden field for backward compatibility
+    document.getElementById('editTemperature').value = agentData.temperature !== undefined ? agentData.temperature : 0.9;
+    document.getElementById('editTempValue').textContent = agentData.temperature !== undefined ? agentData.temperature : 0.9;
+    document.getElementById('editFreqPenalty').value = agentData.frequency_penalty !== undefined ? agentData.frequency_penalty : 0.7;
+    document.getElementById('editFreqValue').textContent = agentData.frequency_penalty !== undefined ? agentData.frequency_penalty : 0.7;
+    document.getElementById('editPresPenalty').value = agentData.presence_penalty !== undefined ? agentData.presence_penalty : 0.5;
+    document.getElementById('editPresValue').textContent = agentData.presence_penalty !== undefined ? agentData.presence_penalty : 0.5;
+    document.getElementById('editMaxTokens').value = agentData.max_tokens || 1000;
+    document.getElementById('editTopP').value = agentData.top_p || '';
+    
+    // Populate model-specific parameters
+    document.getElementById('editMaxCompletionTokens').value = agentData.max_completion_tokens || '';
+    document.getElementById('editMaxOutputTokens').value = agentData.max_output_tokens || '';
+    document.getElementById('editReasoningEffort').value = agentData.reasoning_effort || '';
+    document.getElementById('editVerbosity').value = agentData.verbosity || '';
+    document.getElementById('editMaxKnowledgeChunks').value = agentData.max_knowledge_chunks || 7;
+    document.getElementById('editMinSimilarityThreshold').value = agentData.min_similarity_threshold || 1.0;
+    document.getElementById('editConversationHistoryTokens').value = agentData.conversation_history_tokens || 1000;
+    
+    // Populate post-processing rules
+    const postRules = agentData.post_processing_rules || {};
+    document.getElementById('editTrimPreamble').checked = postRules.trim_preamble || false;
+    document.getElementById('editTrimSignoff').checked = postRules.trim_signoff || false;
+    document.getElementById('editRemoveDisclaimers').checked = postRules.remove_disclaimers || false;
+    document.getElementById('editStripMarkdown').checked = postRules.strip_markdown || false;
+    document.getElementById('editEnforceFormat').value = postRules.enforce_format || '';
+    document.getElementById('editValidation').value = postRules.validation || '';
+    document.getElementById('editMaxSentences').value = postRules.max_sentences || '';
+    
+    // Populate semantic detection settings
+    document.getElementById('editEnableSemanticDetection').checked = agentData.enable_semantic_detection || false;
+    document.getElementById('editSemanticThreshold').value = agentData.semantic_similarity_threshold || 0.90;
+    document.getElementById('editSemanticDepth').value = agentData.semantic_history_depth || 5;
+    
+    // Show/hide semantic settings based on checkbox
+    document.getElementById('editSemanticSettings').classList.toggle('hidden', !agentData.enable_semantic_detection);
+    
+    // Populate CISSP settings
+    document.getElementById('editEnableCisspMode').checked = agentData.enable_cissp_mode !== undefined ? agentData.enable_cissp_mode : true;
+    document.getElementById('editBlueprintDepth').value = agentData.blueprint_history_depth || 8;
+    
+    // Show/hide CISSP settings based on checkbox
+    document.getElementById('editCisspSettings').classList.toggle('hidden', !document.getElementById('editEnableCisspMode').checked);
+    
+    // Update parameter visibility based on model
+    updateEditParameterVisibility();
+    
     // Clear all knowledge base checkboxes first
     const kbCheckboxes = document.querySelectorAll('#editAgentModal input[name="knowledge_bases"]');
     kbCheckboxes.forEach(checkbox => {
@@ -420,17 +1244,23 @@ function editAgentSafe(agentId) {
     document.getElementById('editAgentModal').classList.add('flex');
     // Reset to details tab when opening
     switchTab('edit', 'details');
+    // Auto-resize textareas after content is loaded
+    setTimeout(() => {
+        document.querySelectorAll('#editAgentModal .auto-resize-textarea').forEach(textarea => {
+            autoResizeTextarea(textarea);
+        });
+    }, 50);
 }
 
 function switchTab(modalType, tabName) {
     // Hide all tab contents for this modal
-    const allContents = document.querySelectorAll(`#${modalType}-tab-details-content, #${modalType}-tab-knowledge-content`);
+    const allContents = document.querySelectorAll(`#${modalType}-tab-details-content, #${modalType}-tab-knowledge-content, #${modalType}-tab-parameters-content, #${modalType}-tab-postprocessing-content`);
     allContents.forEach(content => {
         content.classList.add('hidden');
     });
     
     // Remove active state from all tab buttons for this modal
-    const allButtons = document.querySelectorAll(`#${modalType}-tab-details, #${modalType}-tab-knowledge`);
+    const allButtons = document.querySelectorAll(`#${modalType}-tab-details, #${modalType}-tab-knowledge, #${modalType}-tab-parameters, #${modalType}-tab-postprocessing`);
     allButtons.forEach(button => {
         button.classList.remove('text-blue-600', 'border-blue-500');
         button.classList.add('text-gray-500', 'border-transparent');
@@ -509,6 +1339,104 @@ function deleteAgent(agentId, name) {
         form.submit();
     }
 }
+
+// Model-specific parameter visibility functions
+function getModelFamily(model) {
+    const modelLower = model.toLowerCase();
+    if (modelLower === 'gpt-5.2') return 'gpt-5.2';
+    if (modelLower === 'gpt-5.1' || modelLower === 'gpt-5') return 'gpt-5';
+    if (modelLower.startsWith('gpt-4') || modelLower.startsWith('gpt-3')) return 'gpt-4';
+    return 'gpt-4'; // default
+}
+
+function updateCreateParameterVisibility() {
+    const model = document.getElementById('createProviderModel').value;
+    // Update hidden model field for backward compatibility
+    document.getElementById('createModel').value = model;
+    const modelLower = model.toLowerCase();
+    
+    // Get all parameter divs
+    const freqPenaltyDiv = document.getElementById('createFreqPenaltyDiv');
+    const presPenaltyDiv = document.getElementById('createPresPenaltyDiv');
+    const maxTokensDiv = document.getElementById('createMaxTokensDiv');
+    const maxCompletionTokensDiv = document.getElementById('createMaxCompletionTokensDiv');
+    const maxOutputTokensDiv = document.getElementById('createMaxOutputTokensDiv');
+    const reasoningEffortDiv = document.getElementById('createReasoningEffortDiv');
+    const verbosityDiv = document.getElementById('createVerbosityDiv');
+    
+    // Hide all model-specific fields first
+    [freqPenaltyDiv, presPenaltyDiv, maxTokensDiv, maxCompletionTokensDiv, 
+     maxOutputTokensDiv, reasoningEffortDiv, verbosityDiv].forEach(div => {
+        if (div) div.style.display = 'none';
+    });
+    
+    // Show fields based on model
+    if (modelLower === 'gpt-5.2') {
+        // GPT-5.2: no penalties, uses max_completion_tokens, has reasoning_effort and verbosity
+        if (maxCompletionTokensDiv) maxCompletionTokensDiv.style.display = 'block';
+        if (maxOutputTokensDiv) maxOutputTokensDiv.style.display = 'block';
+        if (reasoningEffortDiv) reasoningEffortDiv.style.display = 'block';
+        if (verbosityDiv) verbosityDiv.style.display = 'block';
+    } else if (modelLower === 'gpt-5.1' || modelLower === 'gpt-5') {
+        // GPT-5.1/5: has penalties, uses max_completion_tokens, has reasoning_effort
+        if (freqPenaltyDiv) freqPenaltyDiv.style.display = 'block';
+        if (presPenaltyDiv) presPenaltyDiv.style.display = 'block';
+        if (maxCompletionTokensDiv) maxCompletionTokensDiv.style.display = 'block';
+        if (reasoningEffortDiv) reasoningEffortDiv.style.display = 'block';
+    } else {
+        // GPT-4.x and GPT-3.5: has penalties, uses max_tokens
+        if (freqPenaltyDiv) freqPenaltyDiv.style.display = 'block';
+        if (presPenaltyDiv) presPenaltyDiv.style.display = 'block';
+        if (maxTokensDiv) maxTokensDiv.style.display = 'block';
+    }
+}
+
+function updateEditParameterVisibility() {
+    const model = document.getElementById('editProviderModel').value;
+    // Update hidden model field for backward compatibility
+    document.getElementById('editModel').value = model;
+    const modelLower = model.toLowerCase();
+    
+    // Get all parameter divs
+    const freqPenaltyDiv = document.getElementById('editFreqPenaltyDiv');
+    const presPenaltyDiv = document.getElementById('editPresPenaltyDiv');
+    const maxTokensDiv = document.getElementById('editMaxTokensDiv');
+    const maxCompletionTokensDiv = document.getElementById('editMaxCompletionTokensDiv');
+    const maxOutputTokensDiv = document.getElementById('editMaxOutputTokensDiv');
+    const reasoningEffortDiv = document.getElementById('editReasoningEffortDiv');
+    const verbosityDiv = document.getElementById('editVerbosityDiv');
+    
+    // Hide all model-specific fields first
+    [freqPenaltyDiv, presPenaltyDiv, maxTokensDiv, maxCompletionTokensDiv, 
+     maxOutputTokensDiv, reasoningEffortDiv, verbosityDiv].forEach(div => {
+        if (div) div.style.display = 'none';
+    });
+    
+    // Show fields based on model
+    if (modelLower === 'gpt-5.2') {
+        // GPT-5.2: no penalties, uses max_completion_tokens, has reasoning_effort and verbosity
+        if (maxCompletionTokensDiv) maxCompletionTokensDiv.style.display = 'block';
+        if (maxOutputTokensDiv) maxOutputTokensDiv.style.display = 'block';
+        if (reasoningEffortDiv) reasoningEffortDiv.style.display = 'block';
+        if (verbosityDiv) verbosityDiv.style.display = 'block';
+    } else if (modelLower === 'gpt-5.1' || modelLower === 'gpt-5') {
+        // GPT-5.1/5: has penalties, uses max_completion_tokens, has reasoning_effort
+        if (freqPenaltyDiv) freqPenaltyDiv.style.display = 'block';
+        if (presPenaltyDiv) presPenaltyDiv.style.display = 'block';
+        if (maxCompletionTokensDiv) maxCompletionTokensDiv.style.display = 'block';
+        if (reasoningEffortDiv) reasoningEffortDiv.style.display = 'block';
+    } else {
+        // GPT-4.x and GPT-3.5: has penalties, uses max_tokens
+        if (freqPenaltyDiv) freqPenaltyDiv.style.display = 'block';
+        if (presPenaltyDiv) presPenaltyDiv.style.display = 'block';
+        if (maxTokensDiv) maxTokensDiv.style.display = 'block';
+    }
+}
+
+// Initialize visibility on page load
+document.addEventListener('DOMContentLoaded', function() {
+    updateCreateParameterVisibility();
+});
 
 // Close modals when clicking outside
 document.addEventListener('click', function(event) {

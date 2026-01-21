@@ -157,16 +157,6 @@
                             🔄 Refresh Now
                         </button>
                         {% endif %}
-                        {% if kb.is_events and kb.kb_type == 'url' %}
-                        <button onclick="discoverLocations('{{ kb.id }}')" 
-                                class="w-full text-left px-4 py-2 text-sm text-green-600 hover:bg-green-50 flex items-center">
-                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                            </svg>
-                            🗺️ Discover Locations
-                        </button>
-                        {% endif %}
                         <button onclick="deleteKnowledgeBase('{{ kb.id }}', '{{ kb.title }}')" 
                                 class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center">
                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -265,6 +255,49 @@
                     <span class="text-sm font-medium text-gray-700">📅 Event Data Source</span>
                     <span class="ml-2 text-xs text-gray-500">(contains scheduled events like classes, exams)</span>
                 </label>
+            </div>
+            
+            <!-- CISSP Type Selection -->
+            <div>
+                <label for="cisspType" class="block text-sm font-medium text-gray-700 mb-2">
+                    CISSP Type (Optional)
+                </label>
+                <select id="cisspType" name="cissp_type" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                    <option value="">None (General KB)</option>
+                    <option value="outline">CISSP Outline/Objectives</option>
+                    <option value="cbk">CISSP Domain CBK</option>
+                </select>
+            </div>
+            
+            <div id="cisspDomainSection" style="display: none;">
+                <label for="cisspDomain" class="block text-sm font-medium text-gray-700 mb-2">
+                    CISSP Domain (if CBK)
+                </label>
+                <select id="cisspDomain" name="cissp_domain" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                    <option value="">Select Domain</option>
+                    <option value="security_and_risk_management">Domain 1: Security and Risk Management</option>
+                    <option value="asset_security">Domain 2: Asset Security</option>
+                    <option value="security_architecture">Domain 3: Security Architecture and Engineering</option>
+                    <option value="communication_and_network_security">Domain 4: Communication and Network Security</option>
+                    <option value="identity_and_access_management">Domain 5: Identity and Access Management</option>
+                    <option value="security_assessment_and_testing">Domain 6: Security Assessment and Testing</option>
+                    <option value="security_operations">Domain 7: Security Operations</option>
+                    <option value="software_development_security">Domain 8: Software Development Security</option>
+                </select>
+            </div>
+            
+            <!-- Embedding Provider Selection -->
+            <div>
+                <label for="embeddingProvider" class="block text-sm font-medium text-gray-700 mb-2">
+                    Embedding Provider
+                </label>
+                <select id="embeddingProvider" name="embedding_provider" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                    <option value="openai" selected>OpenAI (text-embedding-3-large)</option>
+                    <option value="gemini">Google Gemini (text-embedding-004)</option>
+                </select>
+                <p class="text-xs text-gray-500 mt-1">
+                    Choose which provider to use for embedding this knowledge base content
+                </p>
             </div>
             
             <!-- Source Type Selection -->
@@ -520,6 +553,22 @@ function showUploadModal() {
             }
         }
         
+        // CISSP domain visibility toggle
+        document.addEventListener('DOMContentLoaded', function() {
+            const cisspTypeSelect = document.getElementById('cisspType');
+            const cisspDomainSection = document.getElementById('cisspDomainSection');
+            
+            if (cisspTypeSelect) {
+                cisspTypeSelect.addEventListener('change', function() {
+                    if (this.value === 'cbk') {
+                        cisspDomainSection.style.display = 'block';
+                    } else {
+                        cisspDomainSection.style.display = 'none';
+                    }
+                });
+            }
+        });
+        
         function showUploadProgress() {
             const submitBtn = document.getElementById('uploadSubmitBtn');
             const btnText = document.getElementById('uploadBtnText');
@@ -660,27 +709,6 @@ function refreshKnowledgeBase(id) {
     }
 }
 
-function discoverLocations(id) {
-    if (confirm('Discover nearby locations for this event knowledge base? This will search the web and automatically update the description with location hints.')) {
-        showPageProgress();
-        fetch('/knowledge_bases', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-            body: `action=discover_locations&kb_id=${id}`
-        }).then(response => response.json()).then(data => {
-            hidePageProgress();
-            if (data.success) {
-                alert(`Success! ${data.message}`);
-                location.reload();
-            } else {
-                alert(`Error: ${data.error || 'Failed to discover locations'}`);
-            }
-        }).catch(() => {
-            hidePageProgress();
-            alert('Error discovering locations');
-        });
-    }
-}
 
 function deleteKnowledgeBase(id, title) {
     if (confirm(`Delete knowledge base "${title}"? This action cannot be undone.`)) {

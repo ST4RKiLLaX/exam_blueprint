@@ -7,7 +7,22 @@ class AgentAPI:
     
     @staticmethod
     def create_agent(name: str, personality: str = "", style: str = "", 
-                    prompt: str = "", formatting: str = "", knowledge_bases: List[str] = None) -> Dict:
+                    prompt: str = "", formatting: str = "", knowledge_bases: List[str] = None,
+                    provider: str = "openai", provider_model: str = "gpt-5.2",
+                    model: str = "gpt-5.2", temperature: float = 0.9,
+                    frequency_penalty: float = 0.7, presence_penalty: float = 0.5,
+                    max_tokens: int = 1000, top_p: float = None,
+                    max_completion_tokens: int = None, max_output_tokens: int = None,
+                    reasoning_effort: str = None, verbosity: str = None,
+                    stop: List[str] = None, max_knowledge_chunks: int = 7,
+                    min_similarity_threshold: float = 1.0, 
+                    conversation_history_tokens: int = 1000,
+                    post_processing_rules: Dict = None,
+                    enable_semantic_detection: bool = False,
+                    semantic_similarity_threshold: float = 0.90,
+                    semantic_history_depth: int = 5,
+                    enable_cissp_mode: bool = True,
+                    blueprint_history_depth: int = 8) -> Dict:
         """Create a new agent and return result"""
         try:
             if not name.strip():
@@ -19,7 +34,29 @@ class AgentAPI:
                 style=style,
                 prompt=prompt,
                 formatting=formatting,
-                knowledge_bases=knowledge_bases or []
+                knowledge_bases=knowledge_bases or [],
+                provider=provider,
+                provider_model=provider_model,
+                model=model,
+                temperature=temperature,
+                frequency_penalty=frequency_penalty,
+                presence_penalty=presence_penalty,
+                max_tokens=max_tokens,
+                top_p=top_p,
+                max_completion_tokens=max_completion_tokens,
+                max_output_tokens=max_output_tokens,
+                reasoning_effort=reasoning_effort,
+                verbosity=verbosity,
+                stop=stop,
+                max_knowledge_chunks=max_knowledge_chunks,
+                min_similarity_threshold=min_similarity_threshold,
+                conversation_history_tokens=conversation_history_tokens,
+                post_processing_rules=post_processing_rules,
+                enable_semantic_detection=enable_semantic_detection,
+                semantic_similarity_threshold=semantic_similarity_threshold,
+                semantic_history_depth=semantic_history_depth,
+                enable_cissp_mode=enable_cissp_mode,
+                blueprint_history_depth=blueprint_history_depth
             )
             
             return {
@@ -72,12 +109,11 @@ class AgentAPI:
     def update_agent(agent_id: str, **kwargs) -> Dict:
         """Update an agent"""
         try:
-            # Remove empty values and clean up data
-            update_data = {k: v for k, v in kwargs.items() if v is not None}
-            if "name" in update_data and not update_data["name"].strip():
+            # Validate required fields only - None is valid for optional parameters
+            if "name" in kwargs and kwargs["name"] is not None and not kwargs["name"].strip():
                 return {"success": False, "error": "Agent name cannot be empty"}
             
-            success = agent_manager.update_agent(agent_id, **update_data)
+            success = agent_manager.update_agent(agent_id, **kwargs)
             if success:
                 agent = agent_manager.get_agent(agent_id)
                 return {
@@ -147,7 +183,19 @@ class AgentAPI:
                 personality=original_agent.personality,
                 style=original_agent.style,
                 prompt=original_agent.prompt,
-                knowledge_bases=original_agent.knowledge_bases.copy()
+                formatting=original_agent.formatting,
+                knowledge_bases=original_agent.knowledge_bases.copy(),
+                model=original_agent.model,
+                temperature=original_agent.temperature,
+                frequency_penalty=original_agent.frequency_penalty,
+                presence_penalty=original_agent.presence_penalty,
+                max_tokens=original_agent.max_tokens,
+                top_p=original_agent.top_p,
+                max_completion_tokens=original_agent.max_completion_tokens,
+                max_output_tokens=original_agent.max_output_tokens,
+                reasoning_effort=original_agent.reasoning_effort,
+                verbosity=original_agent.verbosity,
+                stop=original_agent.stop
             )
             
             return {

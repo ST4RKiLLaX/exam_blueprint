@@ -1,17 +1,58 @@
 import os
-import requests
+import gzip
 import json
-from docx import Document
-import pypdf
-from bs4 import BeautifulSoup
-import pickle
+import time
+from typing import Iterable, Iterator, List
+
 import faiss
 import numpy as np
+import pypdf
+from bs4 import BeautifulSoup
+from docx import Document
+import pickle
+import requests
 from openai import OpenAI
 from dotenv import load_dotenv
-import time
+
+try:
+    import tiktoken  # type: ignore
+except ImportError:
+    tiktoken = None
+
+EMBEDDING_MODEL = "text-embedding-3-large"
+DEFAULT_EMBEDDING_DIM = 3072
 
 load_dotenv()
+
+def create_embedding(text: str, provider: str = "openai", model: str = None) -> np.ndarray:
+    """
+    Create embedding using specified provider.
+    
+    Args:
+        text: Text to embed
+        provider: Provider name ("openai" or "gemini")
+        model: Optional specific model name (uses provider default if None)
+        
+    Returns:
+        numpy array of embedding vector
+    """
+    from app.config.provider_config import SUPPORTED_PROVIDERS, get_provider_api_key
+    
+    if provider == "openai":
+        from app.config.api_config import get_openai_api_key
+        client = OpenAI(api_key=get_openai_api_key())
+        model = model or SUPPORTED_PROVIDERS["openai"]["default_embedding_model"]
+        response = client.embeddings.create(input=text, model=model)
+        return np.array(response.data[0].embedding, dtype="float32")
+    
+    elif provider == "gemini":
+        from app.utils.gemini_client import GeminiClient
+        client = GeminiClient()
+        model = model or SUPPORTED_PROVIDERS["gemini"]["default_embedding_model"]
+        response = client.embed_content(model=model, content=text)
+        return np.array(response.data[0]["embedding"], dtype="float32")
+    
+    raise ValueError(f"Unsupported embedding provider: {provider}")
 
 # Initialize OpenAI client with API key from config
 def _get_openai_client():
@@ -28,32 +69,40 @@ def _get_openai_client():
 # Don't create client at import time - create when needed
 
 def extract_text_from_docx(file_path):
-    """Extract text from DOCX file"""
+    """Stream paragraphs from DOCX file"""
     try:
         doc = Document(file_path)
-        text = []
         for paragraph in doc.paragraphs:
-            if paragraph.text.strip():
-                text.append(paragraph.text.strip())
-        return "\n".join(text)
+            paragraph_text = paragraph.text.strip()
+            if not paragraph_text:
+                continue
+            yield paragraph_text
+        if not doc.paragraphs:
+            print(f"⚠️ No paragraphs found in DOCX: {file_path}")
     except Exception as e:
-        print(f"Error extracting text from DOCX: {e}")
-        return ""
+        print(f"Error extracting text from DOCX (paragraph stream) at {file_path}: {e}")
+        return
 
 def extract_text_from_pdf(file_path):
-    """Extract text from PDF file"""
+    """Stream page text from PDF file to avoid large in-memory buffers"""
     try:
-        text = []
-        with open(file_path, 'rb') as file:
+        with open(file_path, "rb") as file:
             pdf_reader = pypdf.PdfReader(file)
-            for page in pdf_reader.pages:
-                page_text = page.extract_text()
-                if page_text.strip():
-                    text.append(page_text.strip())
-        return "\n".join(text)
+            total_pages = len(pdf_reader.pages)
+            for page_number, page in enumerate(pdf_reader.pages, start=1):
+                try:
+                    page_text = page.extract_text() or ""
+                except Exception as page_error:
+                    print(f"Error extracting text from PDF {file_path} page {page_number}: {page_error}")
+                    continue
+                cleaned_text = page_text.strip()
+                if cleaned_text:
+                    yield cleaned_text
+                if page_number % 25 == 0 or page_number == total_pages:
+                    print(f"📄 Processed {page_number}/{total_pages} PDF pages from {file_path}")
     except Exception as e:
-        print(f"Error extracting text from PDF: {e}")
-        return ""
+        print(f"Error streaming text from PDF {file_path}: {e}")
+        return
 
 def fetch_content_from_url(url):
     """Fetch content from URL (HTML or JSON)"""
@@ -90,47 +139,97 @@ def fetch_content_from_url(url):
         print(f"Error fetching content from URL: {e}")
         return ""
 
-def chunk_text(text, chunk_size=1000, overlap=200):
-    """Split text into overlapping chunks"""
-    if not text:
-        return []
-    
-    chunks = []
-    start = 0
-    text_length = len(text)
-    
-    while start < text_length:
-        end = start + chunk_size
-        if end > text_length:
-            end = text_length
-        
-        chunk = text[start:end]
-        chunks.append(chunk)
-        
-        if end == text_length:
-            break
-        
-        start = end - overlap
-    
-    return chunks
+def chunk_text(
+    text_stream: Iterable[str],
+    max_tokens: int = 800,
+    overlap_tokens: int = 200,
+    encoding_name: str = "cl100k_base"
+) -> Iterator[str]:
+    """
+    Split iterable text segments into overlapping chunks sized by tokens.
+    Falls back to character-based chunking when tiktoken isn't available.
+    """
+    if isinstance(text_stream, str):
+        text_stream = [text_stream]
+    if overlap_tokens >= max_tokens:
+        raise ValueError("overlap_tokens must be smaller than max_tokens")
 
-def create_embeddings(chunks):
-    """Create embeddings for text chunks"""
-    embeddings = []
+    if not tiktoken:
+        print("⚠️ tiktoken not installed; falling back to character-based chunking")
+        buffer = ""
+        for segment in text_stream:
+            if not segment:
+                continue
+            buffer += segment
+            while len(buffer) >= max_tokens:
+                chunk = buffer[:max_tokens]
+                yield chunk
+                buffer = buffer[max_tokens - overlap_tokens :]
+        if buffer:
+            yield buffer
+        return
+
+    encoding = tiktoken.get_encoding(encoding_name)
+    token_buffer: List[int] = []
+    for segment in text_stream:
+        if not segment:
+            continue
+        segment_tokens = encoding.encode(segment)
+        token_buffer.extend(segment_tokens)
+
+        while len(token_buffer) >= max_tokens:
+            chunk_tokens = token_buffer[:max_tokens]
+            yield encoding.decode(chunk_tokens)
+            token_buffer = token_buffer[max_tokens - overlap_tokens :]
+
+    if token_buffer:
+        yield encoding.decode(token_buffer)
+
+def create_embeddings(chunks: List[str], batch_size: int = 32, provider: str = "openai", model: str = None) -> np.ndarray:
+    """
+    Create embeddings for text chunks in batches.
+    
+    Args:
+        chunks: List of text chunks to embed
+        batch_size: Number of chunks per API call
+        provider: Embedding provider ("openai" or "gemini")
+        model: Optional specific model name
+        
+    Returns:
+        numpy array of embeddings
+    """
+    if not chunks:
+        # Get default dimension for provider
+        from app.config.provider_config import SUPPORTED_PROVIDERS
+        default_dim = SUPPORTED_PROVIDERS.get(provider, {}).get("embedding_dimensions", DEFAULT_EMBEDDING_DIM)
+        return np.zeros((0, default_dim), dtype="float32")
+
+    embeddings: List[np.ndarray] = []
+    total_chunks = len(chunks)
+    embedding_dim = None
+
+    # For Gemini, we need to embed one at a time (no batch support in wrapper yet)
+    # For OpenAI, we can batch but use individual calls for consistency
     for chunk in chunks:
         try:
-            response = _get_openai_client().embeddings.create(
-                input=chunk,
-                model="text-embedding-3-small"
-            )
-            embedding = np.array(response.data[0].embedding, dtype="float32")
-            embeddings.append(embedding)
+            vector = create_embedding(chunk, provider=provider, model=model)
+            if embedding_dim is None:
+                embedding_dim = vector.shape[0]
+            embeddings.append(vector)
         except Exception as e:
-            print(f"Error creating embedding: {e}")
-            # Create a zero embedding as fallback
-            embeddings.append(np.zeros(1536, dtype="float32"))
-    
-    return np.array(embeddings)
+            print(f"Error creating embedding for chunk: {e}")
+            if embedding_dim is None:
+                from app.config.provider_config import SUPPORTED_PROVIDERS
+                embedding_dim = SUPPORTED_PROVIDERS.get(provider, {}).get("embedding_dimensions", DEFAULT_EMBEDDING_DIM)
+            embeddings.append(np.zeros(embedding_dim, dtype="float32"))
+
+        processed = min(start_idx + batch_size, total_chunks)
+        print(f"🧠 Embedded {processed}/{total_chunks} chunks")
+
+    if not embeddings:
+        return np.zeros((0, embedding_dim or DEFAULT_EMBEDDING_DIM), dtype="float32")
+
+    return np.vstack(embeddings)
 
 def generate_ai_summary(text, title="", source_type="document"):
     """Generate an AI summary/description of the knowledge base content"""
@@ -172,150 +271,26 @@ Keep it concise but informative. Focus on the practical value and scope of the c
 
 # Legacy web scraping functions removed - now using direct OpenAI approach for better results
 
-def find_nearby_locations_with_openai(location_name):
-    """Use OpenAI directly to find nearby locations - more reliable than web scraping"""
-    try:
-        print(f"🔍 Using OpenAI to find locations near: {location_name}")
-        
-        prompt = f"""Can I get a list of cities, towns, and neighborhoods near {location_name}? Make it comma-separated, not a vertical list. No less than 15, no more than 25.
 
-Include places that are:
-- Within reasonable commuting distance (20-30 miles)
-- Cities, towns, neighborhoods, boroughs, or well-known areas
-- Places people might live or work if they're considering events in {location_name}
-
-Focus on actual place names that people would recognize and use when describing where they live or work."""
-
-        response = _get_openai_client().chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "You are a geographic assistant. Provide accurate, comma-separated lists of nearby locations. Only return the list, no explanations or additional text."},
-                {"role": "user", "content": prompt}
-            ],
-            max_tokens=300,
-            temperature=0.1
-        )
-        
-        ai_response = response.choices[0].message.content.strip()
-        
-        # Parse the comma-separated response
-        if ai_response:
-            locations = [loc.strip() for loc in ai_response.split(',') if loc.strip()]
-            # Filter out the original location to avoid duplicates
-            locations = [loc for loc in locations if loc.lower() != location_name.lower()]
-            
-            if locations:
-                print(f"✅ Found {len(locations)} nearby locations for {location_name}: {', '.join(locations[:5])}...")
-                return locations[:25]  # Limit to 25 as requested
-            else:
-                print(f"❌ No nearby locations found for {location_name}")
-                return []
-        
-        return []
-        
-    except Exception as e:
-        print(f"Error finding nearby locations with OpenAI for {location_name}: {e}")
-        return []
-
-def find_nearby_locations(location_name):
-    """Complete pipeline to find nearby locations using OpenAI directly"""
-    try:
-        # Use the new OpenAI-based approach
-        nearby_locations = find_nearby_locations_with_openai(location_name)
-        
-        # Add small delay to be respectful to API limits
-        time.sleep(0.5)
-        
-        return nearby_locations
-        
-    except Exception as e:
-        print(f"Error finding nearby locations for {location_name}: {e}")
-        return []
-
-def extract_unique_locations_from_events(event_data):
-    """Extract unique location names from event data"""
-    try:
-        locations = set()
-        
-        # Handle both list and single event
-        events = event_data if isinstance(event_data, list) else [event_data]
-        
-        for event in events:
-            # Try multiple possible location field names
-            location = (event.get('Location') or 
-                       event.get('location') or 
-                       event.get('venue') or
-                       event.get('Venue') or
-                       event.get('city') or
-                       event.get('City'))
-            
-            if location and isinstance(location, str):
-                # Clean and normalize location name
-                clean_location = location.strip()
-                if clean_location and len(clean_location) > 2:  # Avoid single letters or very short strings
-                    locations.add(clean_location)
-        
-        return list(locations)
-        
-    except Exception as e:
-        print(f"Error extracting locations from event data: {e}")
-        return []
-
-def enhance_event_kb_description(kb_id, primary_locations, nearby_areas):
-    """Automatically enhance KB description with location information"""
-    try:
-        from app.config.knowledge_config import load_knowledge_config, save_knowledge_config
-        
-        if not primary_locations:
-            return False
-        
-        # Create enhanced description
-        primary_text = ', '.join(primary_locations)
-        
-        if nearby_areas:
-            nearby_text = ', '.join(nearby_areas)
-            enhanced_description = f"Events in {primary_text}. This includes areas like {nearby_text}"
-        else:
-            enhanced_description = f"Events in {primary_text}"
-        
-        # Update the knowledge base configuration
-        config = load_knowledge_config()
-        kb_found = False
-        
-        for kb in config.get('knowledge_bases', []):
-            if kb.get('id') == kb_id:
-                # Preserve existing description if it's not auto-generated
-                existing_desc = kb.get('description', '')
-                if not existing_desc or existing_desc.startswith('Events in '):
-                    kb['description'] = enhanced_description
-                    kb_found = True
-                    print(f"✅ Updated KB description for {kb_id}: {enhanced_description}")
-                else:
-                    # Append to existing description
-                    kb['description'] = f"{existing_desc}. {enhanced_description}"
-                    kb_found = True
-                    print(f"✅ Enhanced existing KB description for {kb_id}")
-                break
-        
-        if kb_found:
-            save_knowledge_config(config)
-            return True
-        else:
-            print(f"❌ Knowledge base {kb_id} not found for description update")
-            return False
-            
-    except Exception as e:
-        print(f"Error enhancing KB description for {kb_id}: {e}")
-        return False
-
-def process_knowledge_base(kb_id, kb_type, source_path, generate_summary=False):
-    """Process a knowledge base and create embeddings"""
+def process_knowledge_base(kb_id, kb_type, source_path, generate_summary=False, embedding_provider="openai", embedding_model=None):
+    """
+    Process a knowledge base and create embeddings.
+    
+    Args:
+        kb_id: Knowledge base ID
+        kb_type: Type of source ("file", "url")
+        source_path: Path to source file or URL
+        generate_summary: Whether to generate AI summary
+        embedding_provider: Provider for embeddings ("openai" or "gemini")
+        embedding_model: Optional specific embedding model
+    """
     try:
         # Check if this is an event knowledge base
         from app.config.knowledge_config import load_knowledge_config
         config = load_knowledge_config()
         is_event_kb = False
         kb_info = None
+        event_source_text = None
         
         for kb in config.get('knowledge_bases', []):
             if kb.get('id') == kb_id:
@@ -325,93 +300,84 @@ def process_knowledge_base(kb_id, kb_type, source_path, generate_summary=False):
         
         # Extract text based on type
         if kb_type == "file":
-            if source_path.lower().endswith('.docx'):
-                text = extract_text_from_docx(source_path)
-            elif source_path.lower().endswith('.pdf'):
-                text = extract_text_from_pdf(source_path)
+            if source_path.lower().endswith(".docx"):
+                text_iterator = extract_text_from_docx(source_path)
+            elif source_path.lower().endswith(".pdf"):
+                text_iterator = extract_text_from_pdf(source_path)
             else:
                 print(f"Unsupported file type: {source_path}")
                 return False, None
         elif kb_type == "url":
-            text = fetch_content_from_url(source_path)
+            fetched_text = fetch_content_from_url(source_path)
+            event_source_text = fetched_text
+            text_iterator = [fetched_text] if fetched_text else []
         else:
             print(f"Unsupported knowledge base type: {kb_type}")
             return False, None
-        
-        if not text:
-            print(f"No text extracted from {source_path}")
+
+        if text_iterator is None:
+            print(f"No text iterator available for {source_path}")
             return False, None
         
-        # Handle event knowledge bases - discover nearby locations
-        if is_event_kb and kb_type == "url":
-            try:
-                print(f"🎯 Processing event knowledge base: {kb_id}")
-                
-                # Try to parse as JSON to extract event data
-                try:
-                    event_data = json.loads(text)
-                    
-                    # Extract unique locations from events
-                    primary_locations = extract_unique_locations_from_events(event_data)
-                    
-                    if primary_locations:
-                        print(f"📍 Found {len(primary_locations)} primary locations: {', '.join(primary_locations)}")
-                        
-                        # Discover nearby areas for each location
-                        all_nearby_areas = []
-                        for location in primary_locations:
-                            nearby = find_nearby_locations(location)
-                            all_nearby_areas.extend(nearby)
-                        
-                        # Remove duplicates and limit results
-                        unique_nearby = list(dict.fromkeys(all_nearby_areas))[:20]  # Keep order, remove dupes, limit to 20
-                        
-                        if unique_nearby:
-                            print(f"🗺️ Discovered {len(unique_nearby)} nearby areas")
-                            # Update KB description with location information
-                            enhance_event_kb_description(kb_id, primary_locations, unique_nearby)
-                        else:
-                            print("❌ No nearby areas discovered")
-                    else:
-                        print("❌ No locations found in event data")
-                        
-                except json.JSONDecodeError:
-                    print("⚠️ Event KB content is not valid JSON, skipping location discovery")
-                    
-            except Exception as e:
-                print(f"⚠️ Error during event location discovery for {kb_id}: {e}")
-                # Continue with normal processing even if location discovery fails
+        segments_emitted = 0
+        summary_char_limit = 8000
+        summary_buffer: List[str] = []
+        summary_chars = 0
+
+        def streaming_segments() -> Iterator[str]:
+            nonlocal segments_emitted, summary_chars
+            for segment in text_iterator:
+                if not segment:
+                    continue
+                segments_emitted += 1
+                if generate_summary and summary_chars < summary_char_limit:
+                    remaining = summary_char_limit - summary_chars
+                    snippet = segment[:remaining]
+                    summary_buffer.append(snippet)
+                    summary_chars += len(snippet)
+                yield segment
+
+        chunk_iter = chunk_text(streaming_segments())
+        chunks = list(chunk_iter)
+
+        if segments_emitted == 0 or not chunks:
+            print(f"No text chunks produced from {source_path}")
+            return False, None
+        
+        print(f"🧩 Generated {len(chunks)} chunks for knowledge base {kb_id}")
         
         # Generate AI summary if requested
         ai_summary = None
         if generate_summary:
             title = kb_info.get('title', '') if kb_info else ""
-            ai_summary = generate_ai_summary(text, title, kb_type)
-        
-        # Chunk the text
-        chunks = chunk_text(text)
-        if not chunks:
-            print(f"No chunks created from {source_path}")
-            return False, ai_summary
+            summary_text = "".join(summary_buffer)
+            ai_summary = generate_ai_summary(summary_text, title, kb_type)
         
         # Create embeddings
-        embeddings = create_embeddings(chunks)
+        embeddings = create_embeddings(chunks, provider=embedding_provider, model=embedding_model)
         
+        if embeddings.size == 0:
+            print(f"No embeddings generated for {kb_id}")
+            return False, ai_summary
+
+        # Save checkpoints prior to index build
+        kb_folder = f"app/knowledge_bases/{kb_id}"
+        os.makedirs(kb_folder, exist_ok=True)
+        
+        index_path = f"{kb_folder}/index.faiss"
+        chunks_path = f"{kb_folder}/chunks.pkl.gz"
+        embeddings_path = f"{kb_folder}/embeddings.npy"
+        
+        with gzip.open(chunks_path, "wb") as f:
+            pickle.dump(chunks, f, protocol=pickle.HIGHEST_PROTOCOL)
+        np.save(embeddings_path, embeddings)
+
         # Create FAISS index
         dimension = embeddings.shape[1]
         index = faiss.IndexFlatL2(dimension)
         index.add(embeddings)
         
-        # Save index and chunks
-        kb_folder = f"app/knowledge_bases/{kb_id}"
-        os.makedirs(kb_folder, exist_ok=True)
-        
-        index_path = f"{kb_folder}/index.faiss"
-        chunks_path = f"{kb_folder}/chunks.pkl"
-        
         faiss.write_index(index, index_path)
-        with open(chunks_path, "wb") as f:
-            pickle.dump(chunks, f)
         
         print(f"Successfully processed knowledge base {kb_id}")
         return True, ai_summary
@@ -420,107 +386,90 @@ def process_knowledge_base(kb_id, kb_type, source_path, generate_summary=False):
         print(f"Error processing knowledge base {kb_id}: {e}")
         return False, None
 
-def discover_locations_for_event_kb(kb_id):
-    """Manually trigger location discovery for an existing event knowledge base"""
-    try:
-        from app.config.knowledge_config import load_knowledge_config
-        
-        config = load_knowledge_config()
-        kb_info = None
-        
-        # Find the knowledge base
-        for kb in config.get('knowledge_bases', []):
-            if kb.get('id') == kb_id:
-                kb_info = kb
-                break
-        
-        if not kb_info:
-            print(f"❌ Knowledge base {kb_id} not found")
-            return False
-        
-        if not kb_info.get('is_events', False):
-            print(f"❌ Knowledge base {kb_id} is not marked as an event KB")
-            return False
-        
-        if kb_info.get('type') != 'url':
-            print(f"❌ Knowledge base {kb_id} is not a URL type (location discovery only works for URL event sources)")
-            return False
-        
-        # Fetch the event data
-        source_url = kb_info.get('source')
-        if not source_url:
-            print(f"❌ No source URL found for KB {kb_id}")
-            return False
-        
-        print(f"🔍 Discovering locations for event KB: {kb_info.get('title', kb_id)}")
-        
-        # Fetch content from URL
-        try:
-            response = requests.get(source_url)
-            response.raise_for_status()
-            event_data = response.json()
-        except Exception as e:
-            print(f"❌ Error fetching event data from {source_url}: {e}")
-            return False
-        
-        # Extract locations and discover nearby areas
-        primary_locations = extract_unique_locations_from_events(event_data)
-        
-        if not primary_locations:
-            print("❌ No locations found in event data")
-            return False
-        
-        print(f"📍 Found {len(primary_locations)} primary locations: {', '.join(primary_locations)}")
-        
-        # Discover nearby areas
-        all_nearby_areas = []
-        for location in primary_locations:
-            nearby = find_nearby_locations(location)
-            all_nearby_areas.extend(nearby)
-        
-        # Remove duplicates and limit results
-        unique_nearby = list(dict.fromkeys(all_nearby_areas))[:20]
-        
-        if unique_nearby:
-            print(f"🗺️ Discovered {len(unique_nearby)} nearby areas")
-            # Update KB description
-            success = enhance_event_kb_description(kb_id, primary_locations, unique_nearby)
-            return success
-        else:
-            print("❌ No nearby areas discovered")
-            return False
-            
-    except Exception as e:
-        print(f"Error discovering locations for KB {kb_id}: {e}")
-        return False
 
-def search_knowledge_base(kb_id, query, top_k=3):
-    """Search a specific knowledge base"""
+def search_knowledge_base_with_embedding(kb_id, query_embedding, top_k=3):
+    """
+    Search a specific knowledge base with a pre-computed embedding.
+    
+    Args:
+        kb_id: Knowledge base ID
+        query_embedding: Pre-computed embedding vector (numpy array)
+        top_k: Number of results to return
+        
+    Returns:
+        List of tuples: (chunk_text, distance, kb_id)
+        Distance is L2 distance (lower = more similar)
+    """
     try:
         kb_folder = f"app/knowledge_bases/{kb_id}"
         index_path = f"{kb_folder}/index.faiss"
-        chunks_path = f"{kb_folder}/chunks.pkl"
+        chunks_path = f"{kb_folder}/chunks.pkl.gz"
+        if not os.path.exists(chunks_path):
+            # Backwards compatibility for legacy storage
+            legacy_path = f"{kb_folder}/chunks.pkl"
+            if os.path.exists(legacy_path):
+                chunks_path = legacy_path
         
         if not os.path.exists(index_path) or not os.path.exists(chunks_path):
             return []
         
         # Load index and chunks
         index = faiss.read_index(index_path)
-        with open(chunks_path, "rb") as f:
-            chunks = pickle.load(f)
+        if chunks_path.endswith(".gz"):
+            with gzip.open(chunks_path, "rb") as f:
+                chunks = pickle.load(f)
+        else:
+            with open(chunks_path, "rb") as f:
+                chunks = pickle.load(f)
         
-        # Create query embedding
-        response = _get_openai_client().embeddings.create(
-            input=query,
-            model="text-embedding-3-small"
-        )
-        query_embedding = np.array(response.data[0].embedding, dtype="float32").reshape(1, -1)
+        # Ensure embedding is the right shape
+        if query_embedding.ndim == 1:
+            query_embedding = query_embedding.reshape(1, -1)
         
         # Search
         distances, indices = index.search(query_embedding, top_k)
-        results = [chunks[i] for i in indices[0] if i < len(chunks)]
+        
+        # Return results with distance and kb_id
+        results = []
+        for idx, dist_idx in enumerate(indices[0]):
+            if dist_idx < len(chunks):
+                chunk = chunks[dist_idx]
+                distance = float(distances[0][idx])
+                results.append((chunk, distance, kb_id))
         
         return results
+        
+    except Exception as e:
+        print(f"Error searching knowledge base {kb_id}: {e}")
+        return []
+
+def search_knowledge_base(kb_id, query, top_k=3):
+    """
+    Search a specific knowledge base with a text query.
+    Creates embedding using KB's provider (defaults to OpenAI for backward compatibility).
+    
+    Returns:
+        List of tuples: (chunk_text, distance, kb_id)
+        Distance is L2 distance (lower = more similar)
+    """
+    try:
+        # Get KB info to determine provider
+        from app.config.knowledge_config import load_knowledge_config
+        config = load_knowledge_config()
+        kb_info = None
+        for kb in config.get('knowledge_bases', []):
+            if kb.get('id') == kb_id:
+                kb_info = kb
+                break
+        
+        provider = kb_info.get('embedding_provider', 'openai') if kb_info else 'openai'
+        model = kb_info.get('embedding_model') if kb_info else None
+        
+        # Create query embedding with appropriate provider
+        query_embedding = create_embedding(query, provider=provider, model=model)
+        
+        # Use the embedding-based search
+        return search_knowledge_base_with_embedding(kb_id, query_embedding, top_k)
         
     except Exception as e:
         print(f"Error searching knowledge base {kb_id}: {e}")

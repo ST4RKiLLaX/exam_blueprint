@@ -38,7 +38,7 @@ def update_embedding_status(kb_id, status):
             return True
     return False
 
-def add_knowledge_base(title, description, kb_type, source, chunks_path=None, event_category=None, is_events=False, access_type="shared", category="general", refresh_schedule="manual"):
+def add_knowledge_base(title, description, kb_type, source, chunks_path=None, is_events=False, access_type="shared", category="general", refresh_schedule="manual", cissp_type=None, cissp_domain=None, embedding_provider="openai", embedding_model=None):
     """Add a new knowledge base to the configuration"""
     config = load_knowledge_config()
     
@@ -55,12 +55,15 @@ def add_knowledge_base(title, description, kb_type, source, chunks_path=None, ev
         "created_at": datetime.now().isoformat(),
         "status": "active",
         "is_events": is_events,
-        "event_category": event_category if is_events else None,
         "access_type": access_type,  # "shared" or "exclusive"
         "category": category,  # "general", "cna", "pharmacy", "admin", etc.
         "refresh_schedule": refresh_schedule,  # "manual", "hourly", "daily", "weekly", "on_use"
         "last_refreshed": datetime.now().isoformat() if kb_type == "url" else None,
-        "next_refresh": None  # Will be calculated based on schedule
+        "next_refresh": None,  # Will be calculated based on schedule
+        "cissp_type": cissp_type,  # "outline", "cbk", or None
+        "cissp_domain": cissp_domain,  # domain name string or None
+        "embedding_provider": embedding_provider,  # "openai", "gemini", etc.
+        "embedding_model": embedding_model  # specific embedding model or None for provider default
     }
     
     config["knowledge_bases"].append(new_kb)
