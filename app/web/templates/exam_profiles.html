@@ -10,12 +10,20 @@
             <h1 class="text-3xl font-bold text-gray-900">Exam Profiles</h1>
             <p class="mt-2 text-sm text-gray-600">Manage exam profiles that define question types, domains, and reasoning modes</p>
         </div>
-        <button onclick="showCreateModal()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center">
-            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-            </svg>
-            Create Profile
-        </button>
+        <div class="flex space-x-3">
+            <button onclick="showImportModal()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
+                </svg>
+                Import Profile
+            </button>
+            <button onclick="showCreateModal()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                </svg>
+                Create Profile
+            </button>
+        </div>
     </div>
 
     <!-- Flash Messages -->
@@ -61,6 +69,9 @@
             <div class="flex space-x-2">
                 <button onclick='editProfile({{ profile | tojson }})' class="flex-1 px-3 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium">
                     Edit
+                </button>
+                <button onclick="exportProfile('{{ profile.profile_id }}')" class="flex-1 px-3 py-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition-colors text-sm font-medium">
+                    Export
                 </button>
                 <button onclick="deleteProfile('{{ profile.profile_id }}', '{{ profile.name }}', {{ profile.usage.agents_count }}, {{ profile.usage.kb_count }})" class="flex-1 px-3 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors text-sm font-medium">
                     Delete
@@ -314,6 +325,56 @@
                 </button>
             </div>
         </form>
+    </div>
+</div>
+
+<!-- Import Profile Modal -->
+<div id="importModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-xl shadow-xl max-w-md w-full">
+        <div class="flex items-center justify-between p-6 border-b border-gray-200">
+            <h2 class="text-xl font-semibold text-gray-900">Import Exam Profile</h2>
+            <button onclick="hideImportModal()" class="text-gray-400 hover:text-gray-600">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+        
+        <div class="p-6 space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                    Select JSON File
+                </label>
+                <input type="file" id="importFileInput" accept=".json" 
+                       class="block w-full text-sm text-gray-500
+                              file:mr-4 file:py-2 file:px-4
+                              file:rounded file:border-0
+                              file:text-sm file:font-semibold
+                              file:bg-blue-50 file:text-blue-700
+                              hover:file:bg-blue-100
+                              border border-gray-300 rounded-lg cursor-pointer">
+                <p class="mt-2 text-xs text-gray-500">Upload an exam profile JSON file exported from ExamBlueprint</p>
+            </div>
+            
+            <div>
+                <label class="flex items-center cursor-pointer">
+                    <input type="checkbox" id="importOverwrite" class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                    <span class="ml-2 text-sm text-gray-700">Overwrite if profile already exists</span>
+                </label>
+                <p class="mt-1 ml-6 text-xs text-gray-500">If unchecked, import will fail if a profile with the same ID exists</p>
+            </div>
+        </div>
+        
+        <div class="flex justify-end space-x-3 px-6 py-4 bg-gray-50 rounded-b-xl">
+            <button onclick="hideImportModal()" 
+                    class="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                Cancel
+            </button>
+            <button onclick="importProfile()" 
+                    class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                Import Profile
+            </button>
+        </div>
     </div>
 </div>
 
@@ -599,6 +660,54 @@ document.getElementById('profileForm').addEventListener('submit', function(e) {
         return;
     }
 });
+
+// Export/Import Functions
+function exportProfile(profileId) {
+    window.location.href = '/api/exam_profiles/' + profileId + '/export';
+}
+
+function showImportModal() {
+    document.getElementById('importModal').classList.remove('hidden');
+    // Reset form fields
+    document.getElementById('importFileInput').value = '';
+    document.getElementById('importOverwrite').checked = false;
+}
+
+function hideImportModal() {
+    document.getElementById('importModal').classList.add('hidden');
+}
+
+function importProfile() {
+    const fileInput = document.getElementById('importFileInput');
+    const overwrite = document.getElementById('importOverwrite').checked;
+    
+    if (!fileInput.files.length) {
+        alert('Please select a JSON file to import');
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('file', fileInput.files[0]);
+    formData.append('overwrite', overwrite);
+    
+    fetch('/api/exam_profiles/import', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            hideImportModal();
+            location.reload();
+        } else {
+            alert('Import failed: ' + (data.error || 'Unknown error'));
+        }
+    })
+    .catch(error => {
+        alert('Import failed: ' + error.message);
+    });
+}
 </script>
 
 {% endblock %}

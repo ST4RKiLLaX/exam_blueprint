@@ -409,3 +409,48 @@ def get_profile_usage(profile_id: str) -> Dict[str, Any]:
         "agent_ids": using_agents,
         "kb_ids": using_kbs
     }
+
+
+def export_profile(profile_id: str) -> tuple[bool, str, Optional[Dict]]:
+    """
+    Export a single profile as JSON data.
+    
+    Args:
+        profile_id: Profile identifier to export
+        
+    Returns:
+        Tuple of (success, message, profile_data)
+    """
+    profile = get_profile(profile_id)
+    
+    if not profile:
+        return False, "Profile not found", None
+    
+    # Return the profile data (caller handles JSON encoding)
+    return True, "Profile exported successfully", profile
+
+
+def import_profile(profile_data: Dict[str, Any], overwrite: bool = False) -> tuple[bool, str]:
+    """
+    Import a profile from JSON data.
+    
+    Args:
+        profile_data: Profile dictionary to import
+        overwrite: If True, overwrite existing profile with same ID
+        
+    Returns:
+        Tuple of (success, message)
+    """
+    # Validate structure
+    is_valid, error_msg = validate_profile_structure(profile_data)
+    if not is_valid:
+        return False, f"Invalid profile structure: {error_msg}"
+    
+    profile_id = profile_data["profile_id"]
+    
+    # Check if profile already exists
+    if profile_exists(profile_id) and not overwrite:
+        return False, f"Profile '{profile_id}' already exists. Enable overwrite to replace it."
+    
+    # Use existing save_profile function
+    return save_profile(profile_data)

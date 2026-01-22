@@ -35,42 +35,136 @@
         {
           "id": "security_and_risk_management",
           "name": "Security and Risk Management",
-          "keywords": ["risk", "governance", "compliance", "policy", "legal", "regulation", "privacy", "ethics", "security program", "risk assessment", "business continuity"]
+          "keywords": [
+            "risk",
+            "governance",
+            "compliance",
+            "policy",
+            "legal",
+            "regulation",
+            "privacy",
+            "ethics",
+            "security program",
+            "risk assessment",
+            "business continuity"
+          ]
         },
         {
           "id": "asset_security",
           "name": "Asset Security",
-          "keywords": ["data classification", "asset", "ownership", "privacy", "retention", "data lifecycle", "handling", "destruction", "media sanitization"]
+          "keywords": [
+            "data classification",
+            "asset",
+            "ownership",
+            "privacy",
+            "retention",
+            "data lifecycle",
+            "handling",
+            "destruction",
+            "media sanitization"
+          ]
         },
         {
           "id": "security_architecture",
           "name": "Security Architecture and Engineering",
-          "keywords": ["architecture", "design", "model", "defense in depth", "layered security", "secure design", "system security", "physical security", "facility"]
+          "keywords": [
+            "architecture",
+            "design",
+            "model",
+            "defense in depth",
+            "layered security",
+            "secure design",
+            "system security",
+            "physical security",
+            "facility"
+          ]
         },
         {
           "id": "communication_and_network_security",
           "name": "Communication and Network Security",
-          "keywords": ["network", "encryption", "cryptography", "protocol", "firewall", "vpn", "wireless", "telecommunications", "tls", "ssl", "ipsec", "tcp", "ip"]
+          "keywords": [
+            "network",
+            "encryption",
+            "cryptography",
+            "protocol",
+            "firewall",
+            "vpn",
+            "wireless",
+            "telecommunications",
+            "tls",
+            "ssl",
+            "ipsec",
+            "tcp",
+            "ip"
+          ]
         },
         {
           "id": "identity_and_access_management",
           "name": "Identity and Access Management",
-          "keywords": ["access control", "authentication", "authorization", "identity", "iam", "rbac", "mac", "dac", "single sign-on", "sso", "federation", "privilege"]
+          "keywords": [
+            "access control",
+            "authentication",
+            "authorization",
+            "identity",
+            "iam",
+            "rbac",
+            "mac",
+            "dac",
+            "single sign-on",
+            "sso",
+            "federation",
+            "privilege"
+          ]
         },
         {
           "id": "security_assessment_and_testing",
           "name": "Security Assessment and Testing",
-          "keywords": ["testing", "audit", "assessment", "vulnerability", "penetration test", "security testing", "code review", "assessment", "evaluation", "validation"]
+          "keywords": [
+            "testing",
+            "audit",
+            "assessment",
+            "vulnerability",
+            "penetration test",
+            "security testing",
+            "code review",
+            "assessment",
+            "evaluation",
+            "validation"
+          ]
         },
         {
           "id": "security_operations",
           "name": "Security Operations",
-          "keywords": ["incident", "response", "monitoring", "logging", "siem", "investigation", "forensics", "disaster recovery", "backup", "patch", "change management"]
+          "keywords": [
+            "incident",
+            "response",
+            "monitoring",
+            "logging",
+            "siem",
+            "investigation",
+            "forensics",
+            "disaster recovery",
+            "backup",
+            "patch",
+            "change management"
+          ]
         },
         {
           "id": "software_development_security",
           "name": "Software Development Security",
-          "keywords": ["sdlc", "development", "coding", "software", "application security", "secure coding", "code", "programming", "devops", "devsecops", "api"]
+          "keywords": [
+            "sdlc",
+            "development",
+            "coding",
+            "software",
+            "application security",
+            "secure coding",
+            "code",
+            "programming",
+            "devops",
+            "devsecops",
+            "api"
+          ]
         }
       ],
       "reasoning_modes": [
@@ -100,7 +194,228 @@
         "outline_type": "outline",
         "domain_type": "cbk"
       },
-      "guidance_suffix": "Ensure the question tests understanding at a managerial/strategic level, not just technical recall. The correct answer should reflect CISSP principles: risk-based decisions, governance priorities, and enterprise-scale thinking."
+      "guidance_suffix": "Ensure the question tests understanding at a managerial/strategic level, not just technical recall. The correct answer should reflect CISSP principles: risk-based decisions, governance priorities, and enterprise-scale thinking.",
+      "usage": {
+        "agents_count": 2,
+        "kb_count": 9,
+        "agent_ids": [
+          "f5faaf75-64e3-45bd-9424-f074ab8437e5",
+          "17af8b63-fe5c-405b-a0cd-760f8682d607"
+        ],
+        "kb_ids": [
+          "kb_0_1769013675",
+          "kb_1_1769013780",
+          "kb_2_1769013866",
+          "kb_3_1769014640",
+          "kb_4_1769014723",
+          "kb_5_1769015188",
+          "kb_6_1769015258",
+          "kb_7_1769015357",
+          "kb_8_1769015604"
+        ]
+      }
+    },
+    {
+      "name": "CISSP",
+      "profile_id": "cissp_canonical",
+      "description": "Certified Information Systems Security Professional (CISSP) — managerial, risk-based security decision-making at enterprise scale.",
+      "guidance_suffix": "Ensure each question evaluates judgment, prioritization, and governance rather than technical execution. Prefer risk-based decisions, management authority, and enterprise constraints. Correct answers should reflect defensible business-aligned security decisions consistent with CISSP principles.",
+      "kb_structure": {
+        "domain_type": "cbk",
+        "outline_type": "outline",
+        "priority_kb_flag": "is_priority_kb"
+      },
+      "domains": [
+        {
+          "id": "security_and_risk_management",
+          "name": "Security and Risk Management",
+          "priority": "high",
+          "keywords": [
+            "risk management",
+            "governance",
+            "policy",
+            "compliance",
+            "legal",
+            "regulation",
+            "ethics",
+            "privacy",
+            "risk assessment",
+            "risk acceptance",
+            "business continuity",
+            "disaster recovery",
+            "management responsibility"
+          ]
+        },
+        {
+          "id": "asset_security",
+          "name": "Asset Security",
+          "priority": "medium",
+          "keywords": [
+            "data classification",
+            "data ownership",
+            "custodian",
+            "privacy",
+            "retention",
+            "data lifecycle",
+            "handling",
+            "destruction",
+            "media sanitization",
+            "information value"
+          ]
+        },
+        {
+          "id": "security_architecture_and_engineering",
+          "name": "Security Architecture and Engineering",
+          "priority": "medium",
+          "keywords": [
+            "secure design",
+            "architecture",
+            "defense in depth",
+            "layered security",
+            "least privilege",
+            "fail-safe defaults",
+            "control placement",
+            "physical security",
+            "system resilience"
+          ]
+        },
+        {
+          "id": "communication_and_network_security",
+          "name": "Communication and Network Security",
+          "priority": "medium",
+          "keywords": [
+            "network segmentation",
+            "trust boundary",
+            "data in transit",
+            "encryption",
+            "control placement",
+            "attack surface",
+            "telecommunications",
+            "vpn",
+            "wireless security"
+          ]
+        },
+        {
+          "id": "identity_and_access_management",
+          "name": "Identity and Access Management",
+          "priority": "medium",
+          "keywords": [
+            "identity lifecycle",
+            "authentication",
+            "authorization",
+            "least privilege",
+            "separation of duties",
+            "access reviews",
+            "federation",
+            "single sign-on",
+            "privileged access"
+          ]
+        },
+        {
+          "id": "security_assessment_and_testing",
+          "name": "Security Assessment and Testing",
+          "priority": "medium",
+          "keywords": [
+            "security assessment",
+            "audit",
+            "testing",
+            "validation",
+            "evaluation",
+            "vulnerability assessment",
+            "penetration testing",
+            "independent review",
+            "evidence-based assurance"
+          ]
+        },
+        {
+          "id": "security_operations",
+          "name": "Security Operations",
+          "priority": "medium",
+          "keywords": [
+            "incident response",
+            "monitoring",
+            "logging",
+            "siem",
+            "investigation",
+            "forensics",
+            "backup",
+            "disaster recovery",
+            "change management",
+            "lessons learned"
+          ]
+        },
+        {
+          "id": "software_development_security",
+          "name": "Software Development Security",
+          "priority": "low",
+          "keywords": [
+            "secure sdlc",
+            "security requirements",
+            "secure design",
+            "application security",
+            "devsecops",
+            "code review",
+            "change control",
+            "risk-aware development"
+          ]
+        }
+      ],
+      "question_types": [
+        {
+          "id": "comparative",
+          "phrase": "Which is BEST/MOST appropriate?",
+          "guidance": "Frame answers as competing defensible options. The correct answer must align with enterprise risk management, governance priorities, and realistic organizational constraints."
+        },
+        {
+          "id": "sequential",
+          "phrase": "What should be done FIRST?",
+          "guidance": "Frame options as dependent steps. The correct answer should reflect proper authority, prerequisite assessment, and risk-based sequencing."
+        },
+        {
+          "id": "risk_identification",
+          "phrase": "What is the PRIMARY risk?",
+          "guidance": "Frame options as different risks or impacts. The correct answer should identify the most significant business or security risk, not a technical symptom."
+        },
+        {
+          "id": "control_selection",
+          "phrase": "Which control MOST effectively addresses the issue?",
+          "guidance": "Frame options as alternative controls. Prefer controls that align with policy, scale appropriately, and reduce risk at the enterprise level."
+        },
+        {
+          "id": "exception",
+          "phrase": "When would this NOT apply?",
+          "guidance": "Use sparingly. The correct answer should reflect a clearly defined exception based on context, authority, or scope—not a trick or ambiguity."
+        }
+      ],
+      "reasoning_modes": [
+        {
+          "id": "governance",
+          "name": "Governance",
+          "description": "Frame questions around policy, accountability, authority, regulatory obligations, and management responsibility."
+        },
+        {
+          "id": "risk_based",
+          "name": "Risk Based",
+          "description": "Frame questions using threat → vulnerability → impact → control → residual risk reasoning."
+        },
+        {
+          "id": "process",
+          "name": "Process",
+          "description": "Frame questions around lifecycle stages, sequencing, dependencies, and structured workflows."
+        },
+        {
+          "id": "comparative_analysis",
+          "name": "Comparative Analysis",
+          "description": "Frame questions around trade-offs between approaches, highlighting advantages and disadvantages in enterprise contexts."
+        }
+      ],
+      "global_constraints": [
+        "Prefer management or data owner authority over technical staff action",
+        "Assume enterprise-scale environments and constraints",
+        "Avoid tool-specific or configuration-level trivia",
+        "Ensure incorrect options reflect common CISSP reasoning errors",
+        "Controls should not precede assessment or governance"
+      ]
     }
   ]
 }

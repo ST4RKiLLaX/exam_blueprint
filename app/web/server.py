@@ -921,6 +921,63 @@ def get_exam_profile_api(profile_id):
     else:
         return jsonify({"error": "Profile not found"}), 404
 
+@app.route("/api/exam_profiles/<profile_id>/export", methods=["GET"])
+@login_required
+@roles_required('admin')
+def export_exam_profile(profile_id):
+    """Export an exam profile as downloadable JSON"""
+    from app.config.exam_profile_config import export_profile
+    
+    success, message, profile_data = export_profile(profile_id)
+    
+    if not success:
+        return jsonify({"error": message}), 404
+    
+    # Create a JSON response with download headers
+    response = jsonify(profile_data)
+    response.headers['Content-Disposition'] = f'attachment; filename="{profile_id}.json"'
+    response.headers['Content-Type'] = 'application/json'
+    
+    return response
+
+@app.route("/api/exam_profiles/import", methods=["POST"])
+@login_required
+@roles_required('admin')
+def import_exam_profile():
+    """Import an exam profile from uploaded JSON file"""
+    from app.config.exam_profile_config import import_profile
+    import json
+    
+    # Check if file was uploaded
+    if 'file' not in request.files:
+        return jsonify({"error": "No file uploaded"}), 400
+    
+    file = request.files['file']
+    
+    if file.filename == '':
+        return jsonify({"error": "No file selected"}), 400
+    
+    # Validate file extension
+    if not file.filename.endswith('.json'):
+        return jsonify({"error": "File must be a JSON file"}), 400
+    
+    try:
+        # Parse JSON from uploaded file
+        profile_data = json.load(file)
+    except json.JSONDecodeError as e:
+        return jsonify({"error": f"Invalid JSON format: {str(e)}"}), 400
+    
+    # Get overwrite flag from form data
+    overwrite = request.form.get('overwrite', 'false').lower() == 'true'
+    
+    # Import the profile
+    success, message = import_profile(profile_data, overwrite)
+    
+    if success:
+        return jsonify({"success": True, "message": message})
+    else:
+        return jsonify({"error": message}), 400
+
 @app.route("/knowledge", methods=["GET", "POST"])
 @login_required
 def knowledge():
