@@ -815,6 +815,61 @@ def knowledge_bases():
                          knowledge_bases=knowledge_bases,
                          exam_profiles=exam_profiles)
 
+@app.route("/api/agents/<agent_id>/export", methods=["GET"])
+@login_required
+def export_agent_api(agent_id):
+    """Export an agent as downloadable JSON"""
+    from app.models.agent import agent_manager
+    
+    success, message, agent_data = agent_manager.export_agent(agent_id)
+    
+    if not success:
+        return jsonify({"error": message}), 404
+    
+    # Use agent name for filename (sanitize)
+    agent_name = agent_data.get("name", "agent").replace(" ", "_").lower()
+    safe_name = "".join(c for c in agent_name if c.isalnum() or c == "_")
+    
+    response = jsonify(agent_data)
+    response.headers['Content-Disposition'] = f'attachment; filename="{safe_name}.json"'
+    response.headers['Content-Type'] = 'application/json'
+    
+    return response
+
+@app.route("/api/agents/import", methods=["POST"])
+@login_required
+def import_agent_api():
+    """Import an agent from uploaded JSON file"""
+    from app.models.agent import agent_manager
+    import json
+    
+    if 'file' not in request.files:
+        return jsonify({"error": "No file uploaded"}), 400
+    
+    file = request.files['file']
+    
+    if file.filename == '':
+        return jsonify({"error": "No file selected"}), 400
+    
+    if not file.filename.endswith('.json'):
+        return jsonify({"error": "File must be a JSON file"}), 400
+    
+    try:
+        agent_data = json.load(file)
+    except json.JSONDecodeError as e:
+        return jsonify({"error": f"Invalid JSON format: {str(e)}"}), 400
+    
+    success, message, warnings = agent_manager.import_agent(agent_data)
+    
+    if success:
+        return jsonify({
+            "success": True,
+            "message": message,
+            "warnings": warnings
+        })
+    else:
+        return jsonify({"error": message}), 400
+
 @app.route("/exam_profiles", methods=["GET", "POST"])
 @login_required
 @roles_required('admin')

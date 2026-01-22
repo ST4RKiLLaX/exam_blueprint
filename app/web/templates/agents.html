@@ -6,9 +6,17 @@
 <div class="max-w-7xl mx-auto">
     <div class="flex justify-between items-center mb-8">
         <h1 class="text-3xl font-bold text-gray-900">🤖 Agent Management</h1>
-        <button onclick="showCreateModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
-            ➕ Create New Agent
-        </button>
+        <div class="flex space-x-3">
+            <button onclick="showImportModal()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
+                </svg>
+                Import Agent
+            </button>
+            <button onclick="showCreateModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
+                ➕ Create New Agent
+            </button>
+        </div>
     </div>
 
     <!-- Agents Grid -->
@@ -50,6 +58,10 @@
                     <button onclick="cloneAgent('{{ agent.agent_id }}', '{{ agent.name }}')" 
                             class="flex-1 bg-green-50 hover:bg-green-100 text-green-700 px-3 py-2 rounded text-sm font-medium transition-colors">
                         📋 Clone
+                    </button>
+                    <button onclick="exportAgent('{{ agent.agent_id }}')" 
+                            class="flex-1 bg-green-50 hover:bg-green-100 text-green-700 px-3 py-2 rounded text-sm font-medium transition-colors">
+                        💾 Export
                     </button>
                     {% if agents|length > 1 or agent.status != 'active' %}
                     <button onclick="deleteAgent('{{ agent.agent_id }}', '{{ agent.name }}')" 
@@ -1053,6 +1065,58 @@
     </div>
 </div>
 
+<!-- Import Agent Modal -->
+<div id="importAgentModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-xl shadow-xl max-w-md w-full">
+        <div class="flex items-center justify-between p-6 border-b border-gray-200">
+            <h2 class="text-xl font-semibold text-gray-900">Import Agent</h2>
+            <button onclick="hideImportAgentModal()" class="text-gray-400 hover:text-gray-600">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+        
+        <div class="p-6 space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                    Select Agent JSON File
+                </label>
+                <input type="file" id="importAgentFileInput" accept=".json" 
+                       class="block w-full text-sm text-gray-500
+                              file:mr-4 file:py-2 file:px-4
+                              file:rounded file:border-0
+                              file:text-sm file:font-semibold
+                              file:bg-blue-50 file:text-blue-700
+                              hover:file:bg-blue-100
+                              border border-gray-300 rounded-lg cursor-pointer">
+                <p class="mt-2 text-xs text-gray-500">Upload an agent JSON file exported from ExamBlueprint</p>
+            </div>
+            
+            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <p class="text-sm text-yellow-800 font-medium mb-2">Important:</p>
+                <ul class="text-xs text-yellow-700 space-y-1 list-disc list-inside">
+                    <li>Agent will be imported as a new copy with a new ID</li>
+                    <li>Knowledge base references will be cleared</li>
+                    <li>You'll need to reassign KBs in agent settings after import</li>
+                    <li>Exam profile references will be validated</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="flex justify-end space-x-3 px-6 py-4 bg-gray-50 rounded-b-xl">
+            <button onclick="hideImportAgentModal()" 
+                    class="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                Cancel
+            </button>
+            <button onclick="importAgent()" 
+                    class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                Import Agent
+            </button>
+        </div>
+    </div>
+</div>
+
 <script>
 // Auto-resize textarea functionality
 function autoResizeTextarea(textarea) {
@@ -1480,5 +1544,53 @@ document.addEventListener('click', function(event) {
         }
     });
 });
+
+// Export/Import Functions
+function exportAgent(agentId) {
+    window.location.href = '/api/agents/' + agentId + '/export';
+}
+
+function showImportModal() {
+    document.getElementById('importAgentModal').classList.remove('hidden');
+    document.getElementById('importAgentFileInput').value = '';
+}
+
+function hideImportAgentModal() {
+    document.getElementById('importAgentModal').classList.add('hidden');
+}
+
+function importAgent() {
+    const fileInput = document.getElementById('importAgentFileInput');
+    
+    if (!fileInput.files.length) {
+        alert('Please select a JSON file to import');
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('file', fileInput.files[0]);
+    
+    fetch('/api/agents/import', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            let message = data.message;
+            if (data.warnings && data.warnings.length > 0) {
+                message += '\n\nWarnings:\n' + data.warnings.join('\n');
+            }
+            alert(message);
+            hideImportAgentModal();
+            location.reload();
+        } else {
+            alert('Import failed: ' + (data.error || 'Unknown error'));
+        }
+    })
+    .catch(error => {
+        alert('Import failed: ' + error.message);
+    });
+}
 </script>
 {% endblock %}

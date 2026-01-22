@@ -2,7 +2,7 @@ import json
 import os
 import uuid
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 
 class Agent:
     """Represents an AI agent with its configuration and metadata"""
@@ -338,6 +338,91 @@ class AgentManager:
             self.save_agents()
             return True
         return False
+    
+    def export_agent(self, agent_id: str) -> tuple[bool, str, Optional[Dict]]:
+        """
+        Export an agent as JSON with metadata about KB references.
+        
+        Args:
+            agent_id: Agent identifier to export
+            
+        Returns:
+            Tuple of (success, message, agent_data)
+        """
+        agent = self.get_agent(agent_id)
+        if not agent:
+            return False, "Agent not found", None
+        
+        # Get agent dict
+        agent_data = agent.to_dict()
+        
+        # Add metadata with KB titles for user reference
+        from app.config.knowledge_config import load_knowledge_config
+        kb_config = load_knowledge_config()
+        kb_titles = []
+        for kb_id in agent.knowledge_bases:
+            for kb in kb_config.get("knowledge_bases", []):
+                if kb.get("id") == kb_id:
+                    kb_titles.append(kb.get("title", "Unknown"))
+                    break
+        
+        agent_data["_metadata"] = {
+            "kb_titles": kb_titles,
+            "export_timestamp": datetime.now().isoformat(),
+            "export_version": "1.0"
+        }
+        
+        return True, "Agent exported successfully", agent_data
+    
+    def import_agent(self, agent_data: Dict[str, Any]) -> tuple[bool, str, List[str]]:
+        """
+        Import an agent from JSON, creating a new copy.
+        Returns (success, message, warnings_list)
+        
+        Args:
+            agent_data: Agent dictionary to import
+            
+        Returns:
+            Tuple of (success, message, warnings)
+        """
+        warnings = []
+        
+        # Remove metadata if present
+        agent_data.pop("_metadata", None)
+        
+        # Validate required fields
+        required_fields = ["name", "personality", "style", "prompt"]
+        for field in required_fields:
+            if field not in agent_data:
+                return False, f"Missing required field: {field}", []
+        
+        # Validate and handle exam_profile_id
+        exam_profile_id = agent_data.get("exam_profile_id")
+        if exam_profile_id:
+            from app.config.exam_profile_config import profile_exists
+            if not profile_exists(exam_profile_id):
+                warnings.append(f"Exam profile '{exam_profile_id}' not found - set to None")
+                agent_data["exam_profile_id"] = None
+        
+        # Clear knowledge base references
+        kb_count = len(agent_data.get("knowledge_bases", []))
+        if kb_count > 0:
+            warnings.append(f"{kb_count} KB reference(s) cleared - reassign in agent settings")
+        agent_data["knowledge_bases"] = []
+        
+        # Remove old IDs and timestamps - will be regenerated
+        agent_data.pop("agent_id", None)
+        agent_data.pop("created_at", None)
+        agent_data.pop("updated_at", None)
+        
+        # Create new agent
+        try:
+            agent = Agent.from_dict(agent_data)
+            self._agents[agent.agent_id] = agent
+            self.save_agents()
+            return True, "Agent imported successfully", warnings
+        except Exception as e:
+            return False, f"Failed to create agent: {str(e)}", []
     
     def get_default_agent(self) -> Optional[Agent]:
         """Get the first active agent as default"""
