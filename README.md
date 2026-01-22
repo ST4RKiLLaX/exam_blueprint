@@ -1,6 +1,6 @@
-# AI Agent Question Generation System
+# ExamBlueprint
 
-A Flask-based application for generating high-quality multiple-choice questions using AI agents powered by OpenAI and Google Gemini. Designed specifically for creating CISSP-style exam questions with knowledge base integration, semantic repetition detection, and advanced reasoning controls.
+AI-powered certification question generation platform. Transform your study materials and knowledge bases into unlimited, high-quality multiple-choice questions with intelligent domain rotation, reasoning diversity, and semantic duplicate detection. Designed for certification exam prep (CISSP, CompTIA, CISM, and more) with support for OpenAI and Google Gemini models.
 
 ## Features
 
@@ -107,7 +107,7 @@ python3 --version  # Check system Python version
 1. **Clone the repository**
    ```bash
    git clone <repository-url>
-   cd ai_agent
+   cd exam_blueprint
    ```
 
 2. **Create a virtual environment**
@@ -353,9 +353,9 @@ After logging in as admin, you can manage users:
 ## Project Structure
 
 ```
-ai_agent/
+exam_blueprint/
 ├── app/
-│   ├── agents/          # Agent reply generation
+│   ├── agents/          # AI agent reply generation
 │   ├── api/             # API layer for CRUD operations
 │   ├── config/          # Configuration files (gitignored)
 │   │   └── users.db     # User database (SQLite, gitignored)
