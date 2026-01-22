@@ -175,17 +175,18 @@ def calculate_text_overlap(text1: str, text2: str) -> float:
     
     return intersection / union
 
-def cissp_two_stage_retrieval(query: str, blueprint: dict, agent) -> list:
+def profile_two_stage_retrieval(query: str, blueprint: dict, agent, profile: dict) -> list:
     """
-    CISSP-specific two-stage retrieval: Golden Key KB (or Outline KB) → Domain-specific CBK KB.
+    Profile-based two-stage retrieval: Priority KB (or Outline KB) → Domain-specific KB.
     
-    Stage A: Retrieve 1-2 chunks from Golden Key KB for hot topics (falls back to Outline KB)
-    Stage B: Retrieve 2-4 chunks from domain-specific CBK KB for content
+    Stage A: Retrieve 1-2 chunks from priority KB for hot topics (falls back to outline KB)
+    Stage B: Retrieve 2-4 chunks from domain-specific KB for content
     
     Args:
         query: User's query string
         blueprint: Blueprint dict with domain selection
         agent: Agent configuration object
+        profile: Exam profile dictionary with KB structure configuration
         
     Returns:
         List of formatted strings with KB source attribution
@@ -198,35 +199,40 @@ def cissp_two_stage_retrieval(query: str, blueprint: dict, agent) -> list:
     # Get all agent's assigned KBs
     knowledge_bases = get_knowledge_bases_for_agent(agent.agent_id, agent.knowledge_bases)
     
-    # Find Golden Key KB (priority - matches "golden" in title, case-insensitive)
-    golden_key_kb = None
+    # Get KB structure configuration from profile
+    kb_structure = profile.get("kb_structure", {})
+    outline_type = kb_structure.get("outline_type", "outline")
+    domain_type = kb_structure.get("domain_type", "cbk")
+    
+    # Find Priority KB (is_priority_kb == True)
+    priority_kb = None
     for kb in knowledge_bases:
-        if "golden" in kb.get("title", "").lower():
-            golden_key_kb = kb
+        if kb.get("is_priority_kb", False):
+            priority_kb = kb
             break
     
-    # Find Outline KB (cissp_type == "outline") - fallback if no Golden Key
+    # Find Outline KB (profile_type == outline_type) - fallback if no Priority KB
     outline_kb = None
     for kb in knowledge_bases:
-        if kb.get("cissp_type") == "outline":
+        if kb.get("profile_type") == outline_type:
             outline_kb = kb
             break
     
-    # Determine Stage A KB: Golden Key takes priority, fall back to Outline
-    stage_a_kb = golden_key_kb if golden_key_kb else outline_kb
+    # Determine Stage A KB: Priority takes precedence, fall back to Outline
+    stage_a_kb = priority_kb if priority_kb else outline_kb
     
-    # Find Domain CBK KB (cissp_type == "cbk" AND cissp_domain matches blueprint)
-    domain_cbk_kb = None
+    # Find Domain-specific KB (profile_type == domain_type AND profile_domain matches blueprint)
+    domain_kb = None
     blueprint_domain = blueprint.get("domain")
     for kb in knowledge_bases:
-        if kb.get("cissp_type") == "cbk" and kb.get("cissp_domain") == blueprint_domain:
-            domain_cbk_kb = kb
+        if kb.get("profile_type") == domain_type and kb.get("profile_domain") == blueprint_domain:
+            domain_kb = kb
             break
     
     formatted_results = []
     stage_a_chunks_raw = []
     
-    # Stage A: Retrieve from Golden Key or Outline KB (if available)
+    # Stage A: Retrieve from Priority or Outline KB (if available)
     if stage_a_kb:
         stage_a_results = search_knowledge_base(stage_a_kb["id"], query, top_k=2)
         if stage_a_results:
@@ -236,24 +242,24 @@ def cissp_two_stage_retrieval(query: str, blueprint: dict, agent) -> list:
             # Format chunks with source
             for chunk, distance, kb_id in stage_a_results:
                 if distance <= agent.min_similarity_threshold:
-                    kb_title = stage_a_kb.get('title', 'CISSP Golden Key' if golden_key_kb else 'CISSP Outline')
+                    kb_title = stage_a_kb.get('title', 'Priority KB' if priority_kb else 'Outline')
                     formatted_chunk = f"{chunk}\n[Source: {kb_title}]"
                     formatted_results.append(formatted_chunk)
     
-    # Extract subtopic from Stage A chunks (Golden Key or Outline)
+    # Extract subtopic from Stage A chunks
     subtopic = extract_subtopic_from_outline(stage_a_chunks_raw)
     
-    # Stage B: Retrieve from Domain CBK KB (if available)
-    if domain_cbk_kb:
+    # Stage B: Retrieve from Domain-specific KB (if available)
+    if domain_kb:
         # Refine query with subtopic
         refined_query = f"{query} {subtopic}" if subtopic else query
         
-        cbk_results = search_knowledge_base(domain_cbk_kb["id"], refined_query, top_k=4)
-        if cbk_results:
-            # Format CBK chunks with source
-            for chunk, distance, kb_id in cbk_results:
+        domain_results = search_knowledge_base(domain_kb["id"], refined_query, top_k=4)
+        if domain_results:
+            # Format domain chunks with source
+            for chunk, distance, kb_id in domain_results:
                 if distance <= agent.min_similarity_threshold:
-                    formatted_chunk = f"{chunk}\n[Source: {domain_cbk_kb.get('title', 'CISSP CBK')}]"
+                    formatted_chunk = f"{chunk}\n[Source: {domain_kb.get('title', 'Domain KB')}]"
                     formatted_results.append(formatted_chunk)
     
     # If no results from either stage, return message
@@ -273,18 +279,22 @@ def search_agent_knowledge_bases(query, agent, top_k=3):
     Returns:
         List of formatted strings with KB source attribution
     """
-    # Check if agent has CISSP mode enabled
-    if hasattr(agent, 'enable_cissp_mode') and agent.enable_cissp_mode:
-        # Use blueprint from request context (set by generate_reply)
-        try:
+    # Check if agent has exam profile configured
+    if hasattr(agent, 'exam_profile_id') and agent.exam_profile_id:
+        from app.config.exam_profile_config import get_profile
+        profile = get_profile(agent.exam_profile_id)
+        
+        if profile:
+            # Use blueprint from request context (set by generate_reply)
             try:
-                blueprint = getattr(g, 'current_blueprint', None)
+                try:
+                    blueprint = getattr(g, 'current_blueprint', None)
+                except RuntimeError:
+                    blueprint = None
             except RuntimeError:
                 blueprint = None
-        except RuntimeError:
-            blueprint = None
-        if blueprint:
-            return cissp_two_stage_retrieval(query, blueprint, agent)
+            if blueprint:
+                return profile_two_stage_retrieval(query, blueprint, agent, profile)
     
     # Fall back to standard retrieval for non-CISSP agents
     if not agent:
@@ -499,30 +509,33 @@ def _generate_with_openai(message_body, history=None, agent=None, skip_post_proc
     agent_identity = f"You are {agent.name}, an AI assistant. "
     system_message = agent_identity + personality + "\n" + style
 
-    # Blueprint generation for CISSP mode
-    if agent and hasattr(agent, 'enable_cissp_mode') and agent.enable_cissp_mode:
+    # Blueprint generation for exam profile mode
+    if agent and hasattr(agent, 'exam_profile_id') and agent.exam_profile_id:
         from app.utils.reasoning_controller import select_blueprint, build_blueprint_constraint
+        from app.config.exam_profile_config import get_profile
         
-        try:
-            thread_id = getattr(g, 'thread_id', 'default')
-        except RuntimeError:
-            thread_id = 'default'
-        blueprint = select_blueprint(thread_id, message_body, agent.blueprint_history_depth)
-        
-        # Store in request context for retrieval function to access (if in request context)
-        try:
-            g.current_blueprint = blueprint
-        except RuntimeError:
-            pass
-        
-        # Build constraint text
-        blueprint_constraint = build_blueprint_constraint(blueprint)
-        
-        # Store constraint for prompt injection (if in request context)
-        try:
-            g.blueprint_constraint = blueprint_constraint
-        except RuntimeError:
-            pass
+        profile = get_profile(agent.exam_profile_id)
+        if profile:
+            try:
+                thread_id = getattr(g, 'thread_id', 'default')
+            except RuntimeError:
+                thread_id = 'default'
+            blueprint = select_blueprint(thread_id, message_body, agent.blueprint_history_depth, profile)
+            
+            # Store in request context for retrieval function to access (if in request context)
+            try:
+                g.current_blueprint = blueprint
+            except RuntimeError:
+                pass
+            
+            # Build constraint text
+            blueprint_constraint = build_blueprint_constraint(blueprint, profile)
+            
+            # Store constraint for prompt injection (if in request context)
+            try:
+                g.blueprint_constraint = blueprint_constraint
+            except RuntimeError:
+                pass
 
     prompt = build_prompt(message_body, history=history, agent=agent)
     
@@ -896,30 +909,33 @@ def _generate_with_gemini(message_body, history=None, agent=None, skip_post_proc
     agent_identity = f"You are {agent.name}, an AI assistant. "
     system_message = agent_identity + personality + "\n" + style
 
-    # Blueprint generation for CISSP mode
-    if agent and hasattr(agent, 'enable_cissp_mode') and agent.enable_cissp_mode:
+    # Blueprint generation for exam profile mode
+    if agent and hasattr(agent, 'exam_profile_id') and agent.exam_profile_id:
         from app.utils.reasoning_controller import select_blueprint, build_blueprint_constraint
+        from app.config.exam_profile_config import get_profile
         
-        try:
-            thread_id = getattr(g, 'thread_id', 'default')
-        except RuntimeError:
-            thread_id = 'default'
-        blueprint = select_blueprint(thread_id, message_body, agent.blueprint_history_depth)
-        
-        # Store in request context for retrieval function to access (if in request context)
-        try:
-            g.current_blueprint = blueprint
-        except RuntimeError:
-            pass
-        
-        # Build constraint text
-        blueprint_constraint = build_blueprint_constraint(blueprint)
-        
-        # Store constraint for prompt injection (if in request context)
-        try:
-            g.blueprint_constraint = blueprint_constraint
-        except RuntimeError:
-            pass
+        profile = get_profile(agent.exam_profile_id)
+        if profile:
+            try:
+                thread_id = getattr(g, 'thread_id', 'default')
+            except RuntimeError:
+                thread_id = 'default'
+            blueprint = select_blueprint(thread_id, message_body, agent.blueprint_history_depth, profile)
+            
+            # Store in request context for retrieval function to access (if in request context)
+            try:
+                g.current_blueprint = blueprint
+            except RuntimeError:
+                pass
+            
+            # Build constraint text
+            blueprint_constraint = build_blueprint_constraint(blueprint, profile)
+            
+            # Store constraint for prompt injection (if in request context)
+            try:
+                g.blueprint_constraint = blueprint_constraint
+            except RuntimeError:
+                pass
 
     prompt = build_prompt(message_body, history=history, agent=agent)
     

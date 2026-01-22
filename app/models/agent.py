@@ -37,7 +37,9 @@ class Agent:
                  enable_semantic_detection: bool = False,
                  semantic_similarity_threshold: float = 0.90,
                  semantic_history_depth: int = 5,
-                 # CISSP reasoning controller
+                 # Exam profile (replaces CISSP-specific mode)
+                 exam_profile_id: Optional[str] = None,
+                 # CISSP reasoning controller (deprecated, use exam_profile_id)
                  enable_cissp_mode: bool = True,
                  blueprint_history_depth: int = 8):
         self.agent_id = agent_id or str(uuid.uuid4())
@@ -74,6 +76,7 @@ class Agent:
         self.enable_semantic_detection = enable_semantic_detection
         self.semantic_similarity_threshold = semantic_similarity_threshold
         self.semantic_history_depth = semantic_history_depth
+        self.exam_profile_id = exam_profile_id
         self.enable_cissp_mode = enable_cissp_mode
         self.blueprint_history_depth = blueprint_history_depth
     
@@ -110,6 +113,7 @@ class Agent:
             "enable_semantic_detection": self.enable_semantic_detection,
             "semantic_similarity_threshold": self.semantic_similarity_threshold,
             "semantic_history_depth": self.semantic_history_depth,
+            "exam_profile_id": self.exam_profile_id,
             "enable_cissp_mode": self.enable_cissp_mode,
             "blueprint_history_depth": self.blueprint_history_depth
         }
@@ -167,6 +171,14 @@ class Agent:
             filtered_data['enable_cissp_mode'] = True
         if 'blueprint_history_depth' not in filtered_data:
             filtered_data['blueprint_history_depth'] = 8
+        
+        # Migrate enable_cissp_mode to exam_profile_id (migration)
+        if 'exam_profile_id' not in filtered_data:
+            # If enable_cissp_mode is True, convert to CISSP profile
+            if filtered_data.get('enable_cissp_mode', False):
+                filtered_data['exam_profile_id'] = 'cissp_2024'
+            else:
+                filtered_data['exam_profile_id'] = None
         
         # Set defaults for provider fields (migration)
         if 'provider' not in filtered_data:

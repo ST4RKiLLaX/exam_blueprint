@@ -1,0 +1,106 @@
+{
+  "profiles": [
+    {
+      "profile_id": "cissp_2024",
+      "name": "CISSP",
+      "description": "Certified Information Systems Security Professional",
+      "question_types": [
+        {
+          "id": "comparative",
+          "phrase": "Which is BEST/MOST appropriate?",
+          "guidance": "Frame options as competing alternatives with varying degrees of correctness. The correct answer should represent the optimal choice given typical enterprise constraints."
+        },
+        {
+          "id": "sequential",
+          "phrase": "What should be done FIRST?",
+          "guidance": "Frame options as sequential steps in a process. The correct answer should reflect the proper order based on dependencies, risk priority, or governance requirements."
+        },
+        {
+          "id": "risk_identification",
+          "phrase": "What is the PRIMARY risk?",
+          "guidance": "Frame the scenario around a potential security issue. Options should present different risks or concerns, with the correct answer identifying the most significant threat."
+        },
+        {
+          "id": "control_selection",
+          "phrase": "Which control addresses the issue?",
+          "guidance": "Frame options as different security controls or countermeasures. The correct answer should be the most effective control for the specific threat or requirement."
+        },
+        {
+          "id": "exception",
+          "phrase": "When would this NOT apply?",
+          "guidance": "Frame options as scenarios or conditions. The correct answer should identify the exception case where a principle, control, or requirement does not apply."
+        }
+      ],
+      "domains": [
+        {
+          "id": "security_and_risk_management",
+          "name": "Security and Risk Management",
+          "keywords": ["risk", "governance", "compliance", "policy", "legal", "regulation", "privacy", "ethics", "security program", "risk assessment", "business continuity"]
+        },
+        {
+          "id": "asset_security",
+          "name": "Asset Security",
+          "keywords": ["data classification", "asset", "ownership", "privacy", "retention", "data lifecycle", "handling", "destruction", "media sanitization"]
+        },
+        {
+          "id": "security_architecture",
+          "name": "Security Architecture and Engineering",
+          "keywords": ["architecture", "design", "model", "defense in depth", "layered security", "secure design", "system security", "physical security", "facility"]
+        },
+        {
+          "id": "communication_and_network_security",
+          "name": "Communication and Network Security",
+          "keywords": ["network", "encryption", "cryptography", "protocol", "firewall", "vpn", "wireless", "telecommunications", "tls", "ssl", "ipsec", "tcp", "ip"]
+        },
+        {
+          "id": "identity_and_access_management",
+          "name": "Identity and Access Management",
+          "keywords": ["access control", "authentication", "authorization", "identity", "iam", "rbac", "mac", "dac", "single sign-on", "sso", "federation", "privilege"]
+        },
+        {
+          "id": "security_assessment_and_testing",
+          "name": "Security Assessment and Testing",
+          "keywords": ["testing", "audit", "assessment", "vulnerability", "penetration test", "security testing", "code review", "assessment", "evaluation", "validation"]
+        },
+        {
+          "id": "security_operations",
+          "name": "Security Operations",
+          "keywords": ["incident", "response", "monitoring", "logging", "siem", "investigation", "forensics", "disaster recovery", "backup", "patch", "change management"]
+        },
+        {
+          "id": "software_development_security",
+          "name": "Software Development Security",
+          "keywords": ["sdlc", "development", "coding", "software", "application security", "secure coding", "code", "programming", "devops", "devsecops", "api"]
+        }
+      ],
+      "reasoning_modes": [
+        {
+          "id": "governance",
+          "name": "Governance",
+          "description": "Use a policy and compliance lens. Frame the question in terms of governance requirements, organizational policy, regulatory compliance, or management responsibility."
+        },
+        {
+          "id": "risk_based",
+          "name": "Risk Based",
+          "description": "Use risk-based thinking. Frame the question in terms of: threat → vulnerability → impact → control → residual risk."
+        },
+        {
+          "id": "process",
+          "name": "Process",
+          "description": "Use lifecycle or phase-based thinking. Frame the question in terms of process stages, implementation phases, or sequential workflows."
+        },
+        {
+          "id": "comparative_analysis",
+          "name": "Comparative Analysis",
+          "description": "Use comparative analysis. Frame the question around trade-offs, comparing different approaches and their advantages/disadvantages in enterprise contexts."
+        }
+      ],
+      "kb_structure": {
+        "priority_kb_flag": "is_priority_kb",
+        "outline_type": "outline",
+        "domain_type": "cbk"
+      },
+      "guidance_suffix": "Ensure the question tests understanding at a managerial/strategic level, not just technical recall. The correct answer should reflect CISSP principles: risk-based decisions, governance priorities, and enterprise-scale thinking."
+    }
+  ]
+}

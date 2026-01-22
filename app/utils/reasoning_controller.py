@@ -1,9 +1,11 @@
 """
-Reasoning Controller Module for CISSP Question Generation
+Reasoning Controller Module for Exam Profile Question Generation
 
 This module manages blueprint generation and rotation for diverse question creation.
 It controls question types, domain selection, and reasoning modes to ensure variety
 and prevent repetitive patterns in generated questions.
+
+Now profile-based: loads configuration from exam profiles instead of hardcoded values.
 """
 
 import random
@@ -16,135 +18,32 @@ from collections import Counter
 # Structure: {thread_id: [{"question_type": str, "domain": str, "reasoning_mode": str, "timestamp": str}, ...]}
 BLUEPRINT_CACHE = {}
 
-# Hardcoded rotation lists (easily tunable)
-QUESTION_TYPES = [
-    "comparative",     # "Which is BEST/MOST appropriate?"
-    "sequential",      # "What should be done FIRST?"
-    "risk_identification",  # "What is the PRIMARY risk?"
-    "control_selection",    # "Which control addresses X?"
-    "exception"        # "When would X NOT apply?"
-]
 
-CISSP_DOMAINS = [
-    "security_and_risk_management",
-    "asset_security",
-    "security_architecture",
-    "communication_and_network_security",
-    "identity_and_access_management",
-    "security_assessment_and_testing",
-    "security_operations",
-    "software_development_security"
-]
-
-REASONING_MODES = [
-    "governance",           # Policy/compliance lens
-    "risk_based",          # Threat → control → residual
-    "process",             # Lifecycle/phase-based
-    "comparative_analysis" # Trade-offs between options
-]
-
-# Domain keyword mappings for hint detection
-DOMAIN_KEYWORDS = {
-    "security_and_risk_management": [
-        "risk", "governance", "compliance", "policy", "legal", "regulation",
-        "privacy", "ethics", "security program", "risk assessment", "business continuity"
-    ],
-    "asset_security": [
-        "data classification", "asset", "ownership", "privacy", "retention",
-        "data lifecycle", "handling", "destruction", "media sanitization"
-    ],
-    "security_architecture": [
-        "architecture", "design", "model", "defense in depth", "layered security",
-        "secure design", "system security", "physical security", "facility"
-    ],
-    "communication_and_network_security": [
-        "network", "encryption", "cryptography", "protocol", "firewall",
-        "vpn", "wireless", "telecommunications", "tls", "ssl", "ipsec", "tcp", "ip"
-    ],
-    "identity_and_access_management": [
-        "access control", "authentication", "authorization", "identity",
-        "iam", "rbac", "mac", "dac", "single sign-on", "sso", "federation", "privilege"
-    ],
-    "security_assessment_and_testing": [
-        "testing", "audit", "assessment", "vulnerability", "penetration test",
-        "security testing", "code review", "assessment", "evaluation", "validation"
-    ],
-    "security_operations": [
-        "incident", "response", "monitoring", "logging", "siem", "investigation",
-        "forensics", "disaster recovery", "backup", "patch", "change management"
-    ],
-    "software_development_security": [
-        "sdlc", "development", "coding", "software", "application security",
-        "secure coding", "code", "programming", "devops", "devsecops", "api"
-    ]
-}
-
-# Question type templates for constraint building
-QUESTION_TYPE_TEMPLATES = {
-    "comparative": {
-        "phrase": "Which is BEST/MOST appropriate?",
-        "guidance": "Frame options as competing alternatives with varying degrees of correctness. The correct answer should represent the optimal choice given typical enterprise constraints."
-    },
-    "sequential": {
-        "phrase": "What should be done FIRST?",
-        "guidance": "Frame options as sequential steps in a process. The correct answer should reflect the proper order based on dependencies, risk priority, or governance requirements."
-    },
-    "risk_identification": {
-        "phrase": "What is the PRIMARY risk?",
-        "guidance": "Frame the scenario around a potential security issue. Options should present different risks or concerns, with the correct answer identifying the most significant threat."
-    },
-    "control_selection": {
-        "phrase": "Which control addresses the issue?",
-        "guidance": "Frame options as different security controls or countermeasures. The correct answer should be the most effective control for the specific threat or requirement."
-    },
-    "exception": {
-        "phrase": "When would this NOT apply?",
-        "guidance": "Frame options as scenarios or conditions. The correct answer should identify the exception case where a principle, control, or requirement does not apply."
-    }
-}
-
-# Reasoning mode descriptions for constraint building
-REASONING_MODE_DESCRIPTIONS = {
-    "governance": "Use a policy and compliance lens. Frame the question in terms of governance requirements, organizational policy, regulatory compliance, or management responsibility.",
-    "risk_based": "Use risk-based thinking. Frame the question in terms of: threat → vulnerability → impact → control → residual risk.",
-    "process": "Use lifecycle or phase-based thinking. Frame the question in terms of process stages, implementation phases, or sequential workflows.",
-    "comparative_analysis": "Use comparative analysis. Frame the question around trade-offs, comparing different approaches and their advantages/disadvantages in enterprise contexts."
-}
-
-# Domain display names
-DOMAIN_DISPLAY_NAMES = {
-    "security_and_risk_management": "Security and Risk Management",
-    "asset_security": "Asset Security",
-    "security_architecture": "Security Architecture and Engineering",
-    "communication_and_network_security": "Communication and Network Security",
-    "identity_and_access_management": "Identity and Access Management",
-    "security_assessment_and_testing": "Security Assessment and Testing",
-    "security_operations": "Security Operations",
-    "software_development_security": "Software Development Security"
-}
-
-
-def detect_domain_hint(user_message: str) -> Optional[str]:
+def detect_domain_hint(user_message: str, profile: Dict) -> Optional[str]:
     """
-    Detect if the user message contains hints about a specific CISSP domain.
+    Detect if the user message contains hints about a specific domain.
     
     Args:
         user_message: The user's input message
+        profile: Exam profile dictionary with domains configuration
         
     Returns:
-        Domain name string if hint detected, None otherwise
+        Domain ID string if hint detected, None otherwise
     """
-    if not user_message:
+    if not user_message or not profile:
         return None
     
     message_lower = user_message.lower()
+    domains = profile.get("domains", [])
     
     # Score each domain based on keyword matches
     domain_scores = {}
-    for domain, keywords in DOMAIN_KEYWORDS.items():
+    for domain in domains:
+        domain_id = domain.get("id")
+        keywords = domain.get("keywords", [])
         score = sum(1 for keyword in keywords if keyword in message_lower)
         if score > 0:
-            domain_scores[domain] = score
+            domain_scores[domain_id] = score
     
     # Return domain with highest score if any matches found
     if domain_scores:
@@ -153,7 +52,7 @@ def detect_domain_hint(user_message: str) -> Optional[str]:
     return None
 
 
-def select_blueprint(thread_id: str, user_message: str, history_depth: int = 8) -> Dict[str, str]:
+def select_blueprint(thread_id: str, user_message: str, history_depth: int, profile: Dict) -> Dict[str, str]:
     """
     Select a blueprint for question generation with rotation logic.
     
@@ -161,6 +60,7 @@ def select_blueprint(thread_id: str, user_message: str, history_depth: int = 8) 
         thread_id: Thread/session identifier
         user_message: User's input message
         history_depth: Number of historical blueprints to consider for rotation
+        profile: Exam profile dictionary with configuration
         
     Returns:
         Dictionary with question_type, domain, reasoning_mode, and subtopic
@@ -172,8 +72,13 @@ def select_blueprint(thread_id: str, user_message: str, history_depth: int = 8) 
     # Get recent blueprint history for this thread
     recent_blueprints = BLUEPRINT_CACHE[thread_id][-history_depth:]
     
+    # Extract profile configuration
+    question_types = [qt["id"] for qt in profile.get("question_types", [])]
+    domains = [d["id"] for d in profile.get("domains", [])]
+    reasoning_modes = [rm["id"] for rm in profile.get("reasoning_modes", [])]
+    
     # 1. Domain selection: Check for user hint first
-    domain_hint = detect_domain_hint(user_message)
+    domain_hint = detect_domain_hint(user_message, profile)
     
     if domain_hint:
         selected_domain = domain_hint
@@ -183,38 +88,38 @@ def select_blueprint(thread_id: str, user_message: str, history_depth: int = 8) 
         domain_counts = Counter(used_domains)
         
         # Find domains that haven't been used recently
-        unused_domains = [d for d in CISSP_DOMAINS if d not in used_domains]
+        unused_domains = [d for d in domains if d not in used_domains]
         
         if unused_domains:
             # Randomly select from unused domains
             selected_domain = random.choice(unused_domains)
         else:
             # All domains used recently, pick least frequent
-            selected_domain = min(CISSP_DOMAINS, key=lambda d: domain_counts.get(d, 0))
+            selected_domain = min(domains, key=lambda d: domain_counts.get(d, 0))
     
     # 2. Question type selection: Least-recently-used
     used_types = [bp["question_type"] for bp in recent_blueprints]
     type_counts = Counter(used_types)
     
     # Find types that haven't been used recently
-    unused_types = [t for t in QUESTION_TYPES if t not in used_types]
+    unused_types = [t for t in question_types if t not in used_types]
     
     if unused_types:
         selected_type = random.choice(unused_types)
     else:
         # All types used recently, pick least frequent
-        selected_type = min(QUESTION_TYPES, key=lambda t: type_counts.get(t, 0))
+        selected_type = min(question_types, key=lambda t: type_counts.get(t, 0))
     
     # 3. Reasoning mode selection: Rotate or random
     used_modes = [bp["reasoning_mode"] for bp in recent_blueprints[-3:]]
     
     # Avoid repeating the last reasoning mode
-    available_modes = [m for m in REASONING_MODES if m not in used_modes[-1:]]
+    available_modes = [m for m in reasoning_modes if m not in used_modes[-1:]]
     
     if available_modes:
         selected_mode = random.choice(available_modes)
     else:
-        selected_mode = random.choice(REASONING_MODES)
+        selected_mode = random.choice(reasoning_modes)
     
     # 4. Subtopic placeholder (will be extracted from outline chunks later)
     subtopic = ""
@@ -227,25 +132,42 @@ def select_blueprint(thread_id: str, user_message: str, history_depth: int = 8) 
     }
 
 
-def build_blueprint_constraint(blueprint: Dict[str, str]) -> str:
+def build_blueprint_constraint(blueprint: Dict[str, str], profile: Dict) -> str:
     """
     Build a prompt constraint string from a blueprint.
     
     Args:
         blueprint: Dictionary containing question_type, domain, and reasoning_mode
+        profile: Exam profile dictionary with configuration
         
     Returns:
         Formatted constraint string for prompt injection
     """
-    question_type = blueprint.get("question_type", "comparative")
-    domain = blueprint.get("domain", "security_and_risk_management")
-    reasoning_mode = blueprint.get("reasoning_mode", "governance")
-    subtopic = blueprint.get("subtopic", "")
+    from app.config.exam_profile_config import (
+        get_question_type_template,
+        get_reasoning_mode_description,
+        get_domain_display_name
+    )
     
-    # Get templates and descriptions
-    type_info = QUESTION_TYPE_TEMPLATES.get(question_type, QUESTION_TYPE_TEMPLATES["comparative"])
-    mode_desc = REASONING_MODE_DESCRIPTIONS.get(reasoning_mode, REASONING_MODE_DESCRIPTIONS["governance"])
-    domain_name = DOMAIN_DISPLAY_NAMES.get(domain, domain.replace("_", " ").title())
+    question_type = blueprint.get("question_type", "")
+    domain = blueprint.get("domain", "")
+    reasoning_mode = blueprint.get("reasoning_mode", "")
+    subtopic = blueprint.get("subtopic", "")
+    profile_id = profile.get("profile_id", "")
+    
+    # Get templates and descriptions from profile
+    type_info = get_question_type_template(profile_id, question_type)
+    if not type_info:
+        type_info = {"phrase": question_type, "guidance": ""}
+    
+    mode_desc = get_reasoning_mode_description(profile_id, reasoning_mode)
+    if not mode_desc:
+        mode_desc = reasoning_mode.replace('_', ' ').title()
+    
+    domain_name = get_domain_display_name(profile_id, domain)
+    
+    # Get profile-specific guidance suffix
+    guidance_suffix = profile.get("guidance_suffix", "")
     
     # Build constraint text
     constraint = f"""
@@ -260,8 +182,7 @@ GUIDANCE:
 
 {mode_desc}
 
-Ensure the question tests understanding at a managerial/strategic level, not just technical recall.
-The correct answer should reflect CISSP principles: risk-based decisions, governance priorities, and enterprise-scale thinking.
+{guidance_suffix}
 """
     
     return constraint

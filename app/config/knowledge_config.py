@@ -38,12 +38,18 @@ def update_embedding_status(kb_id, status):
             return True
     return False
 
-def add_knowledge_base(title, description, kb_type, source, chunks_path=None, access_type="shared", category="general", refresh_schedule="manual", cissp_type=None, cissp_domain=None, embedding_provider="openai", embedding_model=None):
+def add_knowledge_base(title, description, kb_type, source, chunks_path=None, access_type="shared", category="general", refresh_schedule="manual", profile_type=None, profile_domain=None, is_priority_kb=False, embedding_provider="openai", embedding_model=None, cissp_type=None, cissp_domain=None):
     """Add a new knowledge base to the configuration"""
     config = load_knowledge_config()
     
     # Generate unique ID
     kb_id = f"kb_{len(config['knowledge_bases'])}_{int(datetime.now().timestamp())}"
+    
+    # Handle backward compatibility: cissp_* params map to profile_* fields
+    if profile_type is None and cissp_type is not None:
+        profile_type = cissp_type
+    if profile_domain is None and cissp_domain is not None:
+        profile_domain = cissp_domain
     
     new_kb = {
         "id": kb_id,
@@ -59,8 +65,9 @@ def add_knowledge_base(title, description, kb_type, source, chunks_path=None, ac
         "refresh_schedule": refresh_schedule,  # "manual", "hourly", "daily", "weekly", "on_use"
         "last_refreshed": datetime.now().isoformat() if kb_type == "url" else None,
         "next_refresh": None,  # Will be calculated based on schedule
-        "cissp_type": cissp_type,  # "outline", "cbk", or None
-        "cissp_domain": cissp_domain,  # domain name string or None
+        "profile_type": profile_type,  # "outline", "cbk", or None (replaces cissp_type)
+        "profile_domain": profile_domain,  # domain identifier string or None (replaces cissp_domain)
+        "is_priority_kb": is_priority_kb,  # True for priority/hot topics KB
         "embedding_provider": embedding_provider,  # "openai", "gemini", etc.
         "embedding_model": embedding_model  # specific embedding model or None for provider default
     }
