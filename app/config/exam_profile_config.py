@@ -226,3 +226,186 @@ def profile_exists(profile_id: str) -> bool:
         True if profile exists, False otherwise
     """
     return get_profile(profile_id) is not None
+
+
+def validate_profile_structure(profile_data: Dict[str, Any]) -> tuple[bool, str]:
+    """
+    Validate profile data structure.
+    
+    Args:
+        profile_data: Profile dictionary to validate
+        
+    Returns:
+        Tuple of (is_valid, error_message)
+    """
+    required_fields = [
+        "profile_id", "name", "description", "question_types",
+        "domains", "reasoning_modes", "kb_structure", "guidance_suffix"
+    ]
+    
+    # Check required top-level fields
+    for field in required_fields:
+        if field not in profile_data:
+            return False, f"Missing required field: {field}"
+    
+    # Validate profile_id format (snake_case)
+    profile_id = profile_data.get("profile_id", "")
+    if not profile_id or not profile_id.replace("_", "").isalnum() or profile_id[0].isdigit():
+        return False, "Profile ID must be snake_case alphanumeric (e.g., cissp_2024)"
+    
+    # Validate question_types structure
+    if not isinstance(profile_data["question_types"], list):
+        return False, "question_types must be a list"
+    
+    for qt in profile_data["question_types"]:
+        if not all(k in qt for k in ["id", "phrase", "guidance"]):
+            return False, "Each question type must have id, phrase, and guidance"
+    
+    # Validate domains structure
+    if not isinstance(profile_data["domains"], list):
+        return False, "domains must be a list"
+    
+    for domain in profile_data["domains"]:
+        if not all(k in domain for k in ["id", "name", "keywords"]):
+            return False, "Each domain must have id, name, and keywords"
+        if not isinstance(domain["keywords"], list):
+            return False, "Domain keywords must be a list"
+    
+    # Validate reasoning_modes structure
+    if not isinstance(profile_data["reasoning_modes"], list):
+        return False, "reasoning_modes must be a list"
+    
+    for mode in profile_data["reasoning_modes"]:
+        if not all(k in mode for k in ["id", "name", "description"]):
+            return False, "Each reasoning mode must have id, name, and description"
+    
+    # Validate kb_structure
+    kb_struct = profile_data.get("kb_structure", {})
+    required_kb_fields = ["priority_kb_flag", "outline_type", "domain_type"]
+    for field in required_kb_fields:
+        if field not in kb_struct:
+            return False, f"kb_structure missing required field: {field}"
+    
+    return True, ""
+
+
+def save_profile(profile_data: Dict[str, Any]) -> tuple[bool, str]:
+    """
+    Create or update an exam profile.
+    
+    Args:
+        profile_data: Complete profile dictionary
+        
+    Returns:
+        Tuple of (success, message)
+    """
+    # Validate structure
+    is_valid, error_msg = validate_profile_structure(profile_data)
+    if not is_valid:
+        return False, error_msg
+    
+    profile_id = profile_data["profile_id"]
+    
+    # Load current profiles
+    config = load_exam_profiles()
+    profiles = config.get("profiles", [])
+    
+    # Check if updating or creating
+    existing_index = None
+    for idx, profile in enumerate(profiles):
+        if profile.get("profile_id") == profile_id:
+            existing_index = idx
+            break
+    
+    if existing_index is not None:
+        # Update existing
+        profiles[existing_index] = profile_data
+        action = "updated"
+    else:
+        # Create new
+        profiles.append(profile_data)
+        action = "created"
+    
+    # Write back to file
+    config["profiles"] = profiles
+    
+    try:
+        with open(PROFILE_CONFIG_PATH, "w", encoding="utf-8") as f:
+            json.dump(config, f, indent=2, ensure_ascii=False)
+        
+        # Reload cache
+        reload_profiles()
+        
+        return True, f"Profile {action} successfully"
+    except Exception as e:
+        return False, f"Failed to save profile: {str(e)}"
+
+
+def delete_profile(profile_id: str) -> tuple[bool, str]:
+    """
+    Delete an exam profile.
+    
+    Args:
+        profile_id: Profile identifier to delete
+        
+    Returns:
+        Tuple of (success, message)
+    """
+    # Load current profiles
+    config = load_exam_profiles()
+    profiles = config.get("profiles", [])
+    
+    # Find and remove profile
+    new_profiles = [p for p in profiles if p.get("profile_id") != profile_id]
+    
+    if len(new_profiles) == len(profiles):
+        return False, "Profile not found"
+    
+    config["profiles"] = new_profiles
+    
+    try:
+        with open(PROFILE_CONFIG_PATH, "w", encoding="utf-8") as f:
+            json.dump(config, f, indent=2, ensure_ascii=False)
+        
+        # Reload cache
+        reload_profiles()
+        
+        return True, "Profile deleted successfully"
+    except Exception as e:
+        return False, f"Failed to delete profile: {str(e)}"
+
+
+def get_profile_usage(profile_id: str) -> Dict[str, Any]:
+    """
+    Get usage statistics for a profile.
+    
+    Args:
+        profile_id: Profile identifier
+        
+    Returns:
+        Dictionary with agents_count, kb_count, agent_ids, kb_ids
+    """
+    from app.models.agent import agent_manager
+    from app.config.knowledge_config import load_knowledge_config
+    
+    # Check agents - get_all_agents() returns a list of Agent objects
+    all_agents = agent_manager.get_all_agents()
+    using_agents = [
+        agent.agent_id for agent in all_agents
+        if agent.exam_profile_id == profile_id
+    ]
+    
+    # Check knowledge bases
+    kb_config = load_knowledge_config()
+    all_kbs = kb_config.get("knowledge_bases", [])
+    using_kbs = [
+        kb.get("id") for kb in all_kbs
+        if kb.get("exam_profile_id") == profile_id
+    ]
+    
+    return {
+        "agents_count": len(using_agents),
+        "kb_count": len(using_kbs),
+        "agent_ids": using_agents,
+        "kb_ids": using_kbs
+    }

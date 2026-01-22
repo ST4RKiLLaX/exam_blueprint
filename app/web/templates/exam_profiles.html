@@ -1,0 +1,604 @@
+{% extends "base.html" %}
+
+{% block title %}Exam Profiles{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- Header -->
+    <div class="flex justify-between items-center mb-8">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900">Exam Profiles</h1>
+            <p class="mt-2 text-sm text-gray-600">Manage exam profiles that define question types, domains, and reasoning modes</p>
+        </div>
+        <button onclick="showCreateModal()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+            </svg>
+            Create Profile
+        </button>
+    </div>
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+            <div class="mb-4 p-4 rounded-lg {% if category == 'error' %}bg-red-50 text-red-800 border border-red-200{% else %}bg-green-50 text-green-800 border border-green-200{% endif %}">
+                {{ message }}
+            </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <!-- Profile Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% for profile in profiles %}
+        <div class="bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow p-6">
+            <div class="flex justify-between items-start mb-4">
+                <div>
+                    <h3 class="text-xl font-semibold text-gray-900">{{ profile.name }}</h3>
+                    <p class="text-sm text-gray-500 font-mono">{{ profile.profile_id }}</p>
+                </div>
+            </div>
+            
+            <p class="text-sm text-gray-600 mb-4 line-clamp-2">{{ profile.description }}</p>
+            
+            <div class="space-y-2 mb-4">
+                <div class="flex items-center text-sm text-gray-700">
+                    <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"></path>
+                        <path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd"></path>
+                    </svg>
+                    {{ profile.domains|length }} domains • {{ profile.question_types|length }} question types
+                </div>
+                <div class="flex items-center text-sm text-gray-700">
+                    <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z"></path>
+                    </svg>
+                    Used by: {{ profile.usage.agents_count }} agent(s), {{ profile.usage.kb_count }} KB(s)
+                </div>
+            </div>
+            
+            <div class="flex space-x-2">
+                <button onclick='editProfile({{ profile | tojson }})' class="flex-1 px-3 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium">
+                    Edit
+                </button>
+                <button onclick="deleteProfile('{{ profile.profile_id }}', '{{ profile.name }}', {{ profile.usage.agents_count }}, {{ profile.usage.kb_count }})" class="flex-1 px-3 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors text-sm font-medium">
+                    Delete
+                </button>
+            </div>
+        </div>
+        {% endfor %}
+        
+        {% if not profiles %}
+        <div class="col-span-full text-center py-12 bg-white rounded-xl shadow-md">
+            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+            </svg>
+            <h3 class="mt-2 text-sm font-medium text-gray-900">No exam profiles</h3>
+            <p class="mt-1 text-sm text-gray-500">Get started by creating a new exam profile.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Create/Edit Profile Modal -->
+<div id="profileModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+        <div class="flex items-center justify-between p-6 border-b border-gray-200">
+            <h2 id="modalTitle" class="text-xl font-semibold text-gray-900">Create Exam Profile</h2>
+            <button onclick="hideProfileModal()" class="text-gray-400 hover:text-gray-600">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+        
+        <form id="profileForm" method="post" class="p-6">
+            <input type="hidden" id="formAction" name="action" value="create">
+            <input type="hidden" id="questionTypesJson" name="question_types_json" value="[]">
+            <input type="hidden" id="domainsJson" name="domains_json" value="[]">
+            <input type="hidden" id="reasoningModesJson" name="reasoning_modes_json" value="[]">
+            
+            <!-- Tabs -->
+            <div class="mb-6 border-b border-gray-200">
+                <nav class="-mb-px flex space-x-8">
+                    <button type="button" onclick="switchProfileTab('basic')" id="tab-basic" class="tab-button border-b-2 border-blue-500 py-4 px-1 text-sm font-medium text-blue-600">
+                        Basic Info
+                    </button>
+                    <button type="button" onclick="switchProfileTab('question_types')" id="tab-question_types" class="tab-button border-b-2 border-transparent py-4 px-1 text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300">
+                        Question Types
+                    </button>
+                    <button type="button" onclick="switchProfileTab('domains')" id="tab-domains" class="tab-button border-b-2 border-transparent py-4 px-1 text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300">
+                        Domains
+                    </button>
+                    <button type="button" onclick="switchProfileTab('reasoning')" id="tab-reasoning" class="tab-button border-b-2 border-transparent py-4 px-1 text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300">
+                        Reasoning Modes
+                    </button>
+                    <button type="button" onclick="switchProfileTab('kb_structure')" id="tab-kb_structure" class="tab-button border-b-2 border-transparent py-4 px-1 text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300">
+                        KB Structure
+                    </button>
+                </nav>
+            </div>
+            
+            <!-- Tab Content -->
+            <div id="content-basic" class="tab-content">
+                <div class="space-y-4">
+                    <div>
+                        <label for="profile_id" class="block text-sm font-medium text-gray-700 mb-1">Profile ID</label>
+                        <input type="text" id="profile_id" name="profile_id" required
+                               placeholder="e.g., cissp_2024, comptia_security_plus"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <p class="text-xs text-gray-500 mt-1">Use snake_case (e.g., cissp_2024)</p>
+                    </div>
+                    
+                    <div>
+                        <label for="name" class="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                        <input type="text" id="name" name="name" required
+                               placeholder="e.g., CISSP, CompTIA Security+"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    
+                    <div>
+                        <label for="description" class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                        <textarea id="description" name="description" rows="2" required
+                                  placeholder="Brief description of the certification..."
+                                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"></textarea>
+                    </div>
+                    
+                    <div>
+                        <label for="guidance_suffix" class="block text-sm font-medium text-gray-700 mb-1">Guidance Suffix</label>
+                        <textarea id="guidance_suffix" name="guidance_suffix" rows="3" required
+                                  placeholder="Overall exam philosophy and approach..."
+                                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"></textarea>
+                        <p class="text-xs text-gray-500 mt-1">Appended to every question generation prompt</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="content-question_types" class="tab-content hidden">
+                <div class="mb-4">
+                    <h3 class="text-lg font-medium text-gray-900 mb-2">Question Types</h3>
+                    <p class="text-sm text-gray-600 mb-4">Define the types of questions this exam uses (e.g., "Which is BEST?", "What should be done FIRST?")</p>
+                </div>
+                
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
+                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Phrase</th>
+                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Guidance</th>
+                                <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="questionTypesTable" class="bg-white divide-y divide-gray-200">
+                            <!-- Rows will be added dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="mt-4 p-4 bg-gray-50 rounded-lg">
+                    <h4 class="text-sm font-medium text-gray-900 mb-3">Add Question Type</h4>
+                    <div class="grid grid-cols-12 gap-2">
+                        <input type="text" id="new_qt_id" placeholder="ID (e.g., comparative)" class="col-span-3 px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                        <input type="text" id="new_qt_phrase" placeholder="Phrase (e.g., Which is BEST?)" class="col-span-4 px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                        <input type="text" id="new_qt_guidance" placeholder="Guidance for AI..." class="col-span-4 px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                        <button type="button" onclick="addQuestionType()" class="col-span-1 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm">+</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="content-domains" class="tab-content hidden">
+                <div class="mb-4">
+                    <h3 class="text-lg font-medium text-gray-900 mb-2">Domains</h3>
+                    <p class="text-sm text-gray-600 mb-4">Define exam domains with keywords for automatic domain detection</p>
+                </div>
+                
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
+                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Keywords</th>
+                                <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="domainsTable" class="bg-white divide-y divide-gray-200">
+                            <!-- Rows will be added dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="mt-4 p-4 bg-gray-50 rounded-lg">
+                    <h4 class="text-sm font-medium text-gray-900 mb-3">Add Domain</h4>
+                    <div class="grid grid-cols-12 gap-2">
+                        <input type="text" id="new_domain_id" placeholder="ID (e.g., security_ops)" class="col-span-3 px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                        <input type="text" id="new_domain_name" placeholder="Name (e.g., Security Operations)" class="col-span-4 px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                        <input type="text" id="new_domain_keywords" placeholder="Keywords: incident, response, monitoring" class="col-span-4 px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                        <button type="button" onclick="addDomain()" class="col-span-1 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm">+</button>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-2">Separate keywords with commas</p>
+                </div>
+            </div>
+            
+            <div id="content-reasoning" class="tab-content hidden">
+                <div class="mb-4">
+                    <h3 class="text-lg font-medium text-gray-900 mb-2">Reasoning Modes</h3>
+                    <p class="text-sm text-gray-600 mb-4">Define reasoning approaches for question generation (e.g., governance, risk-based, process)</p>
+                </div>
+                
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
+                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
+                                <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="reasoningModesTable" class="bg-white divide-y divide-gray-200">
+                            <!-- Rows will be added dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="mt-4 p-4 bg-gray-50 rounded-lg">
+                    <h4 class="text-sm font-medium text-gray-900 mb-3">Add Reasoning Mode</h4>
+                    <div class="grid grid-cols-12 gap-2">
+                        <input type="text" id="new_mode_id" placeholder="ID (e.g., governance)" class="col-span-3 px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                        <input type="text" id="new_mode_name" placeholder="Name (e.g., Governance)" class="col-span-3 px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                        <input type="text" id="new_mode_description" placeholder="Description for AI..." class="col-span-5 px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                        <button type="button" onclick="addReasoningMode()" class="col-span-1 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm">+</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="content-kb_structure" class="tab-content hidden">
+                <div class="mb-4">
+                    <h3 class="text-lg font-medium text-gray-900 mb-2">KB Structure</h3>
+                    <p class="text-sm text-gray-600 mb-4">Configure how knowledge bases are organized for this exam profile</p>
+                </div>
+                
+                <div class="space-y-4">
+                    <div>
+                        <label for="priority_kb_flag" class="block text-sm font-medium text-gray-700 mb-1">Priority KB Flag Name</label>
+                        <input type="text" id="priority_kb_flag" name="priority_kb_flag" value="is_priority_kb"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <p class="text-xs text-gray-500 mt-1">Field name for priority/hot topics KBs</p>
+                    </div>
+                    
+                    <div>
+                        <label for="outline_type" class="block text-sm font-medium text-gray-700 mb-1">Outline Material Type</label>
+                        <input type="text" id="outline_type" name="outline_type" value="outline"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <p class="text-xs text-gray-500 mt-1">Type identifier for outline/objectives KB</p>
+                    </div>
+                    
+                    <div>
+                        <label for="domain_type" class="block text-sm font-medium text-gray-700 mb-1">Domain Material Type</label>
+                        <input type="text" id="domain_type" name="domain_type" value="cbk"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <p class="text-xs text-gray-500 mt-1">Type identifier for domain-specific detailed KB</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex justify-end space-x-3 pt-6 border-t border-gray-200 mt-6">
+                <button type="button" onclick="hideProfileModal()" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+                    Cancel
+                </button>
+                <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700">
+                    Save Profile
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div id="deleteModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">Delete Exam Profile</h3>
+        <p id="deleteMessage" class="text-sm text-gray-600 mb-6"></p>
+        <form id="deleteForm" method="post">
+            <input type="hidden" name="action" value="delete">
+            <input type="hidden" id="delete_profile_id" name="profile_id">
+            <div class="flex justify-end space-x-3">
+                <button type="button" onclick="hideDeleteModal()" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+                    Cancel
+                </button>
+                <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700">
+                    Delete
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+// State management
+let currentTab = 'basic';
+let questionTypes = [];
+let domains = [];
+let reasoningModes = [];
+let editMode = false;
+
+// Modal management
+function showCreateModal() {
+    editMode = false;
+    document.getElementById('modalTitle').textContent = 'Create Exam Profile';
+    document.getElementById('formAction').value = 'create';
+    document.getElementById('profile_id').disabled = false;
+    
+    // Reset form
+    document.getElementById('profileForm').reset();
+    questionTypes = [];
+    domains = [];
+    reasoningModes = [];
+    updateQuestionTypesTable();
+    updateDomainsTable();
+    updateReasoningModesTable();
+    
+    document.getElementById('profileModal').classList.remove('hidden');
+}
+
+function editProfile(profile) {
+    editMode = true;
+    document.getElementById('modalTitle').textContent = 'Edit Exam Profile';
+    document.getElementById('formAction').value = 'update';
+    document.getElementById('profile_id').disabled = true;
+    
+    // Populate form
+    document.getElementById('profile_id').value = profile.profile_id;
+    document.getElementById('name').value = profile.name;
+    document.getElementById('description').value = profile.description;
+    document.getElementById('guidance_suffix').value = profile.guidance_suffix;
+    
+    // Load nested data
+    questionTypes = profile.question_types || [];
+    domains = profile.domains || [];
+    reasoningModes = profile.reasoning_modes || [];
+    
+    // Load KB structure
+    const kbStruct = profile.kb_structure || {};
+    document.getElementById('priority_kb_flag').value = kbStruct.priority_kb_flag || 'is_priority_kb';
+    document.getElementById('outline_type').value = kbStruct.outline_type || 'outline';
+    document.getElementById('domain_type').value = kbStruct.domain_type || 'cbk';
+    
+    updateQuestionTypesTable();
+    updateDomainsTable();
+    updateReasoningModesTable();
+    
+    document.getElementById('profileModal').classList.remove('hidden');
+}
+
+function hideProfileModal() {
+    document.getElementById('profileModal').classList.add('hidden');
+}
+
+function deleteProfile(profileId, profileName, agentsCount, kbCount) {
+    if (agentsCount > 0 || kbCount > 0) {
+        alert(`Cannot delete profile "${profileName}". It is used by ${agentsCount} agent(s) and ${kbCount} KB(s).`);
+        return;
+    }
+    
+    document.getElementById('delete_profile_id').value = profileId;
+    document.getElementById('deleteMessage').textContent = `Are you sure you want to delete "${profileName}"? This action cannot be undone.`;
+    document.getElementById('deleteModal').classList.remove('hidden');
+}
+
+function hideDeleteModal() {
+    document.getElementById('deleteModal').classList.add('hidden');
+}
+
+// Tab management
+function switchProfileTab(tabName) {
+    // Hide all tabs
+    document.querySelectorAll('.tab-content').forEach(tab => tab.classList.add('hidden'));
+    document.querySelectorAll('.tab-button').forEach(btn => {
+        btn.classList.remove('border-blue-500', 'text-blue-600');
+        btn.classList.add('border-transparent', 'text-gray-500');
+    });
+    
+    // Show selected tab
+    document.getElementById('content-' + tabName).classList.remove('hidden');
+    document.getElementById('tab-' + tabName).classList.remove('border-transparent', 'text-gray-500');
+    document.getElementById('tab-' + tabName).classList.add('border-blue-500', 'text-blue-600');
+    
+    currentTab = tabName;
+}
+
+// Question Types management
+function addQuestionType() {
+    const id = document.getElementById('new_qt_id').value.trim();
+    const phrase = document.getElementById('new_qt_phrase').value.trim();
+    const guidance = document.getElementById('new_qt_guidance').value.trim();
+    
+    if (!id || !phrase || !guidance) {
+        alert('All fields are required');
+        return;
+    }
+    
+    // Check for duplicate IDs
+    if (questionTypes.some(qt => qt.id === id)) {
+        alert('Question type ID already exists');
+        return;
+    }
+    
+    questionTypes.push({id, phrase, guidance});
+    updateQuestionTypesTable();
+    
+    // Clear inputs
+    document.getElementById('new_qt_id').value = '';
+    document.getElementById('new_qt_phrase').value = '';
+    document.getElementById('new_qt_guidance').value = '';
+}
+
+function removeQuestionType(id) {
+    questionTypes = questionTypes.filter(qt => qt.id !== id);
+    updateQuestionTypesTable();
+}
+
+function updateQuestionTypesTable() {
+    const tbody = document.getElementById('questionTypesTable');
+    tbody.innerHTML = '';
+    
+    questionTypes.forEach(qt => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td class="px-4 py-2 text-sm font-mono text-gray-900">${qt.id}</td>
+            <td class="px-4 py-2 text-sm text-gray-900">${qt.phrase}</td>
+            <td class="px-4 py-2 text-sm text-gray-600">${qt.guidance}</td>
+            <td class="px-4 py-2 text-right">
+                <button type="button" onclick="removeQuestionType('${qt.id}')" class="text-red-600 hover:text-red-800 text-sm">Remove</button>
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+    
+    if (questionTypes.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="px-4 py-4 text-sm text-gray-500 text-center">No question types added yet</td></tr>';
+    }
+}
+
+// Domains management
+function addDomain() {
+    const id = document.getElementById('new_domain_id').value.trim();
+    const name = document.getElementById('new_domain_name').value.trim();
+    const keywordsStr = document.getElementById('new_domain_keywords').value.trim();
+    
+    if (!id || !name || !keywordsStr) {
+        alert('All fields are required');
+        return;
+    }
+    
+    // Check for duplicate IDs
+    if (domains.some(d => d.id === id)) {
+        alert('Domain ID already exists');
+        return;
+    }
+    
+    const keywords = keywordsStr.split(',').map(k => k.trim()).filter(k => k);
+    domains.push({id, name, keywords});
+    updateDomainsTable();
+    
+    // Clear inputs
+    document.getElementById('new_domain_id').value = '';
+    document.getElementById('new_domain_name').value = '';
+    document.getElementById('new_domain_keywords').value = '';
+}
+
+function removeDomain(id) {
+    domains = domains.filter(d => d.id !== id);
+    updateDomainsTable();
+}
+
+function updateDomainsTable() {
+    const tbody = document.getElementById('domainsTable');
+    tbody.innerHTML = '';
+    
+    domains.forEach(domain => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td class="px-4 py-2 text-sm font-mono text-gray-900">${domain.id}</td>
+            <td class="px-4 py-2 text-sm text-gray-900">${domain.name}</td>
+            <td class="px-4 py-2 text-sm text-gray-600">${domain.keywords.join(', ')}</td>
+            <td class="px-4 py-2 text-right">
+                <button type="button" onclick="removeDomain('${domain.id}')" class="text-red-600 hover:text-red-800 text-sm">Remove</button>
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+    
+    if (domains.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="px-4 py-4 text-sm text-gray-500 text-center">No domains added yet</td></tr>';
+    }
+}
+
+// Reasoning Modes management
+function addReasoningMode() {
+    const id = document.getElementById('new_mode_id').value.trim();
+    const name = document.getElementById('new_mode_name').value.trim();
+    const description = document.getElementById('new_mode_description').value.trim();
+    
+    if (!id || !name || !description) {
+        alert('All fields are required');
+        return;
+    }
+    
+    // Check for duplicate IDs
+    if (reasoningModes.some(m => m.id === id)) {
+        alert('Reasoning mode ID already exists');
+        return;
+    }
+    
+    reasoningModes.push({id, name, description});
+    updateReasoningModesTable();
+    
+    // Clear inputs
+    document.getElementById('new_mode_id').value = '';
+    document.getElementById('new_mode_name').value = '';
+    document.getElementById('new_mode_description').value = '';
+}
+
+function removeReasoningMode(id) {
+    reasoningModes = reasoningModes.filter(m => m.id !== id);
+    updateReasoningModesTable();
+}
+
+function updateReasoningModesTable() {
+    const tbody = document.getElementById('reasoningModesTable');
+    tbody.innerHTML = '';
+    
+    reasoningModes.forEach(mode => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td class="px-4 py-2 text-sm font-mono text-gray-900">${mode.id}</td>
+            <td class="px-4 py-2 text-sm text-gray-900">${mode.name}</td>
+            <td class="px-4 py-2 text-sm text-gray-600">${mode.description}</td>
+            <td class="px-4 py-2 text-right">
+                <button type="button" onclick="removeReasoningMode('${mode.id}')" class="text-red-600 hover:text-red-800 text-sm">Remove</button>
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+    
+    if (reasoningModes.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="px-4 py-4 text-sm text-gray-500 text-center">No reasoning modes added yet</td></tr>';
+    }
+}
+
+// Form submission
+document.getElementById('profileForm').addEventListener('submit', function(e) {
+    // Update hidden JSON fields
+    document.getElementById('questionTypesJson').value = JSON.stringify(questionTypes);
+    document.getElementById('domainsJson').value = JSON.stringify(domains);
+    document.getElementById('reasoningModesJson').value = JSON.stringify(reasoningModes);
+    
+    // Validate required data
+    if (questionTypes.length === 0) {
+        e.preventDefault();
+        alert('Please add at least one question type');
+        switchProfileTab('question_types');
+        return;
+    }
+    
+    if (domains.length === 0) {
+        e.preventDefault();
+        alert('Please add at least one domain');
+        switchProfileTab('domains');
+        return;
+    }
+    
+    if (reasoningModes.length === 0) {
+        e.preventDefault();
+        alert('Please add at least one reasoning mode');
+        switchProfileTab('reasoning');
+        return;
+    }
+});
+</script>
+
+{% endblock %}

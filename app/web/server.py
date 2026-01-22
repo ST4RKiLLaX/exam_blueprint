@@ -325,8 +325,9 @@ def agents():
             semantic_threshold_str = request.form.get("semantic_similarity_threshold", "0.90")
             semantic_depth_str = request.form.get("semantic_history_depth", "5")
             
-            # Get CISSP settings
-            enable_cissp = request.form.get("enable_cissp_mode") == "on"
+            # Get exam profile settings
+            exam_profile_id = request.form.get("exam_profile_id", "").strip()
+            exam_profile_id = exam_profile_id if exam_profile_id and exam_profile_id != "none" else None
             blueprint_depth_str = request.form.get("blueprint_history_depth", "8")
             blueprint_depth = int(blueprint_depth_str) if blueprint_depth_str else 8
             
@@ -358,7 +359,7 @@ def agents():
                 enable_semantic_detection=enable_semantic,
                 semantic_similarity_threshold=float(semantic_threshold_str) if semantic_threshold_str else 0.90,
                 semantic_history_depth=int(semantic_depth_str) if semantic_depth_str else 5,
-                enable_cissp_mode=enable_cissp,
+                exam_profile_id=exam_profile_id,
                 blueprint_history_depth=blueprint_depth
             )
             if result["success"]:
@@ -425,8 +426,9 @@ def agents():
             semantic_threshold_str = request.form.get("semantic_similarity_threshold", "")
             semantic_depth_str = request.form.get("semantic_history_depth", "")
             
-            # Get CISSP settings
-            enable_cissp = request.form.get("enable_cissp_mode") == "on"
+            # Get exam profile settings
+            exam_profile_id = request.form.get("exam_profile_id", "").strip()
+            exam_profile_id = exam_profile_id if exam_profile_id and exam_profile_id != "none" else None
             blueprint_depth_str = request.form.get("blueprint_history_depth", "")
             
             # Convert to appropriate types (explicitly handle empty values as None)
@@ -463,8 +465,8 @@ def agents():
                 "enable_semantic_detection": enable_semantic,
                 "semantic_similarity_threshold": float(semantic_threshold_str) if semantic_threshold_str else None,
                 "semantic_history_depth": int(semantic_depth_str) if semantic_depth_str else None,
-                # CISSP settings
-                "enable_cissp_mode": enable_cissp,
+                # Exam profile settings
+                "exam_profile_id": exam_profile_id,
                 "blueprint_history_depth": int(blueprint_depth_str) if blueprint_depth_str else None
             }
             
@@ -508,7 +510,11 @@ def agents():
     # Get knowledge bases for the interface
     knowledge_bases = get_active_knowledge_bases()
     
-    return render_template("agents.html", agents=agents_data, knowledge_bases=knowledge_bases)
+    # Get exam profiles for the interface
+    from app.config.exam_profile_config import get_all_profiles
+    exam_profiles = get_all_profiles()
+    
+    return render_template("agents.html", agents=agents_data, knowledge_bases=knowledge_bases, exam_profiles=exam_profiles)
 
 
 
@@ -527,9 +533,11 @@ def knowledge_bases():
             access_type = request.form.get('access_type', 'shared')
             source_type = request.form.get('source_type', 'file')
             
-            # Get CISSP metadata
-            cissp_type = request.form.get('cissp_type', '').strip()
-            cissp_domain = request.form.get('cissp_domain', '').strip()
+            # Get exam profile and metadata
+            exam_profile_id = request.form.get('exam_profile_id', '').strip() or None
+            cissp_type = request.form.get('cissp_type', '').strip() or None
+            cissp_domain = request.form.get('cissp_domain', '').strip() or None
+            is_priority_kb = request.form.get('is_priority_kb') == 'on'
             
             # Get embedding provider
             embedding_provider = request.form.get('embedding_provider', 'openai')
@@ -554,8 +562,10 @@ def knowledge_bases():
                         source=source_url,
                         access_type=access_type,
                         category="general",
-                        cissp_type=cissp_type if cissp_type else None,
-                        cissp_domain=cissp_domain if cissp_domain else None,
+                        exam_profile_id=exam_profile_id,
+                        profile_type=cissp_type,
+                        profile_domain=cissp_domain,
+                        is_priority_kb=is_priority_kb,
                         embedding_provider=embedding_provider
                     )
                     
@@ -610,8 +620,10 @@ def knowledge_bases():
                         source=upload_path,
                         access_type=access_type,
                         category="general",
-                        cissp_type=cissp_type if cissp_type else None,
-                        cissp_domain=cissp_domain if cissp_domain else None,
+                        exam_profile_id=exam_profile_id,
+                        profile_type=cissp_type,
+                        profile_domain=cissp_domain,
+                        is_priority_kb=is_priority_kb,
                         embedding_provider=embedding_provider
                     )
                     
@@ -785,6 +797,9 @@ def knowledge_bases():
             'chunks_count': chunks_count,
             'cissp_type': kb_info.get('cissp_type'),
             'cissp_domain': kb_info.get('cissp_domain'),
+            'profile_type': kb_info.get('profile_type'),
+            'profile_domain': kb_info.get('profile_domain'),
+            'is_priority_kb': kb_info.get('is_priority_kb', False),
             'embedding_provider': kb_info.get('embedding_provider', 'openai')
         })
     
@@ -792,8 +807,119 @@ def knowledge_bases():
     knowledge_bases.sort(key=lambda x: x['created_at'], reverse=True)
     
     
+    # Get exam profiles for the dropdown
+    from app.config.exam_profile_config import get_all_profiles
+    exam_profiles = get_all_profiles()
+    
     return render_template("knowledge_bases.html", 
-                         knowledge_bases=knowledge_bases)
+                         knowledge_bases=knowledge_bases,
+                         exam_profiles=exam_profiles)
+
+@app.route("/exam_profiles", methods=["GET", "POST"])
+@login_required
+@roles_required('admin')
+def exam_profiles():
+    from app.config.exam_profile_config import (
+        get_all_profiles, save_profile, delete_profile, 
+        get_profile_usage, profile_exists
+    )
+    
+    if request.method == "POST":
+        action = request.form.get("action")
+        
+        if action == "create" or action == "update":
+            # Build profile data from form
+            profile_data = {
+                "profile_id": request.form.get("profile_id", "").strip(),
+                "name": request.form.get("name", "").strip(),
+                "description": request.form.get("description", "").strip(),
+                "guidance_suffix": request.form.get("guidance_suffix", "").strip(),
+                "question_types": [],
+                "domains": [],
+                "reasoning_modes": [],
+                "kb_structure": {
+                    "priority_kb_flag": request.form.get("priority_kb_flag", "is_priority_kb").strip(),
+                    "outline_type": request.form.get("outline_type", "outline").strip(),
+                    "domain_type": request.form.get("domain_type", "cbk").strip()
+                }
+            }
+            
+            # Parse question types (JSON array from frontend)
+            qt_json = request.form.get("question_types_json", "[]")
+            try:
+                profile_data["question_types"] = json.loads(qt_json)
+            except:
+                flash("Invalid question types data", "error")
+                return redirect(url_for('exam_profiles'))
+            
+            # Parse domains (JSON array from frontend)
+            domains_json = request.form.get("domains_json", "[]")
+            try:
+                profile_data["domains"] = json.loads(domains_json)
+            except:
+                flash("Invalid domains data", "error")
+                return redirect(url_for('exam_profiles'))
+            
+            # Parse reasoning modes (JSON array from frontend)
+            modes_json = request.form.get("reasoning_modes_json", "[]")
+            try:
+                profile_data["reasoning_modes"] = json.loads(modes_json)
+            except:
+                flash("Invalid reasoning modes data", "error")
+                return redirect(url_for('exam_profiles'))
+            
+            # Check for ID uniqueness on create
+            if action == "create" and profile_exists(profile_data["profile_id"]):
+                flash("Profile ID already exists", "error")
+                return redirect(url_for('exam_profiles'))
+            
+            # Save profile
+            success, message = save_profile(profile_data)
+            if success:
+                flash(message, "success")
+            else:
+                flash(message, "error")
+        
+        elif action == "delete":
+            profile_id = request.form.get("profile_id", "").strip()
+            
+            # Check usage
+            usage = get_profile_usage(profile_id)
+            if usage["agents_count"] > 0 or usage["kb_count"] > 0:
+                flash(
+                    f"Cannot delete profile. Used by {usage['agents_count']} agent(s) and {usage['kb_count']} KB(s)", 
+                    "error"
+                )
+            else:
+                success, message = delete_profile(profile_id)
+                if success:
+                    flash(message, "success")
+                else:
+                    flash(message, "error")
+        
+        return redirect(url_for('exam_profiles'))
+    
+    # GET request - show profiles with usage stats
+    profiles = get_all_profiles()
+    
+    # Add usage stats to each profile
+    for profile in profiles:
+        usage = get_profile_usage(profile["profile_id"])
+        profile["usage"] = usage
+    
+    return render_template("exam_profiles.html", profiles=profiles)
+
+@app.route("/api/exam_profile/<profile_id>", methods=["GET"])
+@login_required
+def get_exam_profile_api(profile_id):
+    """API endpoint to get a specific exam profile"""
+    from app.config.exam_profile_config import get_profile
+    
+    profile = get_profile(profile_id)
+    if profile:
+        return jsonify(profile)
+    else:
+        return jsonify({"error": "Profile not found"}), 404
 
 @app.route("/knowledge", methods=["GET", "POST"])
 @login_required

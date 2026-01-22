@@ -44,9 +44,63 @@ A Flask-based application for generating high-quality multiple-choice questions 
 
 ### Prerequisites
 
-- Python 3.13 or higher
+- Python 3.11+ (Python 3.13 recommended)
 - Windows, macOS, or Linux
 - OpenAI API key and/or Google Gemini API key
+
+### Python 3.13 Installation (Linux/Debian)
+
+If Python 3.13 is not available or lacks SQLite support, compile it with all required libraries:
+
+#### Install Build Dependencies
+
+```bash
+apt-get update
+apt-get install -y \
+    build-essential \
+    libsqlite3-dev \
+    libssl-dev \
+    libffi-dev \
+    libbz2-dev \
+    libreadline-dev \
+    libncurses5-dev \
+    libgdbm-dev \
+    liblzma-dev \
+    zlib1g-dev \
+    tk-dev \
+    uuid-dev
+```
+
+#### Compile Python 3.13
+
+```bash
+cd /usr/src
+wget https://www.python.org/ftp/python/3.13.1/Python-3.13.1.tgz
+tar xzf Python-3.13.1.tgz
+cd Python-3.13.1
+
+# Configure with optimizations
+./configure --enable-optimizations --with-lto
+
+# Compile (using all CPU cores)
+make -j $(nproc)
+
+# Install (altinstall keeps system Python intact)
+make altinstall
+```
+
+#### Verify SQLite Support
+
+```bash
+python3.13 -c "import sqlite3; print(f'SQLite version: {sqlite3.sqlite_version}')"
+```
+
+If this prints a version number, Python 3.13 is correctly configured.
+
+**Alternative**: Use your system's Python 3.11/3.12 which includes SQLite support by default:
+```bash
+python3 --version  # Check system Python version
+```
 
 ### Setup Steps
 
@@ -57,8 +111,18 @@ A Flask-based application for generating high-quality multiple-choice questions 
    ```
 
 2. **Create a virtual environment**
+   
+   **Windows:**
    ```bash
    python -m venv venv
+   ```
+   
+   **Linux/macOS:**
+   ```bash
+   # Use python3.13 if compiled, or python3 for system version
+   python3.13 -m venv venv
+   # OR
+   python3 -m venv venv
    ```
 
 3. **Activate the virtual environment**
@@ -127,8 +191,35 @@ venv\Scripts\python.exe -m flask run --host=0.0.0.0 --debug
 ```
 
 **macOS/Linux:**
+
+The Flask app is located in `app/web/server.py`, so you must tell Flask where to find it:
+
 ```bash
+# Set Flask app location
+export FLASK_APP=app.web.server
+
+# Run the server
 python -m flask run --host=0.0.0.0 --debug
+```
+
+**Or use the --app flag directly:**
+```bash
+python -m flask --app app.web.server run --host=0.0.0.0 --debug
+```
+
+**Create a launch script (optional):**
+
+Save as `run.sh`:
+```bash
+#!/bin/bash
+export FLASK_APP=app.web.server
+python3 -m flask run --host=0.0.0.0 --debug
+```
+
+Then run:
+```bash
+chmod +x run.sh
+./run.sh
 ```
 
 The application will be available at:
@@ -320,6 +411,26 @@ All sensitive files are already in `.gitignore`.
 - Properly configured for deployment behind nginx, Apache, or cloud load balancers
 
 ## Troubleshooting
+
+### Issue: "No module named '_sqlite3'" (Linux)
+**Solution**: Python was compiled without SQLite support. You need to either:
+
+1. **Recompile Python 3.13 with SQLite libraries** (see Installation section above)
+2. **Use system Python** which includes SQLite by default:
+   ```bash
+   deactivate  # exit current venv
+   rm -rf venv
+   python3 -m venv venv  # Use system Python
+   source venv/bin/activate
+   pip install -r requirements.txt
+   ```
+
+### Issue: "Failed to find Flask application or factory" (Linux)
+**Solution**: Set the Flask app location:
+```bash
+export FLASK_APP=app.web.server
+python -m flask run --host=0.0.0.0 --debug
+```
 
 ### Issue: Module not found errors
 **Solution**: Ensure virtual environment is activated and dependencies are installed:

@@ -21,7 +21,7 @@ class AgentAPI:
                     enable_semantic_detection: bool = False,
                     semantic_similarity_threshold: float = 0.90,
                     semantic_history_depth: int = 5,
-                    enable_cissp_mode: bool = True,
+                    exam_profile_id: str = None,
                     blueprint_history_depth: int = 8) -> Dict:
         """Create a new agent and return result"""
         try:
@@ -55,7 +55,7 @@ class AgentAPI:
                 enable_semantic_detection=enable_semantic_detection,
                 semantic_similarity_threshold=semantic_similarity_threshold,
                 semantic_history_depth=semantic_history_depth,
-                enable_cissp_mode=enable_cissp_mode,
+                exam_profile_id=exam_profile_id,
                 blueprint_history_depth=blueprint_history_depth
             )
             

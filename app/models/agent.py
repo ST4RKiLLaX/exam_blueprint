@@ -261,6 +261,7 @@ class AgentManager:
     
     def create_agent(self, name: str, personality: str = "", style: str = "", 
                     prompt: str = "", formatting: str = "", knowledge_bases: List[str] = None,
+                    provider: str = "openai", provider_model: str = "gpt-5.2",
                     model: str = "gpt-5.2", temperature: float = 0.9,
                     frequency_penalty: float = 0.7, presence_penalty: float = 0.5,
                     max_tokens: int = 1000, top_p: float = None,
@@ -271,7 +272,9 @@ class AgentManager:
                     post_processing_rules: Dict = None,
                     enable_semantic_detection: bool = False,
                     semantic_similarity_threshold: float = 0.90,
-                    semantic_history_depth: int = 5) -> Agent:
+                    semantic_history_depth: int = 5,
+                    exam_profile_id: str = None,
+                    blueprint_history_depth: int = 8) -> Agent:
         """Create a new agent"""
         agent = Agent(
             name=name,
@@ -280,6 +283,8 @@ class AgentManager:
             prompt=prompt,
             formatting=formatting,
             knowledge_bases=knowledge_bases or [],
+            provider=provider,
+            provider_model=provider_model,
             model=model,
             temperature=temperature,
             frequency_penalty=frequency_penalty,
@@ -297,7 +302,9 @@ class AgentManager:
             post_processing_rules=post_processing_rules,
             enable_semantic_detection=enable_semantic_detection,
             semantic_similarity_threshold=semantic_similarity_threshold,
-            semantic_history_depth=semantic_history_depth
+            semantic_history_depth=semantic_history_depth,
+            exam_profile_id=exam_profile_id,
+            blueprint_history_depth=blueprint_history_depth
         )
         self._agents[agent.agent_id] = agent
         self.save_agents()

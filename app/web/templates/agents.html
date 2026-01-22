@@ -388,16 +388,26 @@
                         
                         <!-- CISSP Question Generation Section -->
                         <div class="border-t pt-4">
-                            <h4 class="font-medium text-gray-900 mb-3">CISSP Question Generation</h4>
+                            <h4 class="font-medium text-gray-900 mb-3">Exam Profile</h4>
                             
-                            <label class="flex items-center mb-3">
-                                <input type="checkbox" id="createEnableCisspMode" 
-                                       name="enable_cissp_mode" checked
-                                       class="mr-2 h-4 w-4 text-blue-600 rounded">
-                                <span class="text-sm text-gray-700">Enable CISSP Mode (Two-Stage Retrieval + Reasoning Controller)</span>
-                            </label>
+                            <div class="mb-3">
+                                <label for="createExamProfile" class="block text-sm font-medium text-gray-700 mb-2">
+                                    Select Exam Profile
+                                </label>
+                                <select id="createExamProfile" name="exam_profile_id" 
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        onchange="toggleCreateProfileSettings()">
+                                    <option value="none">None (Standard Mode)</option>
+                                    {% for profile in exam_profiles %}
+                                    <option value="{{ profile.profile_id }}">{{ profile.name }} - {{ profile.description }}</option>
+                                    {% endfor %}
+                                </select>
+                                <p class="text-xs text-gray-500 mt-1">
+                                    Select an exam profile to enable two-stage retrieval and reasoning controller for specific certification exams.
+                                </p>
+                            </div>
                             
-                            <div id="createCisspSettings" class="ml-6">
+                            <div id="createProfileSettings" class="ml-6 hidden">
                                 <label for="createBlueprintDepth" class="block text-sm font-medium text-gray-700 mb-2">
                                     Blueprint History Depth
                                 </label>
@@ -411,10 +421,12 @@
                             </div>
                             
                             <script>
-                                // Show/hide CISSP settings based on checkbox
-                                document.getElementById('createEnableCisspMode').addEventListener('change', function() {
-                                    document.getElementById('createCisspSettings').classList.toggle('hidden', !this.checked);
-                                });
+                                // Show/hide profile settings based on dropdown
+                                function toggleCreateProfileSettings() {
+                                    const profileSelect = document.getElementById('createExamProfile');
+                                    const settings = document.getElementById('createProfileSettings');
+                                    settings.classList.toggle('hidden', profileSelect.value === 'none');
+                                }
                             </script>
                         </div>
                     </div>
@@ -843,18 +855,28 @@
                             </p>
                         </div>
                         
-                        <!-- CISSP Question Generation Section -->
+                        <!-- Exam Profile Section -->
                         <div class="border-t pt-4">
-                            <h4 class="font-medium text-gray-900 mb-3">CISSP Question Generation</h4>
+                            <h4 class="font-medium text-gray-900 mb-3">Exam Profile</h4>
                             
-                            <label class="flex items-center mb-3">
-                                <input type="checkbox" id="editEnableCisspMode" 
-                                       name="enable_cissp_mode"
-                                       class="mr-2 h-4 w-4 text-blue-600 rounded">
-                                <span class="text-sm text-gray-700">Enable CISSP Mode (Two-Stage Retrieval + Reasoning Controller)</span>
-                            </label>
+                            <div class="mb-3">
+                                <label for="editExamProfile" class="block text-sm font-medium text-gray-700 mb-2">
+                                    Select Exam Profile
+                                </label>
+                                <select id="editExamProfile" name="exam_profile_id" 
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        onchange="toggleEditProfileSettings()">
+                                    <option value="none">None (Standard Mode)</option>
+                                    {% for profile in exam_profiles %}
+                                    <option value="{{ profile.profile_id }}">{{ profile.name }} - {{ profile.description }}</option>
+                                    {% endfor %}
+                                </select>
+                                <p class="text-xs text-gray-500 mt-1">
+                                    Select an exam profile to enable two-stage retrieval and reasoning controller for specific certification exams.
+                                </p>
+                            </div>
                             
-                            <div id="editCisspSettings" class="ml-6">
+                            <div id="editProfileSettings" class="ml-6 hidden">
                                 <label for="editBlueprintDepth" class="block text-sm font-medium text-gray-700 mb-2">
                                     Blueprint History Depth
                                 </label>
@@ -868,10 +890,12 @@
                             </div>
                             
                             <script>
-                                // Show/hide CISSP settings based on checkbox
-                                document.getElementById('editEnableCisspMode').addEventListener('change', function() {
-                                    document.getElementById('editCisspSettings').classList.toggle('hidden', !this.checked);
-                                });
+                                // Show/hide profile settings based on dropdown
+                                function toggleEditProfileSettings() {
+                                    const profileSelect = document.getElementById('editExamProfile');
+                                    const settings = document.getElementById('editProfileSettings');
+                                    settings.classList.toggle('hidden', profileSelect.value === 'none');
+                                }
                             </script>
                         </div>
                     </div>
@@ -1219,12 +1243,14 @@ function editAgentSafe(agentId) {
     // Show/hide semantic settings based on checkbox
     document.getElementById('editSemanticSettings').classList.toggle('hidden', !agentData.enable_semantic_detection);
     
-    // Populate CISSP settings
-    document.getElementById('editEnableCisspMode').checked = agentData.enable_cissp_mode !== undefined ? agentData.enable_cissp_mode : true;
+    // Populate exam profile settings
+    const examProfileSelect = document.getElementById('editExamProfile');
+    examProfileSelect.value = agentData.exam_profile_id || 'none';
     document.getElementById('editBlueprintDepth').value = agentData.blueprint_history_depth || 8;
     
-    // Show/hide CISSP settings based on checkbox
-    document.getElementById('editCisspSettings').classList.toggle('hidden', !document.getElementById('editEnableCisspMode').checked);
+    // Show/hide profile settings based on selection
+    const editSettings = document.getElementById('editProfileSettings');
+    editSettings.classList.toggle('hidden', examProfileSelect.value === 'none');
     
     // Update parameter visibility based on model
     updateEditParameterVisibility();
