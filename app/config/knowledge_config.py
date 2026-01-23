@@ -2,7 +2,7 @@
 import json
 import os
 from datetime import datetime, timedelta
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 KNOWLEDGE_CONFIG_PATH = os.path.join(os.path.dirname(__file__), "knowledge_bases.json")
 
@@ -280,3 +280,276 @@ def update_knowledge_base_access(kb_id: str, access_type: str):
             return True
     
     return False
+
+
+def export_knowledge_base(kb_id: str, include_embeddings: bool = True) -> tuple[bool, str, Optional[bytes]]:
+    """
+    Export a knowledge base as a ZIP package.
+    
+    Args:
+        kb_id: Knowledge base identifier to export
+        include_embeddings: Whether to include processed embeddings
+        
+    Returns:
+        Tuple of (success, message, zip_bytes)
+    """
+    import zipfile
+    import shutil
+    from io import BytesIO
+    
+    # Load KB config
+    config = load_knowledge_config()
+    kb_config = None
+    for kb in config.get("knowledge_bases", []):
+        if kb.get("id") == kb_id:
+            kb_config = kb
+            break
+    
+    if not kb_config:
+        return False, "Knowledge base not found", None
+    
+    # Locate source file
+    source_path = kb_config.get("source")
+    if not source_path or not os.path.exists(source_path):
+        return False, "Source file not found", None
+    
+    # Locate processed folder
+    kb_base_dir = os.path.join(os.path.dirname(__file__), "..", "knowledge_bases")
+    processed_folder = os.path.join(kb_base_dir, kb_id)
+    
+    # Prepare manifest
+    original_filename = os.path.basename(source_path)
+    
+    # Get embedding dimensions
+    embeddings_path = os.path.join(processed_folder, "embeddings.npy")
+    dimensions = None
+    chunk_count = None
+    
+    if os.path.exists(embeddings_path):
+        import numpy as np
+        try:
+            embeddings = np.load(embeddings_path)
+            dimensions = embeddings.shape[1] if len(embeddings.shape) > 1 else len(embeddings)
+            chunk_count = embeddings.shape[0] if len(embeddings.shape) > 0 else 1
+        except:
+            pass
+    
+    manifest = {
+        "title": kb_config.get("title"),
+        "description": kb_config.get("description"),
+        "kb_type": kb_config.get("type"),
+        "source_filename": original_filename,
+        "exam_profile_ids": kb_config.get("exam_profile_ids", []),
+        "profile_type": kb_config.get("profile_type"),
+        "profile_domain": kb_config.get("profile_domain"),
+        "is_priority_kb": kb_config.get("is_priority_kb", False),
+        "access_type": kb_config.get("access_type", "shared"),
+        "category": kb_config.get("category", "general"),
+        "embedding_info": {
+            "provider": kb_config.get("embedding_provider", "openai"),
+            "model": kb_config.get("embedding_model"),
+            "dimensions": dimensions,
+            "chunk_count": chunk_count
+        },
+        "export_metadata": {
+            "export_version": "1.0",
+            "export_timestamp": datetime.now().isoformat(),
+            "has_embeddings": include_embeddings and os.path.exists(processed_folder)
+        }
+    }
+    
+    # Create ZIP in memory
+    zip_buffer = BytesIO()
+    
+    try:
+        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zipf:
+            # Add manifest
+            zipf.writestr('manifest.json', json.dumps(manifest, indent=2, ensure_ascii=False))
+            
+            # Add source file
+            zipf.write(source_path, f'source/{original_filename}')
+            
+            # Add processed files if requested and available
+            if include_embeddings and os.path.exists(processed_folder):
+                for filename in ['chunks.pkl.gz', 'embeddings.npy', 'index.faiss']:
+                    file_path = os.path.join(processed_folder, filename)
+                    if os.path.exists(file_path):
+                        zipf.write(file_path, f'processed/{filename}')
+        
+        zip_buffer.seek(0)
+        return True, "Knowledge base exported successfully", zip_buffer.getvalue()
+    
+    except Exception as e:
+        return False, f"Export failed: {str(e)}", None
+
+
+def import_knowledge_base(zip_file, user_embedding_provider: str, user_embedding_model: str = None) -> tuple[bool, str, List[str], Optional[str]]:
+    """
+    Import a knowledge base from ZIP package.
+    
+    Args:
+        zip_file: Uploaded ZIP file object
+        user_embedding_provider: Current user's embedding provider
+        user_embedding_model: Current user's embedding model (optional)
+        
+    Returns:
+        Tuple of (success, message, warnings, new_kb_id)
+    """
+    import zipfile
+    import tempfile
+    import shutil
+    
+    warnings = []
+    temp_dir = None
+    
+    try:
+        # Create temp directory for extraction
+        temp_dir = tempfile.mkdtemp()
+        
+        # Extract ZIP
+        with zipfile.ZipFile(zip_file, 'r') as zipf:
+            zipf.extractall(temp_dir)
+        
+        # Read manifest
+        manifest_path = os.path.join(temp_dir, 'manifest.json')
+        if not os.path.exists(manifest_path):
+            return False, "Invalid package: manifest.json not found", [], None
+        
+        with open(manifest_path, 'r', encoding='utf-8') as f:
+            manifest = json.load(f)
+        
+        # Validate required fields
+        required_fields = ["title", "description", "kb_type", "source_filename"]
+        for field in required_fields:
+            if field not in manifest:
+                return False, f"Invalid manifest: missing field '{field}'", [], None
+        
+        # Check embedding compatibility
+        manifest_provider = manifest.get("embedding_info", {}).get("provider", "openai")
+        manifest_model = manifest.get("embedding_info", {}).get("model")
+        has_embeddings = manifest.get("export_metadata", {}).get("has_embeddings", False)
+        
+        can_reuse_embeddings = (
+            has_embeddings and 
+            manifest_provider == user_embedding_provider and
+            (not user_embedding_model or manifest_model == user_embedding_model or not manifest_model)
+        )
+        
+        if has_embeddings and not can_reuse_embeddings:
+            warnings.append(f"Embedding provider mismatch ({manifest_provider} -> {user_embedding_provider}) - will re-process (2-5 minutes)")
+        
+        # Validate exam profile IDs
+        exam_profile_ids = manifest.get("exam_profile_ids", [])
+        if exam_profile_ids:
+            from app.config.exam_profile_config import profile_exists
+            valid_profile_ids = [pid for pid in exam_profile_ids if profile_exists(pid)]
+            invalid_profiles = [pid for pid in exam_profile_ids if not profile_exists(pid)]
+            
+            if invalid_profiles:
+                warnings.append(f"Exam profiles not found: {', '.join(invalid_profiles)}")
+            
+            exam_profile_ids = valid_profile_ids
+        
+        # Generate new KB ID
+        config = load_knowledge_config()
+        new_kb_id = f"kb_{len(config['knowledge_bases'])}_{int(datetime.now().timestamp())}"
+        
+        # Copy source file
+        source_filename = manifest["source_filename"]
+        source_temp_path = os.path.join(temp_dir, 'source', source_filename)
+        
+        if not os.path.exists(source_temp_path):
+            return False, "Source file not found in package", [], None
+        
+        kb_base_dir = os.path.join(os.path.dirname(__file__), "..", "knowledge_bases")
+        os.makedirs(kb_base_dir, exist_ok=True)
+        
+        # Create unique filename for source
+        base_name, ext = os.path.splitext(source_filename)
+        new_source_path = os.path.join(kb_base_dir, f"{base_name}_{int(datetime.now().timestamp())}{ext}")
+        shutil.copy2(source_temp_path, new_source_path)
+        
+        # Handle embeddings
+        new_processed_folder = os.path.join(kb_base_dir, new_kb_id)
+        
+        if can_reuse_embeddings:
+            # Copy processed files
+            os.makedirs(new_processed_folder, exist_ok=True)
+            processed_temp_path = os.path.join(temp_dir, 'processed')
+            
+            for filename in ['chunks.pkl.gz', 'embeddings.npy', 'index.faiss']:
+                src = os.path.join(processed_temp_path, filename)
+                dst = os.path.join(new_processed_folder, filename)
+                if os.path.exists(src):
+                    shutil.copy2(src, dst)
+            
+            embedding_status = "completed"
+            warnings.append(f"Reused embeddings from package (provider: {manifest_provider})")
+        else:
+            # Will need to re-process
+            embedding_status = "pending"
+            if not has_embeddings:
+                warnings.append("No embeddings in package - will process with your provider")
+        
+        # Create KB entry
+        new_kb = {
+            "id": new_kb_id,
+            "title": manifest["title"],
+            "description": manifest["description"],
+            "type": manifest["kb_type"],
+            "source": new_source_path,
+            "chunks_path": None,
+            "created_at": datetime.now().isoformat(),
+            "exam_profile_ids": exam_profile_ids,
+            "status": "active",
+            "access_type": manifest.get("access_type", "shared"),
+            "category": manifest.get("category", "general"),
+            "refresh_schedule": "manual",
+            "last_refreshed": None,
+            "next_refresh": None,
+            "profile_type": manifest.get("profile_type"),
+            "profile_domain": manifest.get("profile_domain"),
+            "is_priority_kb": manifest.get("is_priority_kb", False),
+            "embedding_provider": user_embedding_provider,
+            "embedding_model": user_embedding_model,
+            "embedding_status": embedding_status
+        }
+        
+        config["knowledge_bases"].append(new_kb)
+        save_knowledge_config(config)
+        
+        # Trigger processing if needed
+        if not can_reuse_embeddings:
+            from app.utils.knowledge_processor import process_knowledge_base
+            update_embedding_status(new_kb_id, "processing")
+            
+            # Determine processor type
+            processor_type = "pdf" if manifest["kb_type"] == "document" and source_filename.lower().endswith('.pdf') else "file"
+            
+            success, _ = process_knowledge_base(
+                new_kb_id, 
+                processor_type, 
+                new_source_path,
+                generate_summary=False,
+                embedding_provider=user_embedding_provider
+            )
+            
+            if success:
+                update_embedding_status(new_kb_id, "completed")
+                warnings.append(f"Successfully processed with {user_embedding_provider}")
+            else:
+                update_embedding_status(new_kb_id, "failed")
+                warnings.append("Processing failed - check logs")
+        
+        return True, "Knowledge base imported successfully", warnings, new_kb_id
+    
+    except Exception as e:
+        return False, f"Import failed: {str(e)}", [], None
+    
+    finally:
+        # Cleanup temp directory
+        if temp_dir and os.path.exists(temp_dir):
+            try:
+                shutil.rmtree(temp_dir)
+            except:
+                pass

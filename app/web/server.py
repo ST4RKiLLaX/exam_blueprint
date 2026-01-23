@@ -828,6 +828,70 @@ def knowledge_bases():
                          knowledge_bases=knowledge_bases,
                          exam_profiles=exam_profiles)
 
+@app.route("/api/knowledge_bases/<kb_id>/export", methods=["GET"])
+@login_required
+def export_kb_api(kb_id):
+    """Export knowledge base as downloadable ZIP"""
+    from app.config.knowledge_config import export_knowledge_base
+    from flask import Response
+    
+    # Get include_embeddings from query param
+    include_embeddings = request.args.get('include_embeddings', 'true').lower() == 'true'
+    
+    success, message, zip_bytes = export_knowledge_base(kb_id, include_embeddings)
+    
+    if not success:
+        return jsonify({"error": message}), 404
+    
+    # Get KB title for filename
+    config = load_knowledge_config()
+    kb_title = "knowledge_base"
+    for kb in config.get("knowledge_bases", []):
+        if kb.get("id") == kb_id:
+            kb_title = kb.get("title", "knowledge_base")
+            break
+    
+    # Sanitize filename
+    safe_name = "".join(c for c in kb_title if c.isalnum() or c in (' ', '_', '-')).strip()
+    safe_name = safe_name.replace(' ', '_').lower()
+    
+    response = Response(zip_bytes, mimetype='application/zip')
+    response.headers['Content-Disposition'] = f'attachment; filename="{safe_name}_kb.zip"'
+    
+    return response
+
+@app.route("/api/knowledge_bases/import", methods=["POST"])
+@login_required
+def import_kb_api():
+    """Import knowledge base from ZIP package"""
+    from app.config.knowledge_config import import_knowledge_base
+    
+    if 'file' not in request.files:
+        return jsonify({"error": "No file uploaded"}), 400
+    
+    file = request.files['file']
+    
+    if file.filename == '':
+        return jsonify({"error": "No file selected"}), 400
+    
+    if not file.filename.endswith('.zip'):
+        return jsonify({"error": "File must be a ZIP file"}), 400
+    
+    # Get user's current embedding provider from settings or default to openai
+    user_provider = "openai"  # Default, will be enhanced later with user preference detection
+    
+    success, message, warnings, new_kb_id = import_knowledge_base(file, user_provider)
+    
+    if success:
+        return jsonify({
+            "success": True,
+            "message": message,
+            "warnings": warnings,
+            "kb_id": new_kb_id
+        })
+    else:
+        return jsonify({"error": message}), 400
+
 @app.route("/api/agents/<agent_id>/export", methods=["GET"])
 @login_required
 def export_agent_api(agent_id):
