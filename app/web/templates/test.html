@@ -88,6 +88,19 @@
     let chatSessionId = null;
     let currentAgentId = null;
 
+    // Pre-select agent from URL parameter
+    window.addEventListener('DOMContentLoaded', function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const agentId = urlParams.get('agent');
+        if (agentId) {
+            const agentSelect = document.getElementById('chat_agent');
+            if (agentSelect) {
+                agentSelect.value = agentId;
+                onAgentChange();
+            }
+        }
+    });
+
     function onAgentChange() {
         const agentSelect = document.getElementById('chat_agent');
         const selectedAgent = agentSelect.value;

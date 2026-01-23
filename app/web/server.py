@@ -229,7 +229,7 @@ def home():
     from app.config.model_config import get_current_model
     from app.config.knowledge_config import load_knowledge_config
     
-    agents_result = AgentAPI.get_all_agents()
+    agents_result = AgentAPI.get_active_agents()
     agents = agents_result.get("agents", []) if agents_result["success"] else []
     
     # Get stats for system overview

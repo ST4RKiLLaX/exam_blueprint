@@ -19,10 +19,16 @@
         </div>
     </div>
 
-    <!-- Agents Grid -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {% for agent in agents %}
-        <div class="bg-white rounded-lg shadow-md card-hover {% if agent.status != 'active' %}opacity-75{% endif %}">
+    <!-- Active Agents Grid -->
+    {% set active_agents = agents|selectattr('status', 'equalto', 'active')|list %}
+    {% set inactive_agents = agents|rejectattr('status', 'equalto', 'active')|list %}
+    
+    {% if active_agents %}
+    <div class="mb-8">
+        <h2 class="text-xl font-semibold text-gray-900 mb-4">Active Agents</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {% for agent in active_agents %}
+            <div class="bg-white rounded-lg shadow-md card-hover">
             <div class="p-6">
                 <div class="flex justify-between items-start mb-4">
                     <h3 class="text-lg font-semibold text-gray-900 truncate">{{ agent.name }}</h3>
@@ -72,7 +78,7 @@
                 </div>
                 
                 <!-- Embed Buttons -->
-                <div class="flex space-x-2">
+                <div class="flex space-x-2 mt-2">
                     <a href="/embed-code/{{ agent.agent_id }}" 
                        class="flex-1 bg-purple-50 hover:bg-purple-100 text-purple-700 px-3 py-2 rounded text-sm font-medium transition-colors text-center">
                         🔗 Embed Chat
@@ -82,29 +88,107 @@
                         📝 Quiz Embed
                     </a>
                 </div>
-                <div class="flex space-x-2">
-                    <a href="/test" 
+                <div class="flex space-x-2 mt-2">
+                    <a href="/?agent={{ agent.agent_id }}" 
                        class="flex-1 bg-orange-50 hover:bg-orange-100 text-orange-700 px-3 py-2 rounded text-sm font-medium transition-colors text-center">
-                        💬 Test Chat
+                        💬 Generate Questions
                     </a>
                 </div>
             </div>
         </div>
         {% endfor %}
-        
-        {% if not agents %}
-        <div class="col-span-full">
-            <div class="text-center py-12 bg-white rounded-lg shadow-md">
-                <div class="text-6xl mb-4">🤖</div>
-                <h3 class="text-lg font-semibold text-gray-900 mb-2">No agents found</h3>
-                <p class="text-gray-600 mb-4">Create your first agent to get started!</p>
-                <button onclick="showCreateModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors">
-                    Create Agent
-                </button>
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Inactive Agents Grid -->
+    {% if inactive_agents %}
+    <div class="mb-8">
+        <h2 class="text-xl font-semibold text-gray-700 mb-4">Inactive Agents</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {% for agent in inactive_agents %}
+            <div class="bg-white rounded-lg shadow-md card-hover opacity-75">
+            <div class="p-6">
+                <div class="flex justify-between items-start mb-4">
+                    <h3 class="text-lg font-semibold text-gray-900 truncate">{{ agent.name }}</h3>
+                    <span class="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-800">
+                        {{ agent.status }}
+                    </span>
+                </div>
+                
+                <div class="space-y-3 mb-6">
+                    <div>
+                        <p class="text-xs text-gray-500">ID: {{ agent.agent_id[:8] }}...</p>
+                    </div>
+                    
+                    {% if agent.personality %}
+                    <div>
+                        <p class="text-sm font-medium text-gray-700">Personality:</p>
+                        <p class="text-sm text-gray-600">{{ (agent.personality[:100] + '...') if agent.personality|length > 100 else agent.personality }}</p>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="flex justify-between text-xs text-gray-500">
+                        <span>Created: {{ agent.created_at[:10] }}</span>
+                        <span>📚 Knowledge Bases: {{ agent.knowledge_bases|length }}</span>
+                    </div>
+                </div>
+                
+                <div class="flex space-x-2 mb-3">
+                    <button onclick="editAgentSafe('{{ agent.agent_id }}')" 
+                            class="flex-1 bg-blue-50 hover:bg-blue-100 text-blue-700 px-3 py-2 rounded text-sm font-medium transition-colors"
+                            data-agent='{{ agent|tojson }}'>
+                        ✏️ Edit
+                    </button>
+                    <button onclick="cloneAgent('{{ agent.agent_id }}', '{{ agent.name }}')" 
+                            class="flex-1 bg-green-50 hover:bg-green-100 text-green-700 px-3 py-2 rounded text-sm font-medium transition-colors">
+                        📋 Clone
+                    </button>
+                    <button onclick="exportAgent('{{ agent.agent_id }}')" 
+                            class="flex-1 bg-green-50 hover:bg-green-100 text-green-700 px-3 py-2 rounded text-sm font-medium transition-colors">
+                        💾 Export
+                    </button>
+                    <button onclick="deleteAgent('{{ agent.agent_id }}', '{{ agent.name }}')" 
+                            class="flex-1 bg-red-50 hover:bg-red-100 text-red-700 px-3 py-2 rounded text-sm font-medium transition-colors">
+                        🗑️ Delete
+                    </button>
+                </div>
+                
+                <!-- Embed Buttons (Disabled for Inactive) -->
+                <div class="flex space-x-2 mt-2">
+                    <button onclick="alert('Agent must be active to use this feature. Please activate the agent first.'); return false;" 
+                       class="flex-1 bg-gray-100 text-gray-400 px-3 py-2 rounded text-sm font-medium cursor-not-allowed text-center">
+                        🔗 Embed Chat
+                    </button>
+                    <button onclick="alert('Agent must be active to use this feature. Please activate the agent first.'); return false;" 
+                       class="flex-1 bg-gray-100 text-gray-400 px-3 py-2 rounded text-sm font-medium cursor-not-allowed text-center">
+                        📝 Quiz Embed
+                    </button>
+                </div>
+                <div class="flex space-x-2 mt-2">
+                    <button onclick="alert('Agent must be active to use this feature. Please activate the agent first.'); return false;" 
+                       class="flex-1 bg-gray-100 text-gray-400 px-3 py-2 rounded text-sm font-medium cursor-not-allowed text-center">
+                        💬 Generate Questions
+                    </button>
+                </div>
             </div>
         </div>
-        {% endif %}
+        {% endfor %}
+        </div>
     </div>
+    {% endif %}
+    
+    <!-- Empty State -->
+    {% if not agents %}
+    <div class="text-center py-12 bg-white rounded-lg shadow-md">
+        <div class="text-6xl mb-4">🤖</div>
+        <h3 class="text-lg font-semibold text-gray-900 mb-2">No agents found</h3>
+        <p class="text-gray-600 mb-4">Create your first agent to get started!</p>
+        <button onclick="showCreateModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors">
+            Create Agent
+        </button>
+    </div>
+    {% endif %}
 </div>
 
 <!-- Create Agent Modal -->
