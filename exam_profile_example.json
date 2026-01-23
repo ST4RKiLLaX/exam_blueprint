@@ -1,0 +1,216 @@
+{
+  "profile_id": "example_cert_2026",
+  // REQUIRED: Unique identifier for this profile. Use lowercase with underscores.
+  // Convention: {exam_abbreviation}_{year}
+  // This ID is referenced by agents and knowledge bases.
+  
+  "name": "Example Certification",
+  // REQUIRED: Human-readable name displayed in UI dropdowns and profile cards.
+  
+  "description": "Example Professional Certification - demonstrates all available fields and their usage patterns for developer reference.",
+  // REQUIRED: Brief description explaining the exam's focus, level, and approach.
+  // Used in UI tooltips and profile selection screens.
+  
+  "question_types": [
+    // REQUIRED: Array defining question format patterns.
+    // Each type represents a different way to frame the stem and options.
+    // Agents use these to vary question structure and avoid repetitive patterns.
+    {
+      "id": "comparative",
+      // REQUIRED: Unique identifier within this profile.
+      // Used internally to select question type during generation.
+      
+      "phrase": "Which is BEST/MOST appropriate?",
+      // REQUIRED: The exact phrasing pattern used in the question stem.
+      // This appears in generated questions to signal the expected reasoning approach.
+      
+      "guidance": "Frame options as competing alternatives with varying degrees of correctness. The correct answer should represent the optimal choice given typical enterprise constraints, resource availability, and risk tolerance. All options should be technically valid but differ in effectiveness, scalability, or alignment with governance principles."
+      // REQUIRED: Instructions to the AI agent on how to construct questions of this type.
+      // Guides the agent on what makes a good question, how to select distractors,
+      // and what reasoning the test-taker should apply.
+    },
+    {
+      "id": "sequential",
+      "phrase": "What should be done FIRST?",
+      "guidance": "Frame options as dependent steps in a workflow or process. The correct answer should reflect proper sequencing based on dependencies (e.g., assessment before implementation), risk priority (address highest impact first), authority requirements (get approval before acting), or governance principles (policy before procedure)."
+    },
+    {
+      "id": "risk_identification",
+      "phrase": "What is the PRIMARY risk?",
+      "guidance": "Frame the scenario around a potential security issue or business decision. Options should present different risks, threats, or concerns. The correct answer identifies the most significant risk from a business impact perspective, not just technical severity. Prefer business/strategic risks over technical symptoms."
+    },
+    {
+      "id": "control_selection",
+      "phrase": "Which control MOST effectively addresses the issue?",
+      "guidance": "Frame options as different security controls, countermeasures, or mitigation strategies. The correct answer should be the most effective control considering enterprise scale, sustainability, cost-effectiveness, and risk reduction. Avoid selecting controls based solely on technical sophistication."
+    },
+    {
+      "id": "exception",
+      "phrase": "When would this NOT apply?",
+      "guidance": "Use sparingly. Frame options as different scenarios or conditions. The correct answer should identify a clearly defined exception based on scope, context, authority boundaries, or applicability limits. Avoid trick questions or artificial ambiguity."
+    }
+  ],
+  
+  "domains": [
+    // REQUIRED: Array defining knowledge domains or exam sections.
+    // Used for organizing knowledge bases and providing domain-specific context to agents.
+    // The two-stage retrieval system uses these to query domain-specific KBs.
+    {
+      "id": "domain_one",
+      // REQUIRED: Unique identifier for this domain.
+      // Convention: Use lowercase with underscores, avoid special characters.
+      // Referenced when assigning KBs and during question generation routing.
+      
+      "name": "Domain One: Example Area",
+      // REQUIRED: Human-readable domain name.
+      // Displayed in UI filters, KB assignment screens, and question metadata.
+      
+      "keywords": [
+        // REQUIRED: Array of keywords/phrases that trigger this domain during retrieval.
+        // Used by semantic search to match user queries and topics to domains.
+        // Include: core concepts, common abbreviations, related technologies,
+        // typical terminology, and professional jargon.
+        // More keywords improve retrieval accuracy but may cause overlap with other domains.
+        "governance",
+        "policy",
+        "compliance",
+        "risk management",
+        "regulatory",
+        "framework",
+        "standard",
+        "audit",
+        "accountability",
+        "responsibility"
+      ],
+      
+      "priority": "high"
+      // OPTIONAL: Used for weighting or emphasis during generation.
+      // Values: "high", "medium", "low"
+      // High-priority domains may receive more questions or be emphasized in agent prompts.
+      // Not currently used in core logic but reserved for future enhancements.
+    },
+    {
+      "id": "domain_two",
+      "name": "Domain Two: Technical Controls",
+      "keywords": [
+        "encryption",
+        "cryptography",
+        "authentication",
+        "authorization",
+        "access control",
+        "network security",
+        "firewall",
+        "ids",
+        "ips",
+        "vpn"
+      ],
+      "priority": "medium"
+    },
+    {
+      "id": "domain_three",
+      "name": "Domain Three: Operations",
+      "keywords": [
+        "incident response",
+        "monitoring",
+        "logging",
+        "siem",
+        "forensics",
+        "disaster recovery",
+        "business continuity",
+        "backup",
+        "change management"
+      ],
+      "priority": "medium"
+    }
+  ],
+  
+  "reasoning_modes": [
+    // REQUIRED: Array defining different analytical frameworks or thinking styles.
+    // Agents rotate among these modes to create variety in question approach.
+    // Each mode represents a different lens through which to evaluate a scenario.
+    {
+      "id": "governance",
+      // REQUIRED: Unique identifier for this reasoning mode.
+      
+      "name": "Governance",
+      // REQUIRED: Human-readable name for this mode.
+      
+      "description": "Use a policy and compliance lens. Frame questions in terms of governance requirements, organizational policy, regulatory compliance, management responsibility, and authority. Questions should emphasize who has the right to decide, what policies apply, and accountability structures. Prefer answers that establish or follow proper authorization chains."
+      // REQUIRED: Detailed instructions on how this mode should influence question design.
+      // Tells the agent what perspective to take, what factors to emphasize,
+      // and what type of reasoning the test-taker should apply.
+    },
+    {
+      "id": "risk_based",
+      "name": "Risk-Based Thinking",
+      "description": "Use risk management principles. Frame questions using the chain: threat → vulnerability → impact → control → residual risk. Questions should emphasize likelihood and impact assessment, risk prioritization, risk tolerance, and cost-benefit analysis. The correct answer should reflect defensible risk-based decision making."
+    },
+    {
+      "id": "process",
+      "name": "Process-Oriented",
+      "description": "Use lifecycle or phase-based thinking. Frame questions around process stages (plan, design, implement, monitor), implementation phases, sequential workflows, or structured methodologies. Questions should test understanding of dependencies, proper sequencing, and phase-appropriate activities."
+    },
+    {
+      "id": "comparative_analysis",
+      "name": "Comparative Analysis",
+      "description": "Use trade-off evaluation. Frame questions around comparing different approaches, technologies, or strategies. Highlight advantages and disadvantages in enterprise contexts. Questions should force weighing multiple valid options against realistic constraints like budget, time, expertise, compatibility, and organizational maturity."
+    }
+  ],
+  
+  "kb_structure": {
+    // REQUIRED: Defines how knowledge bases are organized and queried for this profile.
+    // These settings control the two-stage retrieval system used during question generation.
+    
+    "priority_kb_flag": "is_priority_kb",
+    // REQUIRED: The field name used to identify priority/outline knowledge bases.
+    // Priority KBs are queried first to establish topic structure before domain-specific retrieval.
+    // Must match the boolean field in knowledge_bases.json.
+    // Example: An exam outline or domain structure document would be marked as priority.
+    
+    "outline_type": "outline",
+    // REQUIRED: The KB type value that indicates outline/structure documents.
+    // Used in conjunction with priority_kb_flag to identify high-level organizational KBs.
+    // These KBs provide the "table of contents" for the exam.
+    
+    "domain_type": "cbk"
+    // REQUIRED: The KB type value that indicates domain-specific content.
+    // These KBs contain detailed subject matter for each domain.
+    // After querying priority KBs, the system queries domain-specific KBs based on the topic.
+    // Common values: "cbk" (Common Body of Knowledge), "domain", "content", "material"
+  },
+  
+  "guidance_suffix": "Ensure the question tests understanding at the appropriate depth for this certification level. The correct answer should reflect professional judgment, industry best practices, and real-world constraints. Avoid testing pure memorization, tool-specific configurations, or overly technical implementation details unless those are core to the certification's focus.",
+  // REQUIRED: Additional instructions appended to every generation prompt.
+  // Use this for exam-wide quality standards, philosophical approach, or constraints.
+  // This is sent to the agent every time, so keep it concise but comprehensive.
+  // Common uses: set difficulty level, emphasize certain principles, prohibit certain question types.
+  
+  "global_constraints": [
+    // OPTIONAL: Array of specific rules or prohibitions for question generation.
+    // These are more specific than guidance_suffix and act as quality control filters.
+    // Not currently passed directly to agents but used for validation and documentation.
+    "Prefer management authority over technical staff action when both are viable",
+    "Assume enterprise-scale environments with standard governance structures",
+    "Avoid vendor-specific product names, tool configurations, or version-specific features",
+    "Ensure incorrect options reflect common professional mistakes, not obvious errors",
+    "Controls should not precede assessment unless explicitly justified in the scenario"
+  ],
+  
+  "usage": {
+    // AUTO-GENERATED: Usage tracking for this profile.
+    // Updated automatically by the system when agents or KBs reference this profile.
+    // Do not manually edit - these values are computed and may be overwritten.
+    
+    "agents_count": 0,
+    // Count of agents currently using this profile
+    
+    "kb_count": 0,
+    // Count of knowledge bases assigned to this profile
+    
+    "agent_ids": [],
+    // Array of agent IDs that reference this profile
+    
+    "kb_ids": []
+    // Array of KB IDs assigned to this profile
+  }
+}

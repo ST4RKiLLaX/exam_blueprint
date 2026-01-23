@@ -1,0 +1,280 @@
+{
+  "agent_id": "example-agent-uuid-12345",
+  // REQUIRED: Unique identifier for this agent.
+  // Generated automatically using UUID4 format when created via UI.
+  // Format: lowercase hex with hyphens (e.g., "f5faaf75-64e3-45bd-9424-f074ab8437e5")
+  // Used for routing, API calls, and referencing this agent in other configs.
+  
+  "name": "Example Agent (GPT)",
+  // REQUIRED: Display name shown in UI dropdowns, cards, and headers.
+  // Convention: Include provider in parentheses for easy identification.
+  // Examples: "Agent Name (GPT)", "Agent Name (Gemini)", "Agent Name (Claude)"
+  
+  "personality": "You are a professional exam question writer specializing in certification exams.\n\nYour core traits:\n- Analytical and precise\n- Fair and unbiased\n- Focused on testing applied knowledge, not memorization\n- Committed to realistic scenarios\n\nYour priorities:\n- Test judgment and decision-making\n- Reflect real-world constraints\n- Use plausible distractors\n- Maintain professional tone\n\nYour constraints:\n- Avoid trick questions\n- Don't test trivia or recall\n- Keep scenarios concise\n- Ensure one clearly best answer",
+  // REQUIRED: Defines the agent's character, role, and mindset.
+  // This is the "who you are" section sent with every request.
+  // Use this to establish:
+  //   - Professional identity (exam writer, tutor, analyst, etc.)
+  //   - Core values and priorities
+  //   - Behavioral guidelines
+  //   - Quality standards
+  // Keep focused and avoid redundancy with the prompt field.
+  
+  "style": "Professional and exam-focused.\n\nWriting style:\n- Formal business language\n- No casual expressions or slang\n- No conversational fillers or transitions\n- Concise and direct\n- Neutral tone\n\nAvoid:\n- Teaching or explaining concepts in the question stem\n- Narrating reasoning processes\n- Colloquialisms or informal phrasing\n- Obvious signaling of correct/incorrect answers",
+  // REQUIRED: Defines writing style, tone, and linguistic approach.
+  // This is the "how you communicate" section.
+  // Use this to specify:
+  //   - Formality level
+  //   - Vocabulary constraints
+  //   - Sentence structure preferences
+  //   - Things to avoid
+  // Separated from personality to allow independent tuning.
+  
+  "prompt": "CORE INSTRUCTIONS\n\nYou generate certification exam questions that test applied professional judgment.\n\nQUESTION STRUCTURE REQUIREMENTS\n\nStem (Question):\n- Maximum 2 sentences\n- Maximum 60 words\n- Include one stakeholder role\n- Include one constraint or pressure factor\n- Exclude irrelevant details\n- Frame a decision point clearly\n\nOptions (A, B, C, D):\n- State actions or choices only\n- No justifications or explanations in options\n- Maximum 12 words per option\n- All options must be grammatically parallel\n- At least two options must be plausible\n\nCONTENT REQUIREMENTS\n\nWhat to test:\n- Decision-making under realistic constraints\n- Prioritization between valid alternatives\n- Authority and accountability\n- Risk-based thinking\n- Governance and compliance alignment\n\nWhat NOT to test:\n- Memorization of definitions, versions, or specifications\n- Tool configurations or command syntax\n- Trivia or obscure edge cases\n- Pure technical recall without judgment\n\nDIVERSITY REQUIREMENTS\n\nWhen generating multiple questions:\n- Rotate among different question types\n- Vary stakeholder roles (manager, auditor, architect, etc.)\n- Alternate reasoning approaches (risk, governance, process, etc.)\n- Don't reuse the same control concept consecutively\n- Vary domains if generating a set\n\nANSWER QUALITY\n\nCorrect answer must:\n- Be defensible through logical reasoning\n- Reflect professional best practices\n- Align with governance or risk principles\n- Not rely on memorizing framework names\n\nDistractors must:\n- Be professionally plausible\n- Reflect common mistakes or partial solutions\n- Not be obviously wrong\n- Differ from correct answer in approach, not just wording",
+  // REQUIRED: Main instruction set for question generation.
+  // This is the "what you do and how you do it" section.
+  // This is the most important field - it directly controls question quality.
+  // Structure recommendations:
+  //   - Use clear section headers
+  //   - Separate structural requirements from content requirements
+  //   - Be specific about constraints (word counts, sentence limits)
+  //   - Include both positive instructions (do this) and negative (don't do this)
+  //   - Add diversity rules to prevent repetitive output
+  
+  "formatting": "OUTPUT FORMAT\n\nUse this exact structure:\n\nQuestion: [question text]\nA. [option]\nB. [option]\nC. [option]\nD. [option]\nCorrect Answer: [letter only]\nExplanation: [2-3 sentences maximum]\n\nEXPLANATION REQUIREMENTS\n\nMust include:\n- Why the correct answer is best (1 sentence)\n- Why other options are less appropriate (1-2 sentences)\n\nMust NOT include:\n- Restating the question\n- Teaching the underlying concept\n- Lengthy justifications\n- References to specific frameworks by name (unless essential)\n\nEXAMPLE\n\nQuestion: A project lead proposes deploying a security control before completing the risk assessment to meet an aggressive deadline. What should the security manager recommend FIRST?\nA. Approve deployment with post-implementation validation\nB. Complete the risk assessment\nC. Escalate to executive leadership\nD. Implement compensating controls\nCorrect Answer: B\nExplanation: Risk assessment must precede control selection to ensure controls address actual threats and align with risk tolerance. Deploying controls before assessment risks misalignment and wasted resources. While escalation or compensating controls may become necessary, assessment is the prerequisite step.",
+  // REQUIRED: Specifies exact output structure and format requirements.
+  // This is the "how to present your output" section.
+  // Critical for:
+  //   - Parsing generated questions programmatically
+  //   - Ensuring consistent quality across generations
+  //   - Setting explanation depth and style
+  // Include a full example to demonstrate expectations.
+  
+  "status": "active",
+  // REQUIRED: Agent availability status.
+  // Values: "active" or "inactive"
+  // Inactive agents:
+  //   - Don't appear in generation dropdowns
+  //   - Have disabled action buttons (Embed Chat, Quiz Embed, Generate Questions)
+  //   - Are visually separated in the agent list UI
+  // Use inactive status for agents being tuned, deprecated, or temporarily disabled.
+  
+  "created_at": "2026-01-22T12:00:00.000000",
+  // AUTO-GENERATED: ISO 8601 timestamp of agent creation.
+  // Set automatically when agent is first created via UI.
+  // Used for sorting, auditing, and age-based filtering.
+  
+  "updated_at": "2026-01-22T18:30:00.000000",
+  // AUTO-GENERATED: ISO 8601 timestamp of last modification.
+  // Updated automatically whenever any field is changed via UI.
+  // Helps track recent changes and agent maintenance history.
+  
+  "knowledge_bases": [
+    // REQUIRED: Array of KB IDs this agent can query.
+    // Order matters: listed in priority for multi-KB scenarios.
+    // Format: Each entry is a KB ID string (e.g., "kb_0_1769013675")
+    // Agent will retrieve context from these KBs during generation.
+    // The two-stage retrieval queries:
+    //   1. Priority KBs (is_priority_kb=true) for topic structure
+    //   2. Domain-specific KBs matching the selected domain
+    // Empty array is valid but agent will have no knowledge context.
+    "kb_0_1769013675",
+    "kb_1_1769013780",
+    "kb_2_1769013866"
+  ],
+  
+  "provider": "openai",
+  // REQUIRED: LLM provider identifier.
+  // Values: "openai", "gemini", "anthropic"
+  // Determines which API endpoint and authentication to use.
+  // Must match a configured provider in provider_config.py.
+  
+  "provider_model": "gpt-4o",
+  // REQUIRED: Specific model identifier from the provider.
+  // Must be a valid model name for the selected provider.
+  // Examples:
+  //   OpenAI: "gpt-4o", "gpt-4-turbo", "gpt-3.5-turbo"
+  //   Gemini: "gemini-2.0-flash-exp", "gemini-1.5-pro"
+  //   Anthropic: "claude-3-opus", "claude-3-sonnet"
+  // Model selection impacts:
+  //   - Generation quality and style
+  //   - API costs
+  //   - Response latency
+  //   - Context window size
+  
+  "model": "gpt-4o",
+  // LEGACY/COMPATIBILITY: Duplicate of provider_model.
+  // Kept for backward compatibility with older code paths.
+  // Always set to same value as provider_model.
+  // May be deprecated in future versions.
+  
+  "temperature": 0.7,
+  // REQUIRED: Controls randomness/creativity (0.0 to 2.0).
+  // Lower values (0.0-0.5): More focused, deterministic, consistent
+  // Medium values (0.5-0.9): Balanced creativity and coherence
+  // Higher values (0.9-2.0): More creative, diverse, potentially erratic
+  // Recommended ranges by task:
+  //   - Exam questions: 0.7-0.9 (variety while maintaining quality)
+  //   - Explanations: 0.3-0.6 (consistent, clear)
+  //   - Creative content: 1.0-1.5
+  
+  "frequency_penalty": 0.4,
+  // OPTIONAL: Reduces repetition of tokens (-2.0 to 2.0).
+  // Positive values: Discourage repeating the same words/phrases
+  // Negative values: Encourage repetition (rarely useful)
+  // Zero: No penalty applied
+  // Useful for preventing repetitive phrasing across multiple generations.
+  // Recommended: 0.3-0.6 for exam questions to ensure variety.
+  
+  "presence_penalty": 0.8,
+  // OPTIONAL: Encourages topic diversity (-2.0 to 2.0).
+  // Positive values: Encourage introducing new topics/concepts
+  // Negative values: Keep discussing same topics (rarely useful)
+  // Zero: No penalty applied
+  // Higher values push the model to explore different angles and topics.
+  // Recommended: 0.6-0.9 for varied question generation.
+  
+  "max_tokens": 1000,
+  // LEGACY: Maximum tokens in response.
+  // Kept for provider compatibility but prefer max_completion_tokens.
+  // Typical question + explanation: 300-500 tokens
+  // Set higher to ensure complete responses (1000-1500 recommended).
+  
+  "top_p": null,
+  // OPTIONAL: Nucleus sampling parameter (0.0 to 1.0).
+  // Alternative to temperature for controlling randomness.
+  // null: Use temperature instead (recommended)
+  // If set: Model samples from smallest set of tokens with cumulative probability >= top_p
+  // Note: OpenAI recommends using temperature OR top_p, not both.
+  
+  "max_completion_tokens": 1000,
+  // REQUIRED: Maximum tokens in the completion (OpenAI terminology).
+  // Preferred over max_tokens for clarity.
+  // Sets hard limit on response length.
+  // If generation hits this limit, response will be truncated.
+  
+  "max_output_tokens": null,
+  // PROVIDER-SPECIFIC: Used by some providers instead of max_completion_tokens.
+  // Gemini uses this field.
+  // Set to null for providers that don't use it.
+  
+  "reasoning_effort": "medium",
+  // PROVIDER-SPECIFIC: Controls reasoning depth (OpenAI o-series models).
+  // Values: "low", "medium", "high"
+  // Only applicable to models with reasoning capabilities (o1, o3).
+  // Higher effort = more thinking time = better quality but slower/costlier.
+  // Set to "low" or null for standard models (GPT-4, etc.)
+  
+  "verbosity": "low",
+  // CUSTOM: Controls explanation detail level.
+  // Values: "low", "medium", "high"
+  // Currently used as a prompt hint, not enforced programmatically.
+  // Low: Concise explanations (2-3 sentences)
+  // Medium: Moderate detail (3-5 sentences)
+  // High: Comprehensive explanations (5-8 sentences)
+  
+  "stop": null,
+  // OPTIONAL: Stop sequences that halt generation.
+  // Format: Array of strings, e.g., ["\n\n", "END"]
+  // null: No custom stop sequences (use provider defaults)
+  // Useful for controlling output format or preventing over-generation.
+  
+  "max_knowledge_chunks": 3,
+  // REQUIRED: Maximum number of KB chunks to retrieve per query.
+  // Retrieved chunks are ranked by semantic similarity.
+  // More chunks = more context but:
+  //   - Increases prompt length (tokens/cost)
+  //   - May introduce noise
+  //   - Slower processing
+  // Recommended: 3-7 for focused retrieval, 5-10 for comprehensive coverage.
+  
+  "min_similarity_threshold": 0.7,
+  // REQUIRED: Minimum cosine similarity for KB chunk retrieval (0.0 to 1.0).
+  // Chunks below this threshold are excluded from context.
+  // Lower values: More permissive, may include tangentially related content
+  // Higher values: More strict, only highly relevant content
+  // Recommended ranges:
+  //   - 0.6-0.75: Broad, exploratory retrieval
+  //   - 0.75-0.85: Balanced relevance
+  //   - 0.85-0.95: Strict, high-confidence matches only
+  
+  "conversation_history_tokens": 700,
+  // REQUIRED: Maximum tokens allocated to conversation history.
+  // Limits how much previous context is included in prompts.
+  // Higher values:
+  //   + Better context continuity
+  //   - Longer prompts (higher cost)
+  //   - Potential context confusion
+  // Recommended: 500-1000 for question generation.
+  
+  "post_processing_rules": {
+    // OPTIONAL: Custom processing rules applied after generation.
+    // Can be empty object {} or null if no rules.
+    // Available rules (all optional):
+    "max_sentences": 2,
+    // Limit explanation to N sentences (enforced by truncation)
+    
+    "strip_framework_names": false,
+    // Remove mentions of specific frameworks (ISO, NIST, etc.)
+    
+    "enforce_word_limit": true,
+    // Enforce max word counts per component
+    
+    "stem_max_words": 60,
+    // Maximum words in question stem
+    
+    "option_max_words": 12
+    // Maximum words per answer option
+  },
+  
+  "enable_semantic_detection": true,
+  // REQUIRED: Enable duplicate question detection via embeddings.
+  // true: Compare new questions to recent history using semantic similarity
+  // false: No duplicate checking (faster but may generate similar questions)
+  // Recommended: true for production, false for rapid testing.
+  
+  "semantic_similarity_threshold": 0.88,
+  // REQUIRED (if enable_semantic_detection=true): Similarity threshold for duplicates.
+  // If new question similarity >= threshold compared to any recent question, it's rejected.
+  // Range: 0.0 to 1.0
+  // Higher values: Only block near-identical questions
+  // Lower values: Block similar questions with different wording
+  // Recommended: 0.85-0.92 for effective duplicate prevention without over-blocking.
+  
+  "semantic_history_depth": 7,
+  // REQUIRED (if enable_semantic_detection=true): Number of recent questions to check.
+  // Compares against last N generated questions.
+  // Higher values:
+  //   + Better duplicate detection across longer sessions
+  //   - Slower processing
+  //   - May block legitimate variation
+  // Recommended: 5-10 for balanced performance.
+  
+  "exam_profile_id": "example_cert_2026",
+  // REQUIRED: ID of the exam profile this agent uses.
+  // Must match a valid profile_id in exam_profiles.json.
+  // This links the agent to:
+  //   - Question types
+  //   - Domains
+  //   - Reasoning modes
+  //   - KB structure definitions
+  //   - Guidance and constraints
+  // Changing this fundamentally changes agent behavior.
+  
+  "enable_cissp_mode": true,
+  // LEGACY: Originally enabled CISSP-specific logic.
+  // Kept for backward compatibility.
+  // Now mostly superseded by exam_profile_id system.
+  // May be deprecated in future versions.
+  // Set to true for backward compatibility or false to ignore.
+  
+  "blueprint_history_depth": 8
+  // REQUIRED: Number of recent domain selections to track.
+  // Used for balancing question distribution across domains.
+  // Agent tracks last N domain selections and can prefer under-represented domains.
+  // Higher values:
+  //   + Better long-term domain balance
+  //   - Slower to respond to domain preference changes
+  // Recommended: 5-10 for balanced coverage.
+  // Set to 0 to disable domain balancing.
+}
