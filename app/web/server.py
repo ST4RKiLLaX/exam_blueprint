@@ -534,7 +534,8 @@ def knowledge_bases():
             source_type = request.form.get('source_type', 'file')
             
             # Get exam profile and metadata
-            exam_profile_id = request.form.get('exam_profile_id', '').strip() or None
+            exam_profile_ids = request.form.getlist('exam_profile_ids')  # Get multiple profile IDs
+            exam_profile_ids = [pid.strip() for pid in exam_profile_ids if pid.strip()]  # Clean up
             cissp_type = request.form.get('cissp_type', '').strip() or None
             cissp_domain = request.form.get('cissp_domain', '').strip() or None
             is_priority_kb = request.form.get('is_priority_kb') == 'on'
@@ -562,7 +563,7 @@ def knowledge_bases():
                         source=source_url,
                         access_type=access_type,
                         category="general",
-                        exam_profile_id=exam_profile_id,
+                        exam_profile_ids=exam_profile_ids,
                         profile_type=cissp_type,
                         profile_domain=cissp_domain,
                         is_priority_kb=is_priority_kb,
@@ -620,7 +621,7 @@ def knowledge_bases():
                         source=upload_path,
                         access_type=access_type,
                         category="general",
-                        exam_profile_id=exam_profile_id,
+                        exam_profile_ids=exam_profile_ids,
                         profile_type=cissp_type,
                         profile_domain=cissp_domain,
                         is_priority_kb=is_priority_kb,
@@ -664,6 +665,10 @@ def knowledge_bases():
             access_type = request.form.get('access_type', 'shared')
             new_embedding_provider = request.form.get('embedding_provider', 'openai')
             
+            # Get updated profile assignments
+            exam_profile_ids = request.form.getlist('exam_profile_ids')
+            exam_profile_ids = [pid.strip() for pid in exam_profile_ids if pid.strip()]
+            
             if kb_id and title:
                 # Update knowledge base properties
                 config = load_knowledge_config()
@@ -678,6 +683,7 @@ def knowledge_bases():
                             'category': 'general',  # Fixed default
                             'access_type': access_type,
                             'embedding_provider': new_embedding_provider,
+                            'exam_profile_ids': exam_profile_ids
                         }
                         
                         kb.update(update_data)
@@ -785,6 +791,12 @@ def knowledge_bases():
             except:
                 pass
         
+        # Get profile names from IDs
+        exam_profile_ids = kb_info.get('exam_profile_ids', [])
+        # Backward compatibility: check for old exam_profile_id field
+        if not exam_profile_ids and kb_info.get('exam_profile_id'):
+            exam_profile_ids = [kb_info.get('exam_profile_id')]
+        
         knowledge_bases.append({
             'id': kb_id,
             'title': kb_info.get('title', 'Untitled'),
@@ -800,7 +812,8 @@ def knowledge_bases():
             'profile_type': kb_info.get('profile_type'),
             'profile_domain': kb_info.get('profile_domain'),
             'is_priority_kb': kb_info.get('is_priority_kb', False),
-            'embedding_provider': kb_info.get('embedding_provider', 'openai')
+            'embedding_provider': kb_info.get('embedding_provider', 'openai'),
+            'exam_profile_ids': exam_profile_ids
         })
     
     # Sort by creation date (newest first)

@@ -38,7 +38,7 @@ def update_embedding_status(kb_id, status):
             return True
     return False
 
-def add_knowledge_base(title, description, kb_type, source, chunks_path=None, access_type="shared", category="general", refresh_schedule="manual", exam_profile_id=None, profile_type=None, profile_domain=None, is_priority_kb=False, embedding_provider="openai", embedding_model=None, cissp_type=None, cissp_domain=None):
+def add_knowledge_base(title, description, kb_type, source, chunks_path=None, access_type="shared", category="general", refresh_schedule="manual", exam_profile_ids=None, profile_type=None, profile_domain=None, is_priority_kb=False, embedding_provider="openai", embedding_model=None, cissp_type=None, cissp_domain=None, exam_profile_id=None):
     """Add a new knowledge base to the configuration"""
     config = load_knowledge_config()
     
@@ -51,6 +51,12 @@ def add_knowledge_base(title, description, kb_type, source, chunks_path=None, ac
     if profile_domain is None and cissp_domain is not None:
         profile_domain = cissp_domain
     
+    # Handle backward compatibility: exam_profile_id → exam_profile_ids
+    if exam_profile_ids is None and exam_profile_id is not None:
+        exam_profile_ids = [exam_profile_id] if exam_profile_id else []
+    elif exam_profile_ids is None:
+        exam_profile_ids = []
+    
     new_kb = {
         "id": kb_id,
         "title": title,
@@ -59,7 +65,7 @@ def add_knowledge_base(title, description, kb_type, source, chunks_path=None, ac
         "source": source,
         "chunks_path": chunks_path,
         "created_at": datetime.now().isoformat(),
-        "exam_profile_id": exam_profile_id,
+        "exam_profile_ids": exam_profile_ids,  # List of profile IDs
         "status": "active",
         "access_type": access_type,  # "shared" or "exclusive"
         "category": category,  # "general", "cna", "pharmacy", "admin", etc.

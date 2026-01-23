@@ -400,7 +400,7 @@ def get_profile_usage(profile_id: str) -> Dict[str, Any]:
     all_kbs = kb_config.get("knowledge_bases", [])
     using_kbs = [
         kb.get("id") for kb in all_kbs
-        if kb.get("exam_profile_id") == profile_id
+        if profile_id in kb.get("exam_profile_ids", [])
     ]
     
     return {
