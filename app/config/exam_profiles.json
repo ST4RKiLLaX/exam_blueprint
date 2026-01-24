@@ -234,42 +234,24 @@
       }
     },
     {
-      "profile_id": "cissp_2026",
-      "name": "CISSP 2026v2",
-      "description": "Certified Information Systems Security Professional (CISSP) â€” managerial, risk-based security decision-making at enterprise scale.",
-      "guidance_suffix": "Ensure each question evaluates judgment, prioritization, and governance rather than technical execution. Prefer risk-based decisions, management authority, and enterprise constraints. Correct answers should reflect defensible business-aligned security decisions consistent with CISSP principles.",
-      "question_types": [
-        {
-          "difficulty_level": "3",
-          "guidance": "Frame answers as competing defensible options. The correct answer must align with enterprise risk management, governance priorities, and realistic organizational constraints.",
-          "id": "comparative",
-          "phrase": "Which is BEST/MOST appropriate?"
+      "description": "Certified Information Systems Security Professional (CISSP) — managerial, risk-based security decision-making at enterprise scale.",
+      "difficulty_profile": {
+        "display_names": {
+          "1": "Foundational Knowledge",
+          "2": "Scenario Application",
+          "3": "Professional Judgment"
         },
-        {
-          "difficulty_level": "3",
-          "guidance": "Frame options as dependent steps. The correct answer should reflect proper authority, prerequisite assessment, and risk-based sequencing.",
-          "id": "sequential",
-          "phrase": "What should be done FIRST?"
-        },
-        {
-          "difficulty_level": "3",
-          "guidance": "Frame options as different risks or impacts. The correct answer should identify the most significant business or security risk, not a technical symptom.",
-          "id": "risk_identification",
-          "phrase": "What is the PRIMARY risk?"
-        },
-        {
-          "difficulty_level": "3",
-          "guidance": "Frame options as alternative controls. Prefer controls that align with policy, scale appropriately, and reduce risk at the enterprise level.",
-          "id": "control_selection",
-          "phrase": "Which control MOST effectively addresses the issue?"
-        },
-        {
-          "difficulty_level": "3",
-          "guidance": "Use sparingly. The correct answer should reflect a clearly defined exception based on context, authority, or scopeâ€”not a trick or ambiguity.",
-          "id": "exception",
-          "phrase": "When would this NOT apply?"
+        "enabled_levels": [
+          "1",
+          "2",
+          "3"
+        ],
+        "weights": {
+          "1": 0.1,
+          "2": 0.35,
+          "3": 0.55
         }
-      ],
+      },
       "domains": [
         {
           "id": "security_and_risk_management",
@@ -286,7 +268,11 @@
             "risk acceptance",
             "business continuity",
             "disaster recovery",
-            "management responsibility"
+            "management responsibility",
+            "supply chain risk management",
+            "SCRM",
+            "external dependencies",
+            "risk appetite"
           ],
           "name": "Security and Risk Management",
           "priority": "high"
@@ -319,7 +305,11 @@
             "fail-safe defaults",
             "control placement",
             "physical security",
-            "system resilience"
+            "system resilience",
+            "zero trust",
+            "SASE",
+            "CNAPP",
+            "microsegmentation"
           ],
           "name": "Security Architecture and Engineering",
           "priority": "medium"
@@ -405,47 +395,118 @@
           "priority": "low"
         }
       ],
+      "guidance_suffix": "Ensure each question evaluates judgment, prioritization, and governance rather than technical execution. Level 1 questions may test foundational knowledge directly, but should still focus on concepts relevant to enterprise security decision-making rather than trivia.",
+      "kb_structure": {
+        "domain_type": "cbk",
+        "outline_type": "outline",
+        "priority_kb_flag": "is_priority_kb"
+      },
+      "name": "CISSP 2026v3",
+      "profile_id": "cissp_2026",
+      "question_types": [
+        {
+          "difficulty_level": "1",
+          "guidance": "Test direct recall of facts, terms, and definitions. Stem should be short and unambiguous. Distractors should be plausible related concepts but clearly incorrect if the test-taker knows the definition.",
+          "id": "definition",
+          "phrase": "What is the definition of"
+        },
+        {
+          "difficulty_level": "1",
+          "guidance": "Test recognition and basic understanding of a concept. Keep the stem short. One option clearly correct; distractors should be common confusions or near-miss statements.",
+          "id": "identify_correct",
+          "phrase": "Which statement is TRUE about"
+        },
+        {
+          "difficulty_level": "2",
+          "guidance": "Present a realistic scenario requiring application of CISSP concepts. The correct answer should map the scenario to the appropriate principle, control category, or lifecycle step. Options may be partially correct, but one best fits the constraints. Do not require weighing multiple defensible options; the correct answer should be clearly implied by the scenario context.",
+          "id": "scenario_apply",
+          "phrase": "In this scenario, which principle applies"
+        },
+        {
+          "difficulty_level": "2",
+          "guidance": "Frame options as dependent steps where sequencing is driven by clear prerequisites and workflow dependencies (e.g., classify data before selecting controls; assess before implementing; validate requirements before design). Avoid governance/authority-only answers unless the scenario explicitly makes them prerequisites.",
+          "id": "process_first",
+          "phrase": "What should be done FIRST?"
+        },
+        {
+          "difficulty_level": "3",
+          "guidance": "Frame answers as competing defensible options. The correct answer must align with enterprise risk management, governance priorities, and realistic organizational constraints. All options should be plausible, but differ in effectiveness, scalability, authority alignment, or risk reduction.",
+          "id": "comparative",
+          "phrase": "Which is BEST/MOST appropriate?"
+        },
+        {
+          "difficulty_level": "3",
+          "guidance": "Frame options as decision steps where the primary dependency is authority, accountability, governance, or risk ownership. The correct answer typically establishes decision rights, policy direction, approval, scope, or risk acceptance before technical execution.",
+          "id": "governance_first",
+          "phrase": "What should be done FIRST?"
+        },
+        {
+          "difficulty_level": "3",
+          "guidance": "Frame options as different risks or impacts. The correct answer should identify the most significant business or mission risk (likelihood × impact), not a technical symptom. Prefer legal, regulatory, confidentiality/integrity/availability impact, and governance/accountability failures over operational inconvenience.",
+          "id": "risk_identification",
+          "phrase": "What is the PRIMARY risk?"
+        },
+        {
+          "difficulty_level": "3",
+          "guidance": "Frame options as alternative controls or mitigation strategies. Prefer controls that align with policy, scale appropriately, are sustainable, and reduce risk at the enterprise level. Avoid selecting controls solely because they are more technical or complex.",
+          "id": "control_selection",
+          "phrase": "Which control MOST effectively addresses the issue?"
+        },
+        {
+          "difficulty_level": "3",
+          "guidance": "Use sparingly. The correct answer should reflect a clear exception based on scope, context, authority boundaries, data classification, or applicability limits. Avoid trick questions or artificial ambiguity.",
+          "id": "exception",
+          "phrase": "When would this NOT apply?"
+        },
+        {
+          "difficulty_level": "2",
+          "guidance": "Frame options as the immediate follow-on step in a defined workflow or lifecycle. The correct answer should assume the prerequisite step has already been completed and require selecting the next logical activity based on process sequencing (e.g., after classification → select controls; after assessment → analyze results; after design → implement). Avoid governance-only or strategic decision answers unless the scenario explicitly states they are the next dependency.",
+          "id": "process_next",
+          "phrase": "What should be done NEXT?"
+        }
+      ],
       "reasoning_modes": [
         {
-          "description": "Frame questions around policy, accountability, authority, regulatory obligations, and management responsibility.",
+          "description": "Use a policy and compliance lens. Frame questions in terms of governance requirements, organizational policy, regulatory compliance, management responsibility, and authority. Emphasize who has the right to decide, what policies apply, and accountability structures. Prefer answers that establish or follow proper authorization chains.",
           "id": "governance",
           "name": "Governance"
         },
         {
-          "description": "Frame questions using threat â†’ vulnerability â†’ impact â†’ control â†’ residual risk reasoning.",
+          "description": "Use risk management principles. Frame questions using the chain: threat → vulnerability → impact → control → residual risk. Emphasize likelihood and impact, risk prioritization, risk tolerance, and cost-benefit trade-offs. The correct answer should reflect defensible risk-based decision making.",
           "id": "risk_based",
           "name": "Risk Based"
         },
         {
-          "description": "Frame questions around lifecycle stages, sequencing, dependencies, and structured workflows.",
+          "description": "Use lifecycle or phase-based thinking. Frame questions around sequencing, dependencies, and structured workflows (plan, design, implement, operate, monitor). Test understanding of prerequisite steps and phase-appropriate activities.",
           "id": "process",
           "name": "Process"
         },
         {
-          "description": "Frame questions around trade-offs between approaches, highlighting advantages and disadvantages in enterprise contexts.",
+          "description": "Use trade-off evaluation. Frame questions around comparing approaches and highlighting pros/cons in enterprise contexts. Force weighing multiple plausible options against constraints like budget, time, maturity, legal exposure, and operational impact.",
           "id": "comparative_analysis",
           "name": "Comparative Analysis"
         }
       ],
-      "kb_structure": {
-        "priority_kb_flag": "is_priority_kb",
-        "outline_type": "outline",
-        "domain_type": "cbk"
-      },
-      "difficulty_profile": {
-        "enabled_levels": [
-          "3"
+      "usage": {
+        "agent_ids": [
+          "f5faaf75-64e3-45bd-9424-f074ab8437e5",
+          "17af8b63-fe5c-405b-a0cd-760f8682d607",
+          "7f39d086-027f-40f7-b3aa-87e9e469a728"
         ],
-        "weights": {
-          "1": 0.0,
-          "2": 0.0,
-          "3": 1.0
-        },
-        "display_names": {
-          "1": "Recall / Knowledge",
-          "2": "Application / Analysis",
-          "3": "Evaluation / Judgment"
-        }
+        "agents_count": 3,
+        "kb_count": 10,
+        "kb_ids": [
+          "kb_0_1769013675",
+          "kb_1_1769013780",
+          "kb_2_1769013866",
+          "kb_3_1769014640",
+          "kb_4_1769014723",
+          "kb_5_1769015188",
+          "kb_6_1769015258",
+          "kb_7_1769015357",
+          "kb_9_1769023350",
+          "kb_9_1769137818"
+        ]
       }
     }
   ]
