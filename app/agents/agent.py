@@ -417,6 +417,49 @@ def build_prompt(message_body, history=None, agent=None):
     # 2. Agent instructions (positioned early to anchor behavior)
     agent_instructions = f"\nAGENT INSTRUCTIONS:\n---\n{agent_prompt}\n"
     
+    # 2.3. Difficulty level guidance (if available from blueprint)
+    difficulty_constraint = ""
+    try:
+        blueprint = getattr(g, 'current_blueprint', None)
+        question_type = blueprint.get('question_type') if blueprint else None
+    except RuntimeError:
+        question_type = None
+    
+    # NEW: Get difficulty level from question_type field
+    if question_type and isinstance(question_type, dict):
+        difficulty_level_id = question_type.get('difficulty_level')
+        
+        if difficulty_level_id:
+            from app.config.difficulty_config import get_level_by_id
+            global_level = get_level_by_id(difficulty_level_id)
+            
+            if global_level and agent:
+                # Get profile for custom display name
+                try:
+                    from app.config.exam_profile_config import get_profile
+                    if hasattr(agent, 'exam_profile_id') and agent.exam_profile_id:
+                        profile = get_profile(agent.exam_profile_id)
+                        if profile:
+                            display_names = profile.get('difficulty_profile', {}).get('display_names', {})
+                            level_name = display_names.get(difficulty_level_id, global_level['name'])
+                        else:
+                            level_name = global_level['name']
+                    else:
+                        level_name = global_level['name']
+                except:
+                    level_name = global_level['name']
+                
+                # SUPPORTING guidance - reinforces question type, does not override
+                difficulty_constraint = f"""
+DIFFICULTY LEVEL GUIDANCE:
+---
+This question should align with: {level_name}
+Cognitive focus: {global_level['description']}
+Appropriate verbs: {', '.join(global_level['verbs'])}
+
+Note: The question type phrase and guidance above are primary. This difficulty guidance provides additional cognitive context.
+"""
+    
     # 2.5. Blueprint constraint (if CISSP mode)
     try:
         blueprint_constraint = getattr(g, 'blueprint_constraint', None)
@@ -452,7 +495,7 @@ def build_prompt(message_body, history=None, agent=None):
     
     # 6. Current message
     return f"""
-{agent_identity}{agent_instructions}{formatting_rules}{kb_context}
+{agent_identity}{agent_instructions}{difficulty_constraint}{formatting_rules}{kb_context}
 CURRENT MESSAGE:
 ---
 {message_body}
@@ -520,7 +563,14 @@ def _generate_with_openai(message_body, history=None, agent=None, skip_post_proc
                 thread_id = getattr(g, 'thread_id', 'default')
             except RuntimeError:
                 thread_id = 'default'
-            blueprint = select_blueprint(thread_id, message_body, agent.blueprint_history_depth, profile)
+            
+            # Get enabled difficulty levels from request context (if available)
+            try:
+                enabled_levels = getattr(g, 'enabled_difficulty_levels', None)
+            except RuntimeError:
+                enabled_levels = None
+            
+            blueprint = select_blueprint(thread_id, message_body, agent.blueprint_history_depth, profile, enabled_levels)
             
             # Store in request context for retrieval function to access (if in request context)
             try:
@@ -920,7 +970,14 @@ def _generate_with_gemini(message_body, history=None, agent=None, skip_post_proc
                 thread_id = getattr(g, 'thread_id', 'default')
             except RuntimeError:
                 thread_id = 'default'
-            blueprint = select_blueprint(thread_id, message_body, agent.blueprint_history_depth, profile)
+            
+            # Get enabled difficulty levels from request context (if available)
+            try:
+                enabled_levels = getattr(g, 'enabled_difficulty_levels', None)
+            except RuntimeError:
+                enabled_levels = None
+            
+            blueprint = select_blueprint(thread_id, message_body, agent.blueprint_history_depth, profile, enabled_levels)
             
             # Store in request context for retrieval function to access (if in request context)
             try:

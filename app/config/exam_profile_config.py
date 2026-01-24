@@ -257,9 +257,19 @@ def validate_profile_structure(profile_data: Dict[str, Any]) -> tuple[bool, str]
     if not isinstance(profile_data["question_types"], list):
         return False, "question_types must be a list"
     
+    from app.config.difficulty_config import validate_difficulty_level_reference, get_all_level_ids
+    
     for qt in profile_data["question_types"]:
         if not all(k in qt for k in ["id", "phrase", "guidance"]):
             return False, "Each question type must have id, phrase, and guidance"
+        
+        # NEW: Validate difficulty_level field exists
+        if "difficulty_level" not in qt:
+            return False, f"Question type '{qt.get('id', 'unknown')}' missing difficulty_level field"
+        
+        # NEW: Validate difficulty_level references a global level
+        if not validate_difficulty_level_reference(qt["difficulty_level"]):
+            return False, f"Question type '{qt.get('id', 'unknown')}' has invalid difficulty_level '{qt['difficulty_level']}'"
     
     # Validate domains structure
     if not isinstance(profile_data["domains"], list):
@@ -285,6 +295,48 @@ def validate_profile_structure(profile_data: Dict[str, Any]) -> tuple[bool, str]
     for field in required_kb_fields:
         if field not in kb_struct:
             return False, f"kb_structure missing required field: {field}"
+    
+    # NEW: Validate difficulty_profile if question types exist
+    if profile_data["question_types"]:
+        difficulty_profile = profile_data.get("difficulty_profile", {})
+        
+        # Require difficulty_profile section if question types exist
+        if not difficulty_profile:
+            return False, "difficulty_profile section required when question types are defined"
+        
+        # Validate enabled_levels
+        enabled_levels = difficulty_profile.get("enabled_levels", [])
+        if not enabled_levels:
+            return False, "difficulty_profile must have at least one enabled level"
+        
+        # Validate enabled_levels are subset of global levels
+        all_global_ids = get_all_level_ids()
+        for level_id in enabled_levels:
+            if level_id not in all_global_ids:
+                return False, f"enabled_levels contains invalid level ID: {level_id}"
+        
+        # Validate all enabled levels have at least one question type
+        question_type_levels = {qt["difficulty_level"] for qt in profile_data["question_types"]}
+        for level_id in enabled_levels:
+            if level_id not in question_type_levels:
+                return False, f"Enabled level '{level_id}' has no question types defined"
+        
+        # Validate weights structure
+        weights = difficulty_profile.get("weights", {})
+        if not weights:
+            return False, "difficulty_profile must include weights for enabled levels"
+        
+        # Validate weights include all enabled levels
+        for level_id in enabled_levels:
+            if level_id not in weights:
+                return False, f"weights missing entry for enabled level: {level_id}"
+        
+        # Validate all weight values are numeric and non-negative
+        for level_id, weight in weights.items():
+            if not isinstance(weight, (int, float)):
+                return False, f"Weight for level {level_id} must be numeric"
+            if weight < 0:
+                return False, f"Weight for level {level_id} must be non-negative"
     
     return True, ""
 
@@ -454,3 +506,84 @@ def import_profile(profile_data: Dict[str, Any], overwrite: bool = False) -> tup
     
     # Use existing save_profile function
     return save_profile(profile_data)
+
+
+# ============================================================================
+# Difficulty Profile Management (New System)
+# ============================================================================
+
+def get_difficulty_profile(profile_id: str) -> Dict[str, Any]:
+    """
+    Get difficulty profile settings (weights, enabled levels, display names).
+    
+    Args:
+        profile_id: Profile identifier
+        
+    Returns:
+        Difficulty profile dict with enabled_levels, weights, display_names
+    """
+    profile = get_profile(profile_id)
+    if profile:
+        return profile.get("difficulty_profile", {})
+    return {}
+
+
+def update_difficulty_profile(profile_id: str, settings: Dict[str, Any]) -> tuple[bool, str]:
+    """
+    Update difficulty profile settings (weights, enabled levels, display names).
+    
+    Args:
+        profile_id: Profile identifier
+        settings: Dict with optional keys: enabled_levels, weights, display_names
+        
+    Returns:
+        Tuple of (success, message)
+    """
+    from app.config.difficulty_config import validate_difficulty_level_reference
+    
+    # Get profile
+    profile = get_profile(profile_id)
+    if not profile:
+        return False, "Profile not found"
+    
+    # Get or create difficulty_profile
+    difficulty_profile = profile.get("difficulty_profile", {})
+    
+    # Update enabled_levels if provided
+    if "enabled_levels" in settings:
+        enabled_levels = settings["enabled_levels"]
+        
+        # Validate that all enabled levels exist globally
+        for level_id in enabled_levels:
+            if not validate_difficulty_level_reference(level_id):
+                return False, f"Invalid level ID: {level_id}"
+        
+        # Ensure at least one level is enabled
+        if not enabled_levels:
+            return False, "At least one difficulty level must be enabled"
+        
+        difficulty_profile["enabled_levels"] = enabled_levels
+    
+    # Update weights if provided
+    if "weights" in settings:
+        weights = settings["weights"]
+        
+        # Validate weights are numeric and non-negative
+        for level_id, weight in weights.items():
+            if not isinstance(weight, (int, float)) or weight < 0:
+                return False, f"Weight for level {level_id} must be non-negative number"
+        
+        difficulty_profile["weights"] = weights
+    
+    # Update display_names if provided
+    if "display_names" in settings:
+        difficulty_profile["display_names"] = settings["display_names"]
+    
+    # Save back to profile
+    profile["difficulty_profile"] = difficulty_profile
+    
+    # Save profile
+    success, msg = save_profile(profile)
+    if success:
+        return True, "Difficulty profile settings updated successfully"
+    return False, msg

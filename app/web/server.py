@@ -5,6 +5,7 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from werkzeug.middleware.proxy_fix import ProxyFix
 import os
+import json
 import secrets
 from werkzeug.utils import secure_filename
 from datetime import datetime
@@ -952,7 +953,7 @@ def import_agent_api():
 @roles_required('admin')
 def exam_profiles():
     from app.config.exam_profile_config import (
-        get_all_profiles, save_profile, delete_profile, 
+        get_all_profiles, get_profile, save_profile, delete_profile, 
         get_profile_usage, profile_exists
     )
     
@@ -1004,6 +1005,13 @@ def exam_profiles():
             if action == "create" and profile_exists(profile_data["profile_id"]):
                 flash("Profile ID already exists", "error")
                 return redirect(url_for('exam_profiles'))
+            
+            # Preserve existing difficulty_profile when updating
+            # (difficulty_profile is managed via separate API endpoint)
+            if action == "update":
+                existing_profile = get_profile(profile_data["profile_id"])
+                if existing_profile and "difficulty_profile" in existing_profile:
+                    profile_data["difficulty_profile"] = existing_profile["difficulty_profile"]
             
             # Save profile
             success, message = save_profile(profile_data)
@@ -1109,6 +1117,38 @@ def import_exam_profile():
         return jsonify({"success": True, "message": message})
     else:
         return jsonify({"error": message}), 400
+
+@app.route("/api/exam_profiles/<profile_id>/difficulty_settings", methods=["GET"])
+@login_required
+@roles_required('admin')
+def get_difficulty_settings_api(profile_id):
+    """Get difficulty profile settings (weights, enabled levels, display names)"""
+    from app.config.exam_profile_config import get_difficulty_profile
+    settings = get_difficulty_profile(profile_id)
+    return jsonify({"success": True, "settings": settings})
+
+@app.route("/api/exam_profiles/<profile_id>/difficulty_settings", methods=["PUT"])
+@login_required
+@roles_required('admin')
+def update_difficulty_settings_api(profile_id):
+    """Update difficulty profile settings"""
+    data = request.get_json()
+    from app.config.exam_profile_config import update_difficulty_profile
+    success, message = update_difficulty_profile(profile_id, data)
+    
+    if success:
+        return jsonify({"success": True, "message": message})
+    else:
+        return jsonify({"success": False, "error": message}), 400
+
+@app.route("/api/global_difficulty_levels", methods=["GET"])
+def get_global_difficulty_levels_api():
+    """Get canonical global difficulty level definitions"""
+    from app.config.difficulty_config import get_global_levels
+    levels = get_global_levels()
+    # Convert OrderedDict to list for JSON serialization
+    levels_list = list(levels.values())
+    return jsonify({"success": True, "levels": levels_list})
 
 @app.route("/knowledge", methods=["GET", "POST"])
 @login_required
@@ -1345,6 +1385,7 @@ def chat_with_agent(agent_id):
         data = request.get_json()
         message = data.get("message", "").strip()
         session_id = data.get("session_id", "").strip()
+        enabled_levels = data.get("enabled_levels", None)  # NEW: Array of level_ids
         
         if not message:
             return jsonify({"success": False, "error": "Message is required"})
@@ -1366,6 +1407,10 @@ def chat_with_agent(agent_id):
         # Set thread_id in request context for semantic cache
         g.thread_id = session_id if session_id else 'default'
         
+        # Store enabled difficulty levels in request context for blueprint selection
+        if enabled_levels:
+            g.enabled_difficulty_levels = enabled_levels
+        
         # Generate response using existing agent logic
         response = generate_reply(message, history=history, agent=agent)
         
@@ -1374,11 +1419,48 @@ def chat_with_agent(agent_id):
             chat_session_manager.add_message(session_id, "user", message)
             chat_session_manager.add_message(session_id, "assistant", response)
         
+        # Get comprehensive difficulty metadata from blueprint if available
+        difficulty_metadata = None
+        try:
+            blueprint = getattr(g, 'current_blueprint', None)
+            if blueprint and 'question_type' in blueprint:
+                question_type = blueprint['question_type']
+                
+                # NEW: Extract comprehensive metadata
+                if isinstance(question_type, dict):
+                    difficulty_level_id = question_type.get('difficulty_level')
+                    
+                    if difficulty_level_id:
+                        from app.config.difficulty_config import get_level_by_id
+                        from app.config.exam_profile_config import get_profile
+                        
+                        global_level = get_level_by_id(difficulty_level_id)
+                        
+                        if global_level:
+                            # Get profile's custom display name
+                            display_name = global_level['name']  # Default
+                            if hasattr(agent, 'exam_profile_id') and agent.exam_profile_id:
+                                profile = get_profile(agent.exam_profile_id)
+                                if profile:
+                                    display_names = profile.get('difficulty_profile', {}).get('display_names', {})
+                                    display_name = display_names.get(difficulty_level_id, global_level['name'])
+                            
+                            difficulty_metadata = {
+                                'question_type_id': question_type.get('id'),
+                                'question_type_phrase': question_type.get('phrase'),
+                                'difficulty_level_id': difficulty_level_id,
+                                'difficulty_level_display_name': display_name,
+                                'difficulty_level_global_name': global_level['name']
+                            }
+        except (RuntimeError, AttributeError):
+            pass
+        
         return jsonify({
             "success": True,
             "response": response,
             "agent_name": agent.name,
-            "session_id": session_id
+            "session_id": session_id,
+            "difficulty": difficulty_metadata
         })
         
     except Exception as e:

@@ -52,7 +52,124 @@ def detect_domain_hint(user_message: str, profile: Dict) -> Optional[str]:
     return None
 
 
-def select_blueprint(thread_id: str, user_message: str, history_depth: int, profile: Dict) -> Dict[str, str]:
+def normalize_weights(weights: Dict[str, float], enabled_levels: List[str]) -> Dict[str, float]:
+    """
+    Normalize weights to sum to 1.0 for only enabled levels.
+    
+    Args:
+        weights: Raw weights dict from difficulty_profile
+        enabled_levels: List of level IDs that are currently enabled
+        
+    Returns:
+        Normalized weights dict summing to 1.0
+    """
+    # Filter to only enabled levels
+    enabled_weights = {k: v for k, v in weights.items() if k in enabled_levels}
+    
+    total = sum(enabled_weights.values())
+    if total == 0:
+        # Equal distribution if all weights are 0
+        return {k: 1.0/len(enabled_weights) for k in enabled_weights}
+    
+    # Normalize to sum to 1.0
+    return {k: v/total for k, v in enabled_weights.items()}
+
+
+def select_question_type_two_stage(
+    thread_id: str,
+    profile: Dict,
+    enabled_levels: List[str],
+    history_depth: int = 8
+) -> Dict:
+    """
+    Two-stage selection: pick difficulty level by weights, then question type within level.
+    
+    This ensures weights control level frequency, not question type frequency.
+    Prevents one level with many question types from dominating the distribution.
+    
+    Args:
+        thread_id: Session identifier for tracking history
+        profile: Exam profile with difficulty_profile and question_types
+        enabled_levels: List of level_ids that are currently enabled
+        history_depth: How many recent selections to track
+        
+    Returns:
+        Selected question type dict (includes difficulty_level field)
+    """
+    # Get difficulty profile settings
+    difficulty_profile = profile.get('difficulty_profile', {})
+    raw_weights = difficulty_profile.get('weights', {})
+    
+    # Stage 1: Select difficulty level using normalized weights
+    normalized_weights = normalize_weights(raw_weights, enabled_levels)
+    
+    # Get history and count recent level usage
+    history = get_blueprint_history(thread_id, history_depth)
+    recent_levels = [bp.get('question_type', {}).get('difficulty_level') 
+                     for bp in history if bp.get('question_type')]
+    level_counts = Counter(recent_levels)
+    
+    # Apply LRU bias to weights
+    level_weights_with_bias = {}
+    for level_id, weight in normalized_weights.items():
+        count = level_counts.get(level_id, 0)
+        bias = 1.0 / (count + 1)  # Boost underused levels
+        level_weights_with_bias[level_id] = weight * bias
+    
+    # Normalize again after bias
+    total_biased = sum(level_weights_with_bias.values())
+    final_weights = {k: v/total_biased for k, v in level_weights_with_bias.items()}
+    
+    # Select level using weighted random
+    selected_level = random.choices(
+        list(final_weights.keys()),
+        weights=list(final_weights.values())
+    )[0]
+    
+    # Stage 2: Select question type within selected level
+    question_types = profile.get('question_types', [])
+    types_for_level = [qt for qt in question_types 
+                       if qt.get('difficulty_level') == selected_level]
+    
+    if not types_for_level:
+        # Fallback: should not happen if validation passed
+        types_for_level = question_types
+    
+    # Get recent question type usage
+    recent_type_ids = [bp.get('question_type', {}).get('id') for bp in history]
+    type_counts = Counter(recent_type_ids)
+    
+    # LRU selection within level
+    unused_types = [qt for qt in types_for_level 
+                    if qt['id'] not in recent_type_ids]
+    
+    if unused_types:
+        selected_type = random.choice(unused_types)
+    else:
+        # All types used recently, pick least frequent
+        selected_type = min(types_for_level, 
+                            key=lambda qt: type_counts.get(qt['id'], 0))
+    
+    return selected_type
+
+
+def get_blueprint_history(thread_id: str, history_depth: int) -> List[Dict]:
+    """
+    Get recent blueprint history for a thread.
+    
+    Args:
+        thread_id: Thread/session identifier
+        history_depth: Number of recent blueprints to return
+        
+    Returns:
+        List of recent blueprint dictionaries
+    """
+    if thread_id not in BLUEPRINT_CACHE:
+        return []
+    return BLUEPRINT_CACHE[thread_id][-history_depth:]
+
+
+def select_blueprint(thread_id: str, user_message: str, history_depth: int, profile: Dict, enabled_levels: Optional[List[str]] = None) -> Dict[str, str]:
     """
     Select a blueprint for question generation with rotation logic.
     
@@ -61,9 +178,10 @@ def select_blueprint(thread_id: str, user_message: str, history_depth: int, prof
         user_message: User's input message
         history_depth: Number of historical blueprints to consider for rotation
         profile: Exam profile dictionary with configuration
+        enabled_levels: Optional list of enabled difficulty level IDs (defaults to all)
         
     Returns:
-        Dictionary with question_type, domain, reasoning_mode, and subtopic
+        Dictionary with question_type, domain, reasoning_mode, difficulty_level, and subtopic
     """
     # Initialize cache for this thread if needed
     if thread_id not in BLUEPRINT_CACHE:
@@ -97,18 +215,41 @@ def select_blueprint(thread_id: str, user_message: str, history_depth: int, prof
             # All domains used recently, pick least frequent
             selected_domain = min(domains, key=lambda d: domain_counts.get(d, 0))
     
-    # 2. Question type selection: Least-recently-used
-    used_types = [bp["question_type"] for bp in recent_blueprints]
-    type_counts = Counter(used_types)
+    # 2. Question type selection with two-stage difficulty selection
+    # NEW: Check if profile uses new difficulty system
+    selected_question_type_dict = None
     
-    # Find types that haven't been used recently
-    unused_types = [t for t in question_types if t not in used_types]
+    if profile.get("difficulty_profile"):
+        # NEW SYSTEM: Two-stage selection (level by weights → type within level)
+        difficulty_prof = profile.get("difficulty_profile", {})
+        
+        # If no enabled_levels specified, enable all by default
+        if enabled_levels is None:
+            enabled_levels = difficulty_prof.get("enabled_levels", [])
+        
+        if enabled_levels:
+            # Use two-stage selection
+            selected_question_type_dict = select_question_type_two_stage(
+                thread_id, profile, enabled_levels, history_depth
+            )
     
-    if unused_types:
-        selected_type = random.choice(unused_types)
-    else:
-        # All types used recently, pick least frequent
-        selected_type = min(question_types, key=lambda t: type_counts.get(t, 0))
+    # Fallback: OLD SYSTEM or if no difficulty profile
+    if not selected_question_type_dict:
+        # Old LRU selection on question type IDs only
+        used_types = [bp["question_type"] for bp in recent_blueprints]
+        type_counts = Counter(used_types)
+        
+        # Find types that haven't been used recently
+        unused_types = [t for t in question_types if t not in used_types]
+        
+        if unused_types:
+            selected_type_id = random.choice(unused_types)
+        else:
+            # All types used recently, pick least frequent
+            selected_type_id = min(question_types, key=lambda t: type_counts.get(t, 0))
+        
+        # For backward compatibility, just store ID
+        selected_question_type_dict = {"id": selected_type_id}
     
     # 3. Reasoning mode selection: Rotate or random
     used_modes = [bp["reasoning_mode"] for bp in recent_blueprints[-3:]]
@@ -124,12 +265,14 @@ def select_blueprint(thread_id: str, user_message: str, history_depth: int, prof
     # 4. Subtopic placeholder (will be extracted from outline chunks later)
     subtopic = ""
     
-    return {
-        "question_type": selected_type,
+    blueprint = {
+        "question_type": selected_question_type_dict,  # Full dict now, not just ID
         "domain": selected_domain,
         "reasoning_mode": selected_mode,
         "subtopic": subtopic
     }
+    
+    return blueprint
 
 
 def build_blueprint_constraint(blueprint: Dict[str, str], profile: Dict) -> str:
@@ -137,7 +280,7 @@ def build_blueprint_constraint(blueprint: Dict[str, str], profile: Dict) -> str:
     Build a prompt constraint string from a blueprint.
     
     Args:
-        blueprint: Dictionary containing question_type, domain, and reasoning_mode
+        blueprint: Dictionary containing question_type (dict or str), domain, and reasoning_mode
         profile: Exam profile dictionary with configuration
         
     Returns:
@@ -155,10 +298,20 @@ def build_blueprint_constraint(blueprint: Dict[str, str], profile: Dict) -> str:
     subtopic = blueprint.get("subtopic", "")
     profile_id = profile.get("profile_id", "")
     
-    # Get templates and descriptions from profile
-    type_info = get_question_type_template(profile_id, question_type)
-    if not type_info:
-        type_info = {"phrase": question_type, "guidance": ""}
+    # Handle both old (string ID) and new (dict) question_type formats
+    if isinstance(question_type, dict):
+        # NEW: question_type is a full dict with difficulty_level
+        type_info = {
+            "phrase": question_type.get("phrase", ""),
+            "guidance": question_type.get("guidance", "")
+        }
+        question_type_id = question_type.get("id", "")
+    else:
+        # OLD: question_type is just an ID string
+        question_type_id = question_type
+        type_info = get_question_type_template(profile_id, question_type_id)
+        if not type_info:
+            type_info = {"phrase": question_type_id, "guidance": ""}
     
     mode_desc = get_reasoning_mode_description(profile_id, reasoning_mode)
     if not mode_desc:

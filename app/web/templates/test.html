@@ -43,6 +43,17 @@
             </select>
         </div>
 
+        <!-- Difficulty Level Controls -->
+        <div id="difficulty-controls" class="mb-4" style="display:none;">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Difficulty Levels (select which to use):</label>
+            <div id="difficulty-checkboxes" class="flex flex-wrap gap-2">
+                <!-- Dynamically populated -->
+            </div>
+            <div id="current-difficulty-indicator" class="mt-2 p-2 bg-blue-50 border border-blue-200 rounded-lg text-sm" style="display:none;">
+                <span class="text-blue-700">Last generated difficulty:</span> <strong id="current-difficulty-name" class="text-blue-900"></strong>
+            </div>
+        </div>
+
         <!-- Chat Interface -->
         <div class="border border-gray-200 rounded-lg bg-gray-50">
             <!-- Chat Messages -->
@@ -114,9 +125,100 @@
             // Clear chat messages
             document.getElementById('chat-messages').innerHTML = '<div class="text-center text-gray-500 text-sm">Start chatting with your selected agent below</div>';
             updateSessionInfo('');
+            
+            // Load difficulty levels for this agent
+            loadDifficultyLevels(selectedAgent);
         } else {
             updateChatStatus('Ready to chat');
             updateSessionInfo('');
+            // Hide difficulty controls
+            document.getElementById('difficulty-controls').style.display = 'none';
+        }
+    }
+    
+    async function loadDifficultyLevels(agentId) {
+        try {
+            // Get agent details to find exam_profile_id
+            const agents = {{ agents|tojson }};
+            const agent = agents.find(a => a.agent_id === agentId);
+            
+            if (!agent || !agent.exam_profile_id) {
+                document.getElementById('difficulty-controls').style.display = 'none';
+                return;
+            }
+            
+            // Fetch global difficulty levels
+            const globalResponse = await fetch('/api/global_difficulty_levels');
+            const globalData = await globalResponse.json();
+            
+            if (!globalData.success || !globalData.levels) {
+                document.getElementById('difficulty-controls').style.display = 'none';
+                return;
+            }
+            
+            const globalLevels = globalData.levels;
+            
+            // Fetch profile settings
+            const settingsResponse = await fetch(`/api/exam_profiles/${agent.exam_profile_id}/difficulty_settings`);
+            const settingsData = await settingsResponse.json();
+            
+            const difficultyProfile = settingsData.success && settingsData.settings ? settingsData.settings : {
+                enabled_levels: ['1', '2', '3'],
+                weights: {'1': 0.33, '2': 0.33, '3': 0.34},
+                display_names: {}
+            };
+            
+            // Fetch profile to get question types for counting
+            const profileResponse = await fetch(`/api/exam_profiles/${agent.exam_profile_id}`);
+            const profileData = await profileResponse.json();
+            const questionTypes = profileData.success && profileData.profile ? profileData.profile.question_types : [];
+            
+            // Count question types per level
+            const typeCounts = {};
+            questionTypes.forEach(qt => {
+                const level = qt.difficulty_level || '3';
+                typeCounts[level] = (typeCounts[level] || 0) + 1;
+            });
+            
+            // Show difficulty controls
+            document.getElementById('difficulty-controls').style.display = 'block';
+            
+            // Populate checkboxes with custom names and counts
+            const container = document.getElementById('difficulty-checkboxes');
+            container.innerHTML = '';
+            
+            globalLevels.forEach(level => {
+                const levelId = level.level_id;
+                const customName = difficultyProfile.display_names[levelId] || level.name;
+                const typeCount = typeCounts[levelId] || 0;
+                const isEnabled = difficultyProfile.enabled_levels.includes(levelId);
+                
+                if (typeCount > 0) {  // Only show levels that have question types
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'flex items-center';
+                    wrapper.innerHTML = `
+                        <input type="checkbox" 
+                               id="level-${levelId}" 
+                               value="${levelId}" 
+                               class="difficulty-checkbox mr-2 h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                               ${isEnabled ? 'checked' : ''}>
+                        <label for="level-${levelId}" 
+                               class="text-sm text-gray-700 cursor-pointer" 
+                               title="${level.description}">
+                            ${customName} <span class="text-gray-500">(${typeCount} types)</span>
+                        </label>
+                    `;
+                    container.appendChild(wrapper);
+                }
+            });
+            
+            // If no question types at all, hide controls
+            if (Object.keys(typeCounts).length === 0) {
+                document.getElementById('difficulty-controls').style.display = 'none';
+            }
+        } catch (error) {
+            console.error('Error loading difficulty levels:', error);
+            document.getElementById('difficulty-controls').style.display = 'none';
         }
     }
 
@@ -179,6 +281,11 @@
                 await initializeChatSession();
             }
             
+            // Collect enabled difficulty levels
+            const enabledLevels = Array.from(
+                document.querySelectorAll('.difficulty-checkbox:checked')
+            ).map(cb => cb.value);
+            
             // Send message
             const response = await fetch(`/api/chat/${currentAgentId}`, {
                 method: 'POST',
@@ -187,7 +294,8 @@
                 },
                 body: JSON.stringify({
                     message: message,
-                    session_id: chatSessionId
+                    session_id: chatSessionId,
+                    enabled_levels: enabledLevels.length > 0 ? enabledLevels : null
                 })
             });
             
@@ -199,6 +307,15 @@
             if (data.success) {
                 addChatMessage('assistant', data.response);
                 updateChatStatus(`Chatting with ${data.agent_name}`);
+                
+                // Show difficulty level indicator if available
+                if (data.difficulty) {
+                    const displayText = `${data.difficulty.difficulty_level_display_name} (${data.difficulty.question_type_phrase})`;
+                    document.getElementById('current-difficulty-name').textContent = displayText;
+                    document.getElementById('current-difficulty-indicator').style.display = 'block';
+                } else {
+                    document.getElementById('current-difficulty-indicator').style.display = 'none';
+                }
             } else {
                 addChatMessage('error', data.error || 'Sorry, I encountered an error. Please try again.');
                 updateChatStatus('Error occurred');

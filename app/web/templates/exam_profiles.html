@@ -125,6 +125,9 @@
                     <button type="button" onclick="switchProfileTab('reasoning')" id="tab-reasoning" class="tab-button border-b-2 border-transparent py-4 px-1 text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300">
                         Reasoning Modes
                     </button>
+                    <button type="button" onclick="switchProfileTab('difficulty')" id="tab-difficulty" class="tab-button border-b-2 border-transparent py-4 px-1 text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300">
+                        Difficulty Settings
+                    </button>
                     <button type="button" onclick="switchProfileTab('kb_structure')" id="tab-kb_structure" class="tab-button border-b-2 border-transparent py-4 px-1 text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300">
                         KB Structure
                     </button>
@@ -177,6 +180,7 @@
                         <thead class="bg-gray-50">
                             <tr>
                                 <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
+                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Level</th>
                                 <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Phrase</th>
                                 <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Guidance</th>
                                 <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
@@ -191,8 +195,11 @@
                 <div class="mt-4 p-4 bg-gray-50 rounded-lg">
                     <h4 class="text-sm font-medium text-gray-900 mb-3">Add Question Type</h4>
                     <div class="grid grid-cols-12 gap-2">
-                        <input type="text" id="new_qt_id" placeholder="ID (e.g., comparative)" class="col-span-3 px-3 py-2 border border-gray-300 rounded-lg text-sm">
-                        <input type="text" id="new_qt_phrase" placeholder="Phrase (e.g., Which is BEST?)" class="col-span-4 px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                        <input type="text" id="new_qt_id" placeholder="ID (e.g., comparative)" class="col-span-2 px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                        <select id="new_qt_difficulty_level" class="col-span-2 px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                            <option value="">Select Level</option>
+                        </select>
+                        <input type="text" id="new_qt_phrase" placeholder="Phrase (e.g., Which is BEST?)" class="col-span-3 px-3 py-2 border border-gray-300 rounded-lg text-sm">
                         <input type="text" id="new_qt_guidance" placeholder="Guidance for AI..." class="col-span-4 px-3 py-2 border border-gray-300 rounded-lg text-sm">
                         <button type="button" onclick="addQuestionType()" class="col-span-1 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm">+</button>
                     </div>
@@ -262,6 +269,52 @@
                         <input type="text" id="new_mode_name" placeholder="Name (e.g., Governance)" class="col-span-3 px-3 py-2 border border-gray-300 rounded-lg text-sm">
                         <input type="text" id="new_mode_description" placeholder="Description for AI..." class="col-span-5 px-3 py-2 border border-gray-300 rounded-lg text-sm">
                         <button type="button" onclick="addReasoningMode()" class="col-span-1 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm">+</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="content-difficulty" class="tab-content hidden">
+                <div class="mb-4">
+                    <h3 class="text-lg font-medium text-gray-900 mb-2">Difficulty Distribution Settings</h3>
+                    <p class="text-sm text-gray-600 mb-4">Configure which difficulty levels are enabled and their distribution weights</p>
+                </div>
+                
+                <div class="space-y-6">
+                    <!-- Enabled Levels -->
+                    <div>
+                        <h4 class="text-sm font-medium text-gray-900 mb-3">Enabled Levels</h4>
+                        <div id="enabled-levels-container" class="space-y-2">
+                            <!-- Dynamically populated with checkboxes -->
+                        </div>
+                    </div>
+                    
+                    <!-- Weights -->
+                    <div>
+                        <h4 class="text-sm font-medium text-gray-900 mb-3">Distribution Weights (%)</h4>
+                        <p class="text-xs text-gray-600 mb-3">Set the target percentage for each difficulty level (must sum to 100%)</p>
+                        <div id="weights-container" class="space-y-3">
+                            <!-- Dynamically populated with sliders -->
+                        </div>
+                        <div class="mt-2 flex items-center justify-between">
+                            <span id="weight-sum-display" class="text-sm font-medium">Total: 0%</span>
+                            <button type="button" onclick="resetWeightsToEqual()" class="text-sm text-blue-600 hover:text-blue-700">Reset to Equal Distribution</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Custom Display Names -->
+                    <div>
+                        <h4 class="text-sm font-medium text-gray-900 mb-3">Custom Level Names (Optional)</h4>
+                        <p class="text-xs text-gray-600 mb-3">Override the default level names with exam-specific terminology</p>
+                        <div id="display-names-container" class="space-y-2">
+                            <!-- Dynamically populated with text inputs -->
+                        </div>
+                    </div>
+                    
+                    <div class="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                        <p class="text-xs text-gray-700">
+                            <strong>Note:</strong> Weights are automatically normalized at runtime based on enabled levels. 
+                            If you disable a level, its weight is redistributed proportionally among remaining levels.
+                        </p>
                     </div>
                 </div>
             </div>
@@ -431,6 +484,7 @@ function editProfile(profile) {
     updateQuestionTypesTable();
     updateDomainsTable();
     updateReasoningModesTable();
+    loadDifficultySettings(profile.profile_id);
     
     document.getElementById('profileModal').classList.remove('hidden');
 }
@@ -474,11 +528,12 @@ function switchProfileTab(tabName) {
 // Question Types management
 function addQuestionType() {
     const id = document.getElementById('new_qt_id').value.trim();
+    const difficultyLevel = document.getElementById('new_qt_difficulty_level').value.trim();
     const phrase = document.getElementById('new_qt_phrase').value.trim();
     const guidance = document.getElementById('new_qt_guidance').value.trim();
     
-    if (!id || !phrase || !guidance) {
-        alert('All fields are required');
+    if (!id || !difficultyLevel || !phrase || !guidance) {
+        alert('All fields including difficulty level are required');
         return;
     }
     
@@ -488,11 +543,12 @@ function addQuestionType() {
         return;
     }
     
-    questionTypes.push({id, phrase, guidance});
+    questionTypes.push({id, difficulty_level: difficultyLevel, phrase, guidance});
     updateQuestionTypesTable();
     
     // Clear inputs
     document.getElementById('new_qt_id').value = '';
+    document.getElementById('new_qt_difficulty_level').value = '';
     document.getElementById('new_qt_phrase').value = '';
     document.getElementById('new_qt_guidance').value = '';
 }
@@ -507,9 +563,13 @@ function updateQuestionTypesTable() {
     tbody.innerHTML = '';
     
     questionTypes.forEach(qt => {
+        const levelInfo = globalDifficultyLevels.find(l => l.level_id === qt.difficulty_level);
+        const levelBadge = levelInfo ? `<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">Level ${levelInfo.level_id}</span>` : `<span class="text-gray-400">-</span>`;
+        
         const row = document.createElement('tr');
         row.innerHTML = `
             <td class="px-4 py-2 text-sm font-mono text-gray-900">${qt.id}</td>
+            <td class="px-4 py-2 text-sm">${levelBadge}</td>
             <td class="px-4 py-2 text-sm text-gray-900">${qt.phrase}</td>
             <td class="px-4 py-2 text-sm text-gray-600">${qt.guidance}</td>
             <td class="px-4 py-2 text-right">
@@ -520,7 +580,7 @@ function updateQuestionTypesTable() {
     });
     
     if (questionTypes.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" class="px-4 py-4 text-sm text-gray-500 text-center">No question types added yet</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-4 text-sm text-gray-500 text-center">No question types added yet</td></tr>';
     }
 }
 
@@ -631,8 +691,260 @@ function updateReasoningModesTable() {
     }
 }
 
+// Difficulty Settings management (new three-layer system)
+let globalDifficultyLevels = [];
+let currentDifficultyProfile = null;
+let currentProfileIdForDifficulty = null;
+
+// Load global difficulty levels on page load
+fetch('/api/global_difficulty_levels')
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            globalDifficultyLevels = data.levels;
+            // Populate the difficulty level dropdown in question types
+            populateDifficultyLevelDropdown();
+        }
+    })
+    .catch(err => console.error('Error loading global difficulty levels:', err));
+
+function populateDifficultyLevelDropdown() {
+    const select = document.getElementById('new_qt_difficulty_level');
+    select.innerHTML = '<option value="">Select Level</option>';
+    globalDifficultyLevels.forEach(level => {
+        const option = document.createElement('option');
+        option.value = level.level_id;
+        option.textContent = `Level ${level.level_id}: ${level.name}`;
+        select.appendChild(option);
+    });
+}
+
+function loadDifficultySettings(profileId) {
+    currentProfileIdForDifficulty = profileId;
+    
+    fetch(`/api/exam_profiles/${profileId}/difficulty_settings`)
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                currentDifficultyProfile = data.settings || {
+                    enabled_levels: ['1', '2', '3'],
+                    weights: {'1': 0.33, '2': 0.33, '3': 0.34},
+                    display_names: {}
+                };
+                renderDifficultySettings();
+            }
+        })
+        .catch(err => {
+            console.error('Error loading difficulty settings:', err);
+            // Initialize with defaults
+            currentDifficultyProfile = {
+                enabled_levels: ['1', '2', '3'],
+                weights: {'1': 0.33, '2': 0.33, '3': 0.34},
+                display_names: {}
+            };
+            renderDifficultySettings();
+        });
+}
+
+function renderDifficultySettings() {
+    if (!currentDifficultyProfile) return;
+    
+    // Render enabled levels checkboxes
+    const enabledContainer = document.getElementById('enabled-levels-container');
+    enabledContainer.innerHTML = '';
+    globalDifficultyLevels.forEach(level => {
+        const isEnabled = currentDifficultyProfile.enabled_levels.includes(level.level_id);
+        const div = document.createElement('div');
+        div.className = 'flex items-center';
+        div.innerHTML = `
+            <input type="checkbox" id="level-enabled-${level.level_id}" 
+                   ${isEnabled ? 'checked' : ''} 
+                   onchange="updateWeightVisibility()"
+                   class="h-4 w-4 text-blue-600 rounded border-gray-300">
+            <label for="level-enabled-${level.level_id}" class="ml-2 text-sm text-gray-900">
+                Level ${level.level_id}: ${level.name}
+            </label>
+        `;
+        enabledContainer.appendChild(div);
+    });
+    
+    // Render weight sliders
+    const weightsContainer = document.getElementById('weights-container');
+    weightsContainer.innerHTML = '';
+    globalDifficultyLevels.forEach(level => {
+        const weight = (currentDifficultyProfile.weights[level.level_id] || 0.33) * 100;
+        const isEnabled = currentDifficultyProfile.enabled_levels.includes(level.level_id);
+        const div = document.createElement('div');
+        div.className = 'flex items-center space-x-4';
+        div.id = `weight-row-${level.level_id}`;
+        div.innerHTML = `
+            <label class="text-sm text-gray-700 w-48">Level ${level.level_id}: ${level.name}</label>
+            <input type="range" id="weight-${level.level_id}" 
+                   min="0" max="100" value="${weight.toFixed(0)}" 
+                   class="flex-1" 
+                   oninput="updateWeightDisplay()" 
+                   ${!isEnabled ? 'disabled' : ''}>
+            <span id="weight-value-${level.level_id}" class="text-sm font-medium text-gray-900 w-16 text-right">${weight.toFixed(0)}%</span>
+        `;
+        weightsContainer.appendChild(div);
+    });
+    
+    // Render display name inputs
+    const namesContainer = document.getElementById('display-names-container');
+    namesContainer.innerHTML = '';
+    globalDifficultyLevels.forEach(level => {
+        const customName = currentDifficultyProfile.display_names[level.level_id] || '';
+        const div = document.createElement('div');
+        div.className = 'flex items-center space-x-4';
+        div.innerHTML = `
+            <label class="text-sm text-gray-700 w-48">Level ${level.level_id}:</label>
+            <input type="text" id="displayname-${level.level_id}" 
+                   value="${customName}"
+                   placeholder="${level.name} (default)"
+                   class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm">
+        `;
+        namesContainer.appendChild(div);
+    });
+    
+    updateWeightDisplay();
+}
+
+function updateWeightVisibility() {
+    globalDifficultyLevels.forEach(level => {
+        const checkbox = document.getElementById(`level-enabled-${level.level_id}`);
+        const slider = document.getElementById(`weight-${level.level_id}`);
+        const row = document.getElementById(`weight-row-${level.level_id}`);
+        
+        if (checkbox.checked) {
+            slider.disabled = false;
+            row.classList.remove('opacity-50');
+        } else {
+            slider.disabled = true;
+            row.classList.add('opacity-50');
+        }
+    });
+    updateWeightDisplay();
+}
+
+function updateWeightDisplay() {
+    let total = 0;
+    globalDifficultyLevels.forEach(level => {
+        const slider = document.getElementById(`weight-${level.level_id}`);
+        const display = document.getElementById(`weight-value-${level.level_id}`);
+        const checkbox = document.getElementById(`level-enabled-${level.level_id}`);
+        
+        const value = parseInt(slider.value);
+        display.textContent = value + '%';
+        
+        if (checkbox.checked) {
+            total += value;
+        }
+    });
+    
+    const sumDisplay = document.getElementById('weight-sum-display');
+    sumDisplay.textContent = `Total: ${total}%`;
+    sumDisplay.className = total === 100 ? 'text-sm font-medium text-green-600' : 'text-sm font-medium text-red-600';
+}
+
+function resetWeightsToEqual() {
+    // Get enabled levels
+    const enabledLevels = globalDifficultyLevels.filter(level => {
+        const checkbox = document.getElementById(`level-enabled-${level.level_id}`);
+        return checkbox.checked;
+    });
+    
+    if (enabledLevels.length === 0) {
+        alert('Please enable at least one difficulty level first');
+        return;
+    }
+    
+    const equalWeight = Math.floor(100 / enabledLevels.length);
+    const remainder = 100 - (equalWeight * enabledLevels.length);
+    
+    enabledLevels.forEach((level, index) => {
+        const slider = document.getElementById(`weight-${level.level_id}`);
+        // Add remainder to first level
+        slider.value = equalWeight + (index === 0 ? remainder : 0);
+    });
+    
+    updateWeightDisplay();
+}
+
+function saveDifficultySettings() {
+    if (!currentProfileIdForDifficulty) {
+        alert('Please save the profile first');
+        return;
+    }
+    
+    // Collect enabled levels
+    const enabledLevels = [];
+    globalDifficultyLevels.forEach(level => {
+        const checkbox = document.getElementById(`level-enabled-${level.level_id}`);
+        if (checkbox.checked) {
+            enabledLevels.push(level.level_id);
+        }
+    });
+    
+    if (enabledLevels.length === 0) {
+        alert('At least one difficulty level must be enabled');
+        return;
+    }
+    
+    // Collect weights
+    const weights = {};
+    let total = 0;
+    globalDifficultyLevels.forEach(level => {
+        const slider = document.getElementById(`weight-${level.level_id}`);
+        weights[level.level_id] = parseInt(slider.value) / 100.0;
+        const checkbox = document.getElementById(`level-enabled-${level.level_id}`);
+        if (checkbox.checked) {
+            total += parseInt(slider.value);
+        }
+    });
+    
+    if (total !== 100) {
+        alert('Weights must sum to 100%');
+        return;
+    }
+    
+    // Collect display names
+    const displayNames = {};
+    globalDifficultyLevels.forEach(level => {
+        const input = document.getElementById(`displayname-${level.level_id}`);
+        if (input.value.trim()) {
+            displayNames[level.level_id] = input.value.trim();
+        }
+    });
+    
+    // Save via API
+    fetch(`/api/exam_profiles/${currentProfileIdForDifficulty}/difficulty_settings`, {
+        method: 'PUT',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            enabled_levels: enabledLevels,
+            weights: weights,
+            display_names: displayNames
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alert('Difficulty settings saved successfully');
+        } else {
+            alert(data.error || 'Failed to save difficulty settings');
+        }
+    })
+    .catch(err => {
+        console.error('Error saving difficulty settings:', err);
+        alert('Failed to save difficulty settings');
+    });
+}
+
 // Form submission
 document.getElementById('profileForm').addEventListener('submit', function(e) {
+    // Re-enable profile_id field so it gets submitted (it was disabled during edit to prevent changes)
+    document.getElementById('profile_id').disabled = false;
+    
     // Update hidden JSON fields
     document.getElementById('questionTypesJson').value = JSON.stringify(questionTypes);
     document.getElementById('domainsJson').value = JSON.stringify(domains);
