@@ -667,13 +667,14 @@ function showUploadModal() {
             
             // Fetch profile data
             try {
-                const response = await fetch(`/api/exam_profile/${firstProfileId}`);
+                const response = await fetch(`/api/exam_profiles/${firstProfileId}`);
                 if (!response.ok) {
                     console.error('Failed to load profile');
                     return;
                 }
                 
-                currentProfile = await response.json();
+                const data = await response.json();
+                currentProfile = data.success ? data.profile : data;
                 
                 // Populate material type dropdown
                 materialTypeSelect.innerHTML = '<option value="">Select material type...</option>';

@@ -1049,7 +1049,7 @@ def exam_profiles():
     
     return render_template("exam_profiles.html", profiles=profiles)
 
-@app.route("/api/exam_profile/<profile_id>", methods=["GET"])
+@app.route("/api/exam_profiles/<profile_id>", methods=["GET"])
 @login_required
 def get_exam_profile_api(profile_id):
     """API endpoint to get a specific exam profile"""
@@ -1057,9 +1057,9 @@ def get_exam_profile_api(profile_id):
     
     profile = get_profile(profile_id)
     if profile:
-        return jsonify(profile)
+        return jsonify({"success": True, "profile": profile})
     else:
-        return jsonify({"error": "Profile not found"}), 404
+        return jsonify({"success": False, "error": "Profile not found"}), 404
 
 @app.route("/api/exam_profiles/<profile_id>/export", methods=["GET"])
 @login_required
