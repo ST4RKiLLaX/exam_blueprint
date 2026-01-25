@@ -11,39 +11,23 @@ from typing import Optional, Dict, List, Any
 
 PROFILE_CONFIG_PATH = os.path.join(os.path.dirname(__file__), "exam_profiles.json")
 
-# Cache for loaded profiles
-_PROFILE_CACHE = None
-
 
 def load_exam_profiles() -> Dict[str, Any]:
     """
     Load exam profiles configuration from JSON file.
-    Results are cached for performance.
+    Reads directly from disk to ensure consistency across gunicorn workers.
     
     Returns:
         Dictionary containing all exam profiles
     """
-    global _PROFILE_CACHE
-    
-    if _PROFILE_CACHE is not None:
-        return _PROFILE_CACHE
-    
     if not os.path.exists(PROFILE_CONFIG_PATH):
         return {"profiles": []}
     
     try:
         with open(PROFILE_CONFIG_PATH, "r", encoding="utf-8") as f:
-            _PROFILE_CACHE = json.load(f)
-            return _PROFILE_CACHE
+            return json.load(f)
     except (json.JSONDecodeError, FileNotFoundError):
         return {"profiles": []}
-
-
-def reload_profiles():
-    """Force reload of profiles from disk (clears cache)"""
-    global _PROFILE_CACHE
-    _PROFILE_CACHE = None
-    return load_exam_profiles()
 
 
 def get_profile(profile_id: str) -> Optional[Dict[str, Any]]:
@@ -385,9 +369,6 @@ def save_profile(profile_data: Dict[str, Any]) -> tuple[bool, str]:
         with open(PROFILE_CONFIG_PATH, "w", encoding="utf-8") as f:
             json.dump(config, f, indent=2, ensure_ascii=False)
         
-        # Reload cache
-        reload_profiles()
-        
         return True, f"Profile {action} successfully"
     except Exception as e:
         return False, f"Failed to save profile: {str(e)}"
@@ -418,9 +399,6 @@ def delete_profile(profile_id: str) -> tuple[bool, str]:
     try:
         with open(PROFILE_CONFIG_PATH, "w", encoding="utf-8") as f:
             json.dump(config, f, indent=2, ensure_ascii=False)
-        
-        # Reload cache
-        reload_profiles()
         
         return True, "Profile deleted successfully"
     except Exception as e:

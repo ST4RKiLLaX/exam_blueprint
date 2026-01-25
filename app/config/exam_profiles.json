@@ -488,13 +488,13 @@
         }
       ],
       "usage": {
+        "agents_count": 3,
+        "kb_count": 10,
         "agent_ids": [
           "f5faaf75-64e3-45bd-9424-f074ab8437e5",
           "17af8b63-fe5c-405b-a0cd-760f8682d607",
           "7f39d086-027f-40f7-b3aa-87e9e469a728"
         ],
-        "agents_count": 3,
-        "kb_count": 10,
         "kb_ids": [
           "kb_0_1769013675",
           "kb_1_1769013780",
@@ -507,6 +507,230 @@
           "kb_9_1769023350",
           "kb_9_1769137818"
         ]
+      }
+    },
+    {
+      "profile_id": "pmp_2026",
+      "name": "PMP 2026",
+      "description": "Project Management Professional (PMP) — scenario-driven project leadership, delivery, and value-based decision-making across predictive, agile, and hybrid approaches.",
+      "question_types": [
+        {
+          "id": "definition",
+          "difficulty_level": "1",
+          "phrase": "What is the definition of",
+          "guidance": "Test direct recall of PMP terms and concepts (e.g., risk appetite, backlog, baseline, WBS, EVM metrics). Keep the stem short and unambiguous. Distractors should be plausible related terms but clearly incorrect if the test-taker knows the definition. Avoid obscure trivia and ITTO memorization."
+        },
+        {
+          "id": "identify_concept",
+          "difficulty_level": "1",
+          "phrase": "Which statement is TRUE about",
+          "guidance": "Test recognition and basic understanding of a concept (e.g., servant leadership, change control, stakeholder engagement, agile ceremonies/artifacts). Keep the stem short. One option clearly correct; distractors should reflect common misunderstandings."
+        },
+        {
+          "id": "scenario_apply",
+          "difficulty_level": "2",
+          "phrase": "In this scenario, what should the project manager do?",
+          "guidance": "Present a realistic scenario requiring application of PMP principles. The correct answer should be implied by the scenario context and align with PMI-style practices. Do not require weighing multiple equally defensible strategies; there should be a clear best-fit action based on the information given."
+        },
+        {
+          "id": "process_first",
+          "difficulty_level": "2",
+          "phrase": "What should be done FIRST?",
+          "guidance": "Frame options as dependent steps where sequencing is driven by clear prerequisites and workflow dependencies (e.g., clarify requirements before committing; assess impact before escalating; analyze root cause before implementing a fix). Avoid leadership/escalation answers unless the scenario explicitly makes them the prerequisite."
+        },
+        {
+          "id": "process_next",
+          "difficulty_level": "2",
+          "phrase": "What should be done NEXT?",
+          "guidance": "Frame options as the immediate follow-on step in a defined workflow. Assume the prerequisite step has occurred and test the next logical action (e.g., after identifying a risk → plan response; after change request submitted → perform impact analysis/CCB review; after sprint review feedback → refine backlog). Avoid broad strategy shifts unless explicitly warranted."
+        },
+        {
+          "id": "best_action",
+          "difficulty_level": "3",
+          "phrase": "What is the BEST course of action?",
+          "guidance": "Frame options as competing defensible actions. The correct answer should reflect PMI mindset: proactive communication, stakeholder alignment, value delivery, risk-aware decisions, and appropriate governance (predictive/agile/hybrid as described). All options should be plausible, but differ in effectiveness, timeliness, and alignment with team empowerment and customer value."
+        },
+        {
+          "id": "most_appropriate",
+          "difficulty_level": "3",
+          "phrase": "Which is MOST appropriate?",
+          "guidance": "Use when multiple options could work. The correct answer should best match the scenario constraints (methodology, team maturity, urgency, regulatory needs, contract type, organizational culture). Avoid relying on rigid memorization; reward situational judgment and alignment with principles."
+        },
+        {
+          "id": "primary_risk",
+          "difficulty_level": "3",
+          "phrase": "What is the PRIMARY risk?",
+          "guidance": "Frame options as different project risks/impacts. The correct answer should identify the most significant risk to objectives (scope, schedule, cost, quality, benefits/value, compliance, stakeholder trust). Prefer business/value and delivery risks over minor operational inconveniences."
+        },
+        {
+          "id": "root_cause",
+          "difficulty_level": "3",
+          "phrase": "What is the MOST likely cause of",
+          "guidance": "Present a scenario where symptoms point to a root cause (e.g., recurring defects, missed commitments, stakeholder resistance, team conflict, vendor delays). The correct answer should reflect diagnosis before action and avoid jumping straight to tools or enforcement."
+        },
+        {
+          "id": "not_apply",
+          "difficulty_level": "3",
+          "phrase": "When would this NOT be appropriate?",
+          "guidance": "Use sparingly. Identify a clear exception based on project context (predictive vs agile), authority boundaries, governance requirements, or feasibility. Avoid trick questions; the exception should be defensible and unambiguous."
+        }
+      ],
+      "domains": [
+        {
+          "id": "people",
+          "name": "People",
+          "keywords": [
+            "stakeholders",
+            "team performance",
+            "team building",
+            "conflict management",
+            "servant leadership",
+            "negotiation",
+            "influence",
+            "communication",
+            "coaching",
+            "facilitation",
+            "resource management",
+            "virtual teams",
+            "emotional intelligence",
+            "collaboration",
+            "motivation"
+          ],
+          "priority": "high"
+        },
+        {
+          "id": "process",
+          "name": "Process",
+          "keywords": [
+            "requirements",
+            "scope",
+            "WBS",
+            "schedule",
+            "critical path",
+            "cost",
+            "budget",
+            "EVM",
+            "quality management",
+            "risk management",
+            "procurement",
+            "change control",
+            "integrated change control",
+            "governance",
+            "planning",
+            "monitoring and controlling",
+            "lessons learned",
+            "issue management",
+            "configuration management",
+            "baseline",
+            "tailoring"
+          ],
+          "priority": "high"
+        },
+        {
+          "id": "business_environment",
+          "name": "Business Environment",
+          "keywords": [
+            "benefits management",
+            "value delivery",
+            "business case",
+            "compliance",
+            "regulatory",
+            "organizational change",
+            "strategy alignment",
+            "product value",
+            "portfolio",
+            "program",
+            "sponsor",
+            "operations",
+            "transition to operations",
+            "governance",
+            "ethics"
+          ],
+          "priority": "medium"
+        },
+        {
+          "id": "agile_hybrid",
+          "name": "Agile and Hybrid Delivery",
+          "keywords": [
+            "agile",
+            "hybrid",
+            "scrum",
+            "kanban",
+            "sprint",
+            "iteration",
+            "backlog",
+            "refinement",
+            "user story",
+            "definition of done",
+            "retrospective",
+            "sprint review",
+            "velocity",
+            "increment",
+            "MVP",
+            "continuous improvement",
+            "adaptive planning"
+          ],
+          "priority": "high"
+        }
+      ],
+      "reasoning_modes": [
+        {
+          "id": "servant_leadership",
+          "name": "Servant Leadership",
+          "description": "Prioritize enabling the team, removing impediments, facilitating collaboration, and building trust. Prefer coaching, transparency, and psychological safety over command-and-control unless compliance/safety requires otherwise."
+        },
+        {
+          "id": "process_governance",
+          "name": "Process and Governance",
+          "description": "Use structured workflows and governance appropriate to the delivery approach. Emphasize clarity of roles, approvals when required, impact analysis before change, and documented decisions aligned to organizational policy."
+        },
+        {
+          "id": "agile_mindset",
+          "name": "Agile Mindset",
+          "description": "Favor iterative delivery, feedback loops, prioritization by value, and adaptive planning. Emphasize collaboration with product owner/stakeholders, refinement, and continuous improvement."
+        },
+        {
+          "id": "value_risk_tradeoff",
+          "name": "Value and Risk Trade-offs",
+          "description": "Frame decisions around maximizing value while managing constraints and risk. Prefer options that protect benefits realization, reduce delivery risk, and improve outcomes, not just optimize a single constraint."
+        }
+      ],
+      "difficulty_profile": {
+        "enabled_levels": [
+          "1",
+          "2",
+          "3"
+        ],
+        "weights": {
+          "1": 0.1,
+          "2": 0.4,
+          "3": 0.5
+        },
+        "display_names": {
+          "1": "Foundational Knowledge",
+          "2": "Scenario Application",
+          "3": "Professional Judgment"
+        }
+      },
+      "kb_structure": {
+        "priority_kb_flag": "is_priority_kb",
+        "outline_type": "outline",
+        "domain_type": "cbk"
+      },
+      "guidance_suffix": "Ensure questions are scenario-driven and reflect PMI-style decision-making. Prefer clarifying context, engaging stakeholders, and analyzing impact before taking irreversible actions. Align answers to delivery approach (predictive, agile, hybrid) stated or implied in the scenario. Avoid pure ITTO memorization and tool-specific trivia; test principles, judgment, and real-world constraints.",
+      "global_constraints": [
+        "Prefer stakeholder alignment and clear communication over unilateral action",
+        "Assess impact before escalating or implementing major changes",
+        "Match the response to the delivery approach (predictive/agile/hybrid) in the scenario",
+        "Avoid ITTO memorization; focus on applied understanding and outcomes",
+        "Prefer root-cause analysis and transparency over blame or punitive responses",
+        "When a change is requested in predictive contexts, include impact analysis and appropriate governance"
+      ],
+      "usage": {
+        "agents_count": 0,
+        "kb_count": 0,
+        "agent_ids": [],
+        "kb_ids": []
       }
     }
   ]
