@@ -43,6 +43,7 @@
             border-radius: 15px;
             max-width: 80%;
             word-wrap: break-word;
+            white-space: pre-wrap;
         }
         
         .message.user {
@@ -334,9 +335,8 @@
                 messageDiv.className = `message ${role}`;
             }
             
-            // Format the content (preserve line breaks and basic formatting)
-            content = content.replace(/\n/g, '<br>');
-            messageDiv.innerHTML = content;
+            // Strict text rendering prevents script/HTML execution from model output
+            messageDiv.textContent = content;
             
             messagesDiv.appendChild(messageDiv);
             scrollToBottom();

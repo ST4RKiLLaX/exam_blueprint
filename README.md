@@ -147,9 +147,7 @@ python3 --version  # Check system Python version
    pip install -r requirements.txt
    ```
 
-5. **Configure API keys**
-   
-   Copy example configuration files and add your API keys:
+5. **Create local config files (no manual key edits required)**
    
    **Windows (PowerShell):**
    ```powershell
@@ -163,23 +161,11 @@ python3 --version  # Check system Python version
    cp app/config/model_config.example.json app/config/model_config.json
    ```
    
-   Then edit `app/config/providers.json` and add your API keys:
-   ```json
-   {
-     "providers": {
-       "openai": {
-         "api_key": "sk-your-openai-key-here",
-         "enabled": true
-       },
-       "gemini": {
-         "api_key": "your-gemini-key-here",
-         "enabled": true
-       }
-     }
-   }
-   ```
+   Then start the app and set API keys from the **Settings** page in the UI.
+   No manual editing of JSON key files is required.
    
-   **⚠️ Important**: These files are in `.gitignore` and should never be committed. See `SECURITY_NOTICE.md` for details.
+   **⚠️ Important**: Local config files are in `.gitignore` and should never be committed.
+   See `SECURITY_NOTICE.md` for details.
 
 ## Running the Application
 
@@ -287,6 +273,7 @@ After logging in as admin, you can manage users:
 1. Navigate to **Settings** in the menu
 2. Enter your OpenAI and/or Gemini API keys
 3. Click **Save Configuration**
+4. Keys are saved through the application and encrypted at rest
 
 ### 3. Create Knowledge Bases
 
@@ -384,7 +371,8 @@ exam_blueprint/
 ## Security Considerations
 
 ### Sensitive Files (Never Commit)
-- `app/config/providers.json` - Contains API keys
+- `app/config/api_config.json` - Contains encrypted API keys and key metadata
+- `app/config/providers.json` - Provider metadata (and legacy plaintext keys before migration)
 - `app/config/users.db` - User database with hashed passwords
 - `app/config/agents.json` - User agent configurations
 - `app/config/chat_sessions.json` - Conversation history
@@ -402,8 +390,11 @@ All sensitive files are already in `.gitignore`.
 - **Role-Based Access**: Admin and User roles with granular permissions
 
 ### API Key Storage
-- API keys are stored in `app/config/providers.json`
-- File permissions should be restricted: `chmod 600 app/config/providers.json` (Unix)
+- API keys are stored encrypted in `app/config/api_config.json`
+- Encryption key is stored in `app/config/api_encryption.key`
+- File permissions should be restricted (Unix):
+  - `chmod 600 app/config/api_config.json`
+  - `chmod 600 app/config/api_encryption.key`
 - Consider using environment variables for production deployments
 
 ### Reverse Proxy Support

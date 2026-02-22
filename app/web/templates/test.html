@@ -461,7 +461,7 @@
         
         wrapper.classList.add(wrapperAlignment);
         messageDiv.className = `${bgColor} rounded-lg px-3 py-2 whitespace-pre-wrap break-words max-w-full md:max-w-3xl`;
-        messageDiv.innerHTML = content.replace(/\n/g, '<br>');
+        messageDiv.textContent = content;
         
         // Add copy button for user and assistant messages
         if (role === 'user' || role === 'assistant') {
