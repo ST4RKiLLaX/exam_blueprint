@@ -1,7 +1,7 @@
-# ExamBlueprint System Architecture Overview
+# Exam Blueprint System Architecture Overview
 
 ## System Purpose
-ExamBlueprint is a certification exam question generation platform that uses AI agents, structured exam profiles, and knowledge bases to generate high-quality, exam-style questions for professional certifications (CISSP, PMP, etc.).
+Exam  Blueprint is a certification exam question generation platform that uses AI agents, structured exam profiles, and knowledge bases to generate high-quality, exam-style questions for professional certifications (CISSP, PMP, etc.).
 
 ---
 
@@ -423,7 +423,7 @@ This enables sharing "starter packs" of profiles, agents, and KBs for specific c
 
 ## Summary
 
-**ExamBlueprint Architecture = Profiles + Agents + Knowledge Bases**
+**Exam Blueprint Architecture = Profiles + Agents + Knowledge Bases**
 
 - **Exam Profiles**: Define the rules and structure
 - **Agents**: Execute the generation with specific styles

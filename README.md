@@ -1,4 +1,4 @@
-# ExamBlueprint
+# ExamB lueprint
 
 AI-powered certification question generation platform. Transform your study materials and knowledge bases into unlimited, high-quality multiple-choice questions with intelligent domain rotation, reasoning diversity, and semantic duplicate detection. Designed for certification exam prep (CISSP, CompTIA, CISM, and more) with support for OpenAI and Google Gemini models.
 
