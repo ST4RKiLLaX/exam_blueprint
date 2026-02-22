@@ -196,6 +196,13 @@
         let sessionId = null;
         let agentId = '{{ agent_id }}'; // This will be replaced by your backend
         let isTyping = false;
+
+        function getHotTopicsModeOverride() {
+            const params = new URLSearchParams(window.location.search);
+            const mode = params.get('hot_topics_mode');
+            const validModes = ['disabled', 'assistive', 'priority'];
+            return validModes.includes(mode) ? mode : null;
+        }
         
         // Initialize chat session
         async function initChat() {
@@ -292,7 +299,8 @@
                     },
                     body: JSON.stringify({
                         message: message,
-                        session_id: sessionId
+                        session_id: sessionId,
+                        hot_topics_mode: getHotTopicsModeOverride()
                     })
                 });
                 

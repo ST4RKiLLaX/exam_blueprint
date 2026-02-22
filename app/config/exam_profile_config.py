@@ -10,6 +10,7 @@ import os
 from typing import Optional, Dict, List, Any
 
 PROFILE_CONFIG_PATH = os.path.join(os.path.dirname(__file__), "exam_profiles.json")
+VALID_HOT_TOPICS_MODES = {"disabled", "assistive", "priority"}
 
 
 def load_exam_profiles() -> Dict[str, Any]:
@@ -279,6 +280,12 @@ def validate_profile_structure(profile_data: Dict[str, Any]) -> tuple[bool, str]
     for field in required_kb_fields:
         if field not in kb_struct:
             return False, f"kb_structure missing required field: {field}"
+
+    # Optional: profile-level default retrieval behavior for hot topics
+    if "hot_topics_mode" in profile_data:
+        hot_topics_mode = profile_data.get("hot_topics_mode")
+        if hot_topics_mode not in VALID_HOT_TOPICS_MODES:
+            return False, "hot_topics_mode must be one of: disabled, assistive, priority"
     
     # NEW: Validate difficulty_profile if question types exist
     if profile_data["question_types"]:
@@ -504,6 +511,23 @@ def get_difficulty_profile(profile_id: str) -> Dict[str, Any]:
     if profile:
         return profile.get("difficulty_profile", {})
     return {}
+
+
+def get_hot_topics_mode(profile_id: str) -> str:
+    """
+    Get profile-level default hot topics mode.
+
+    Returns:
+        One of: disabled, assistive, priority (defaults to priority)
+    """
+    profile = get_profile(profile_id)
+    if not profile:
+        return "priority"
+
+    mode = profile.get("hot_topics_mode", "priority")
+    if mode in VALID_HOT_TOPICS_MODES:
+        return mode
+    return "priority"
 
 
 def update_difficulty_profile(profile_id: str, settings: Dict[str, Any]) -> tuple[bool, str]:

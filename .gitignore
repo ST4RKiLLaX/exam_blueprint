@@ -101,3 +101,5 @@ local_*.json
 
 # Test files (user-created)
 test_*.py
+.cursorrules
+.cursorrules:Zone.Identifier

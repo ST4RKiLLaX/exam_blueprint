@@ -37,6 +37,7 @@ class Agent:
                  enable_semantic_detection: bool = False,
                  semantic_similarity_threshold: float = 0.90,
                  semantic_history_depth: int = 5,
+                 hot_topics_mode: str = "priority",
                  # Exam profile (replaces CISSP-specific mode)
                  exam_profile_id: Optional[str] = None,
                  # CISSP reasoning controller (deprecated, use exam_profile_id)
@@ -76,6 +77,7 @@ class Agent:
         self.enable_semantic_detection = enable_semantic_detection
         self.semantic_similarity_threshold = semantic_similarity_threshold
         self.semantic_history_depth = semantic_history_depth
+        self.hot_topics_mode = hot_topics_mode
         self.exam_profile_id = exam_profile_id
         self.enable_cissp_mode = enable_cissp_mode
         self.blueprint_history_depth = blueprint_history_depth
@@ -113,6 +115,7 @@ class Agent:
             "enable_semantic_detection": self.enable_semantic_detection,
             "semantic_similarity_threshold": self.semantic_similarity_threshold,
             "semantic_history_depth": self.semantic_history_depth,
+            "hot_topics_mode": self.hot_topics_mode,
             "exam_profile_id": self.exam_profile_id,
             "enable_cissp_mode": self.enable_cissp_mode,
             "blueprint_history_depth": self.blueprint_history_depth
@@ -165,6 +168,10 @@ class Agent:
             filtered_data['semantic_similarity_threshold'] = 0.90
         if 'semantic_history_depth' not in filtered_data:
             filtered_data['semantic_history_depth'] = 5
+        if 'hot_topics_mode' not in filtered_data:
+            filtered_data['hot_topics_mode'] = "priority"
+        elif filtered_data['hot_topics_mode'] not in {"disabled", "assistive", "priority"}:
+            filtered_data['hot_topics_mode'] = "priority"
         
         # Set defaults for CISSP reasoning controller (migration)
         if 'enable_cissp_mode' not in filtered_data:
@@ -273,6 +280,7 @@ class AgentManager:
                     enable_semantic_detection: bool = False,
                     semantic_similarity_threshold: float = 0.90,
                     semantic_history_depth: int = 5,
+                    hot_topics_mode: str = "priority",
                     exam_profile_id: str = None,
                     blueprint_history_depth: int = 8) -> Agent:
         """Create a new agent"""
@@ -303,6 +311,7 @@ class AgentManager:
             enable_semantic_detection=enable_semantic_detection,
             semantic_similarity_threshold=semantic_similarity_threshold,
             semantic_history_depth=semantic_history_depth,
+            hot_topics_mode=hot_topics_mode,
             exam_profile_id=exam_profile_id,
             blueprint_history_depth=blueprint_history_depth
         )

@@ -30,6 +30,52 @@ load_dotenv()
 # Global in-memory cache for semantic embeddings per thread
 # Structure: {thread_id: [{"embedding": np.array, "timestamp": str}, ...]}
 SEMANTIC_CACHE = {}
+HOT_TOPICS_MODES = {"disabled", "assistive", "priority"}
+DEFAULT_HOT_TOPICS_MODE = "priority"
+
+
+def normalize_hot_topics_mode(mode) -> str:
+    """Normalize hot topics mode to a valid value."""
+    if isinstance(mode, str):
+        normalized = mode.strip().lower()
+        if normalized in HOT_TOPICS_MODES:
+            return normalized
+    return DEFAULT_HOT_TOPICS_MODE
+
+
+def set_retrieval_metadata(mode: str, used: bool, path: str):
+    """Store retrieval metadata in request context when available."""
+    try:
+        g.hot_topics_mode_effective = mode
+        g.hot_topics_used = used
+        g.retrieval_path = path
+    except RuntimeError:
+        pass
+
+
+def resolve_hot_topics_mode(agent, profile: dict = None) -> str:
+    """
+    Resolve effective hot topics mode with precedence:
+    request override > agent setting > profile setting > default.
+    """
+    request_mode = None
+    try:
+        request_mode = getattr(g, "request_hot_topics_mode", None)
+    except RuntimeError:
+        request_mode = None
+
+    if request_mode is not None:
+        return normalize_hot_topics_mode(request_mode)
+
+    agent_mode = getattr(agent, "hot_topics_mode", None) if agent else None
+    if agent_mode is not None:
+        return normalize_hot_topics_mode(agent_mode)
+
+    profile_mode = profile.get("hot_topics_mode") if profile else None
+    if profile_mode is not None:
+        return normalize_hot_topics_mode(profile_mode)
+
+    return DEFAULT_HOT_TOPICS_MODE
 
 
 def truncate_history_by_tokens(history: list, max_tokens: int, encoding_name: str = "cl100k_base") -> list:
@@ -175,7 +221,7 @@ def calculate_text_overlap(text1: str, text2: str) -> float:
     
     return intersection / union
 
-def profile_two_stage_retrieval(query: str, blueprint: dict, agent, profile: dict) -> list:
+def profile_two_stage_retrieval(query: str, blueprint: dict, agent, profile: dict, hot_topics_mode: str = DEFAULT_HOT_TOPICS_MODE) -> list:
     """
     Profile-based two-stage retrieval: Priority KB (or Outline KB) → Domain-specific KB.
     
@@ -229,38 +275,57 @@ def profile_two_stage_retrieval(query: str, blueprint: dict, agent, profile: dic
             domain_kb = kb
             break
     
+    hot_topics_mode = normalize_hot_topics_mode(hot_topics_mode)
     formatted_results = []
     stage_a_chunks_raw = []
-    
-    # Stage A: Retrieve from Priority or Outline KB (if available)
-    if stage_a_kb:
-        stage_a_results = search_knowledge_base(stage_a_kb["id"], query, top_k=2)
-        if stage_a_results:
-            # Extract just the chunk text for subtopic extraction
-            stage_a_chunks_raw = [chunk for chunk, distance, kb_id in stage_a_results]
-            
-            # Format chunks with source
-            for chunk, distance, kb_id in stage_a_results:
-                if distance <= agent.min_similarity_threshold:
-                    kb_title = stage_a_kb.get('title', 'Priority KB' if priority_kb else 'Outline')
-                    formatted_chunk = f"{chunk}\n[Source: {kb_title}]"
+
+    def add_results(results, source_title):
+        if not results:
+            return
+        for chunk, distance, kb_id in results:
+            if distance <= agent.min_similarity_threshold:
+                formatted_chunk = f"{chunk}\n[Source: {source_title}]"
+                if formatted_chunk not in formatted_results:
                     formatted_results.append(formatted_chunk)
-    
-    # Extract subtopic from Stage A chunks
-    subtopic = extract_subtopic_from_outline(stage_a_chunks_raw)
-    
-    # Stage B: Retrieve from Domain-specific KB (if available)
-    if domain_kb:
-        # Refine query with subtopic
-        refined_query = f"{query} {subtopic}" if subtopic else query
-        
-        domain_results = search_knowledge_base(domain_kb["id"], refined_query, top_k=4)
-        if domain_results:
-            # Format domain chunks with source
-            for chunk, distance, kb_id in domain_results:
-                if distance <= agent.min_similarity_threshold:
-                    formatted_chunk = f"{chunk}\n[Source: {domain_kb.get('title', 'Domain KB')}]"
-                    formatted_results.append(formatted_chunk)
+
+    # Stage B only: user prompt dominates and hot topics are disabled
+    if hot_topics_mode == "disabled":
+        if domain_kb:
+            domain_results = search_knowledge_base(domain_kb["id"], query, top_k=4)
+            add_results(domain_results, domain_kb.get('title', 'Domain KB'))
+        set_retrieval_metadata(hot_topics_mode, False, "stage_b_only")
+
+    # Assistive: retrieve domain first, then optionally enrich with limited Stage A
+    elif hot_topics_mode == "assistive":
+        if domain_kb:
+            domain_results = search_knowledge_base(domain_kb["id"], query, top_k=4)
+            add_results(domain_results, domain_kb.get('title', 'Domain KB'))
+
+        if stage_a_kb:
+            stage_a_results = search_knowledge_base(stage_a_kb["id"], query, top_k=1)
+            if stage_a_results:
+                stage_a_chunks_raw = [chunk for chunk, distance, kb_id in stage_a_results]
+                kb_title = stage_a_kb.get('title', 'Priority KB' if priority_kb else 'Outline')
+                add_results(stage_a_results, kb_title)
+        set_retrieval_metadata(hot_topics_mode, bool(stage_a_chunks_raw), "stage_b_plus_stage_a")
+
+    # Priority mode: current behavior (Stage A then Stage B with subtopic refinement)
+    else:
+        if stage_a_kb:
+            stage_a_results = search_knowledge_base(stage_a_kb["id"], query, top_k=2)
+            if stage_a_results:
+                stage_a_chunks_raw = [chunk for chunk, distance, kb_id in stage_a_results]
+                kb_title = stage_a_kb.get('title', 'Priority KB' if priority_kb else 'Outline')
+                add_results(stage_a_results, kb_title)
+
+        subtopic = extract_subtopic_from_outline(stage_a_chunks_raw)
+
+        if domain_kb:
+            refined_query = f"{query} {subtopic}" if subtopic else query
+            domain_results = search_knowledge_base(domain_kb["id"], refined_query, top_k=4)
+            add_results(domain_results, domain_kb.get('title', 'Domain KB'))
+
+        set_retrieval_metadata(hot_topics_mode, bool(stage_a_chunks_raw), "stage_a_then_stage_b")
     
     # If no results from either stage, return message
     if not formatted_results:
@@ -285,6 +350,7 @@ def search_agent_knowledge_bases(query, agent, top_k=3):
         profile = get_profile(agent.exam_profile_id)
         
         if profile:
+            hot_topics_mode = resolve_hot_topics_mode(agent, profile)
             # Use blueprint from request context (set by generate_reply)
             try:
                 try:
@@ -294,7 +360,7 @@ def search_agent_knowledge_bases(query, agent, top_k=3):
             except RuntimeError:
                 blueprint = None
             if blueprint:
-                return profile_two_stage_retrieval(query, blueprint, agent, profile)
+                return profile_two_stage_retrieval(query, blueprint, agent, profile, hot_topics_mode=hot_topics_mode)
     
     # Fall back to standard retrieval for non-CISSP agents
     if not agent:
@@ -337,6 +403,7 @@ def search_agent_knowledge_bases(query, agent, top_k=3):
             print(f"[ERROR] Searching {provider} knowledge bases: {e}")
     
     if not all_results:
+        set_retrieval_metadata(DEFAULT_HOT_TOPICS_MODE, False, "standard_search_no_results")
         return []
     
     # Step 2: Sort globally by distance (ascending - lower distance = more similar)
@@ -351,6 +418,7 @@ def search_agent_knowledge_bases(query, agent, top_k=3):
     
     # If nothing meets threshold, return explicit message
     if not filtered_results:
+        set_retrieval_metadata(DEFAULT_HOT_TOPICS_MODE, False, "standard_search_filtered_out")
         return ["No relevant knowledge base information found for this query."]
     
     # Step 3: Deduplicate using text overlap threshold
@@ -381,6 +449,7 @@ def search_agent_knowledge_bases(query, agent, top_k=3):
         formatted_chunk = f"{chunk}\n[Source: {kb_title}]"
         formatted_results.append(formatted_chunk)
     
+    set_retrieval_metadata(DEFAULT_HOT_TOPICS_MODE, False, "standard_search")
     return formatted_results
 
 

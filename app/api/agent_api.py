@@ -21,6 +21,7 @@ class AgentAPI:
                     enable_semantic_detection: bool = False,
                     semantic_similarity_threshold: float = 0.90,
                     semantic_history_depth: int = 5,
+                    hot_topics_mode: str = "priority",
                     exam_profile_id: str = None,
                     blueprint_history_depth: int = 8) -> Dict:
         """Create a new agent and return result"""
@@ -55,6 +56,7 @@ class AgentAPI:
                 enable_semantic_detection=enable_semantic_detection,
                 semantic_similarity_threshold=semantic_similarity_threshold,
                 semantic_history_depth=semantic_history_depth,
+                hot_topics_mode=hot_topics_mode,
                 exam_profile_id=exam_profile_id,
                 blueprint_history_depth=blueprint_history_depth
             )
@@ -195,7 +197,8 @@ class AgentAPI:
                 max_output_tokens=original_agent.max_output_tokens,
                 reasoning_effort=original_agent.reasoning_effort,
                 verbosity=original_agent.verbosity,
-                stop=original_agent.stop
+                stop=original_agent.stop,
+                hot_topics_mode=original_agent.hot_topics_mode
             )
             
             return {

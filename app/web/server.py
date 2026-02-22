@@ -1386,9 +1386,17 @@ def chat_with_agent(agent_id):
         message = data.get("message", "").strip()
         session_id = data.get("session_id", "").strip()
         enabled_levels = data.get("enabled_levels", None)  # NEW: Array of level_ids
+        hot_topics_mode = data.get("hot_topics_mode", None)
+        valid_hot_topics_modes = {"disabled", "assistive", "priority"}
         
         if not message:
             return jsonify({"success": False, "error": "Message is required"})
+
+        if hot_topics_mode is not None and hot_topics_mode not in valid_hot_topics_modes:
+            return jsonify({
+                "success": False,
+                "error": "hot_topics_mode must be one of: disabled, assistive, priority"
+            })
         
         # Get the agent
         agent_result = AgentAPI.get_agent(agent_id)
@@ -1410,6 +1418,10 @@ def chat_with_agent(agent_id):
         # Store enabled difficulty levels in request context for blueprint selection
         if enabled_levels:
             g.enabled_difficulty_levels = enabled_levels
+
+        # Optional request-level override for hot topics retrieval behavior
+        if hot_topics_mode is not None:
+            g.request_hot_topics_mode = hot_topics_mode
         
         # Generate response using existing agent logic
         response = generate_reply(message, history=history, agent=agent)
@@ -1460,7 +1472,10 @@ def chat_with_agent(agent_id):
             "response": response,
             "agent_name": agent.name,
             "session_id": session_id,
-            "difficulty": difficulty_metadata
+            "difficulty": difficulty_metadata,
+            "hot_topics_mode_effective": getattr(g, 'hot_topics_mode_effective', None),
+            "hot_topics_used": getattr(g, 'hot_topics_used', None),
+            "retrieval_path": getattr(g, 'retrieval_path', None)
         })
         
     except Exception as e:
