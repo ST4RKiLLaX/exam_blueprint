@@ -103,3 +103,13 @@ local_*.json
 test_*.py
 .cursorrules
 .cursorrules:Zone.Identifier
+
+# Backup variants with timestamps
+*.backup_*
+*.bak_*
+
+# SQLite sidecar/journal files
+*.db-wal
+*.db-shm
+*.sqlite-wal
+*.sqlite-shm
