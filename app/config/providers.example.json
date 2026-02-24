@@ -1,10 +1,51 @@
 {
   "providers": {
     "openai": {
-      "enabled": true
+      "enabled": true,
+      "name": "OpenAI",
+      "generation_models": [
+        "gpt-5.2",
+        "gpt-5.1",
+        "gpt-5",
+        "gpt-4.1",
+        "gpt-4.1-mini",
+        "gpt-4o",
+        "gpt-4o-mini",
+        "gpt-3.5-turbo"
+      ],
+      "embedding_models": [
+        "text-embedding-3-large",
+        "text-embedding-3-small"
+      ],
+      "default_embedding_model": "text-embedding-3-large",
+      "embedding_dimensions": 3072,
+      "supports_responses_api": [
+        "gpt-5.2",
+        "gpt-5.1",
+        "gpt-5"
+      ],
+      "supports_thinking": []
     },
     "gemini": {
-      "enabled": false
+      "enabled": false,
+      "name": "Google Gemini",
+      "generation_models": [
+        "gemini-3-pro-preview",
+        "gemini-3-flash-preview",
+        "gemini-2.5-pro",
+        "gemini-2.5-flash",
+        "gemini-2.5-flash-lite"
+      ],
+      "embedding_models": [
+        "text-embedding-004"
+      ],
+      "default_embedding_model": "text-embedding-004",
+      "embedding_dimensions": 768,
+      "supports_responses_api": [],
+      "supports_thinking": [
+        "gemini-3-pro-preview",
+        "gemini-2.5-pro"
+      ]
     }
   }
 }

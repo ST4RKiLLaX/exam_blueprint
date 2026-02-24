@@ -238,7 +238,7 @@ def home():
     kb_config = load_knowledge_config()
     kb_count = len([kb for kb in kb_config.get('knowledge_bases', []) if kb.get('status') == 'active'])
     
-    return render_template("test.html", 
+    return render_template("generate_questions.html", 
                          agents=agents,
                          current_model=current_model,
                          kb_count=kb_count)
@@ -259,6 +259,7 @@ def agents():
             # Get provider selection
             provider = request.form.get("provider", "openai")
             provider_model = request.form.get("provider_model", "gpt-5.2")
+            provider_key_name = request.form.get("provider_key_name", "default").strip() or "default"
             
             # Get model parameters (with defaults)
             model = request.form.get("model", "gpt-5.2")
@@ -342,6 +343,7 @@ def agents():
                 knowledge_bases=selected_kbs,
                 provider=provider,
                 provider_model=provider_model,
+                provider_key_name=provider_key_name,
                 model=model,
                 temperature=temperature,
                 frequency_penalty=frequency_penalty,
@@ -375,6 +377,7 @@ def agents():
             # Get provider selection
             provider = request.form.get("provider", "")
             provider_model = request.form.get("provider_model", "")
+            provider_key_name = request.form.get("provider_key_name", "")
             
             # Get model parameters
             model = request.form.get("model", "")
@@ -444,6 +447,7 @@ def agents():
                 # Provider selection
                 "provider": provider if provider else None,
                 "provider_model": provider_model if provider_model else None,
+                "provider_key_name": provider_key_name if provider_key_name else None,
                 # Model parameters - all explicitly set to allow clearing (except model which is required)
                 "temperature": float(temperature_str) if temperature_str else None,
                 "frequency_penalty": float(frequency_penalty_str) if frequency_penalty_str else None,
@@ -514,8 +518,32 @@ def agents():
     # Get exam profiles for the interface
     from app.config.exam_profile_config import get_all_profiles
     exam_profiles = get_all_profiles()
+    from app.config.provider_config import (
+        get_provider_registry,
+        list_provider_key_names,
+        get_enabled_providers,
+    )
+    provider_registry = get_provider_registry()
+    provider_key_names = {
+        provider_id: list_provider_key_names(provider_id)
+        for provider_id in provider_registry.keys()
+    }
+    enabled_providers = get_enabled_providers()
+    provider_registry_enabled = {
+        provider_id: provider_registry[provider_id]
+        for provider_id in enabled_providers
+        if provider_id in provider_registry
+    }
     
-    return render_template("agents.html", agents=agents_data, knowledge_bases=knowledge_bases, exam_profiles=exam_profiles)
+    return render_template(
+        "agents.html",
+        agents=agents_data,
+        knowledge_bases=knowledge_bases,
+        exam_profiles=exam_profiles,
+        provider_registry=provider_registry,
+        provider_registry_enabled=provider_registry_enabled,
+        provider_key_names=provider_key_names,
+    )
 
 
 
@@ -1268,11 +1296,9 @@ def settings():
                 flash('Invalid API key format. OpenAI keys start with "sk-"', 'error')
             else:
                 try:
-                    from app.config.api_config import set_openai_api_key
-                    if set_openai_api_key(api_key):
-                        flash('API key updated successfully!', 'success')
-                    else:
-                        flash('Error saving API key', 'error')
+                    from app.config.provider_config import set_provider_api_key
+                    set_provider_api_key("openai", api_key, "default")
+                    flash('API key updated successfully!', 'success')
                 except Exception as e:
                     flash(f'Error updating API key: {str(e)}', 'error')
         
@@ -1281,12 +1307,66 @@ def settings():
             if gemini_key and gemini_key != "••••••••":
                 try:
                     from app.config.provider_config import set_provider_api_key
-                    set_provider_api_key("gemini", gemini_key)
+                    set_provider_api_key("gemini", gemini_key, "default")
                     flash('Gemini API key updated successfully!', 'success')
                 except Exception as e:
                     flash(f'Error updating Gemini API key: {str(e)}', 'error')
             elif not gemini_key:
                 flash('Gemini API key is required', 'error')
+
+        elif action == "save_provider_key":
+            provider_id = request.form.get("provider_id", "").strip()
+            key_name = request.form.get("key_name", "").strip() or "default"
+            key_description = request.form.get("key_description", "").strip()
+            api_key = request.form.get("api_key", "").strip()
+
+            if not provider_id:
+                flash("Provider is required", "error")
+            elif not api_key:
+                flash("API key is required", "error")
+            else:
+                try:
+                    from app.config.provider_config import (
+                        get_provider_registry,
+                        set_provider_api_key,
+                        set_provider_key_description,
+                    )
+                    registry = get_provider_registry()
+                    if provider_id not in registry:
+                        flash(f"Unknown provider: {provider_id}", "error")
+                    else:
+                        set_provider_api_key(provider_id, api_key, key_name)
+                        set_provider_key_description(provider_id, key_name, key_description)
+                        flash('API key updated successfully!', 'success')
+                except Exception as e:
+                    flash(f"Error saving provider key: {str(e)}", "error")
+
+        elif action == "update_provider_key":
+            provider_id = request.form.get("provider_id", "").strip()
+            key_name = request.form.get("key_name", "").strip()
+            key_description = request.form.get("key_description", "").strip()
+            api_key = request.form.get("api_key", "").strip()
+
+            if not provider_id:
+                flash("Provider is required", "error")
+            elif not key_name:
+                flash("Key name is required", "error")
+            else:
+                try:
+                    from app.config.provider_config import (
+                        list_provider_key_names,
+                        set_provider_api_key,
+                        set_provider_key_description,
+                    )
+                    if key_name not in list_provider_key_names(provider_id):
+                        flash(f"Key '{key_name}' not found for provider '{provider_id}'", "error")
+                    else:
+                        if api_key:
+                            set_provider_api_key(provider_id, api_key, key_name)
+                        set_provider_key_description(provider_id, key_name, key_description)
+                        flash("Provider key updated successfully!", "success")
+                except Exception as e:
+                    flash(f"Error updating provider key: {str(e)}", "error")
         
         elif action == "test_api_key":
             api_key = request.form.get("api_key", "").strip()
@@ -1299,14 +1379,48 @@ def settings():
         
         elif action == "delete_api_key":
             try:
-                from app.config.api_config import delete_openai_api_key
-                if delete_openai_api_key():
-                    flash('API key deleted successfully!', 'success')
-                else:
-                    flash('Error deleting API key', 'error')
+                from app.config.provider_config import delete_provider_api_key
+                delete_provider_api_key("openai", "default")
+                flash('API key deleted successfully!', 'success')
             except Exception as e:
                 flash(f'Error deleting API key: {str(e)}', 'error')
+
+        elif action == "delete_provider_key":
+            provider_id = request.form.get("provider_id", "").strip()
+            key_name = request.form.get("key_name", "").strip()
+            if not provider_id:
+                flash("Provider is required", "error")
+            elif not key_name:
+                flash("Key name is required", "error")
+            else:
+                try:
+                    from app.config.provider_config import delete_provider_api_key
+                    delete_provider_api_key(provider_id, key_name)
+                    flash("Provider key deleted successfully!", "success")
+                except Exception as e:
+                    flash(f"Error deleting provider key: {str(e)}", "error")
+
+        elif action == "sync_provider_models":
+            provider_id = request.form.get("provider_id", "").strip()
+            sync_scope = request.form.get("sync_scope", "selected").strip()
+            try:
+                from app.config.provider_config import sync_provider_models
+                target_provider = None if sync_scope == "all" else (provider_id or None)
+                summary = sync_provider_models(provider_id=target_provider, force=True)
+                success_count = int(summary.get("success_count", 0))
+                failure_count = int(summary.get("failure_count", 0))
+                skipped_count = int(summary.get("skipped_count", 0))
+                flash(
+                    f"Model sync complete. Success: {success_count}, "
+                    f"Warnings: {failure_count}, Skipped: {skipped_count}",
+                    "success" if failure_count == 0 else "info",
+                )
+            except Exception as e:
+                flash(f"Error syncing provider models: {str(e)}", "error")
         
+        selected_provider = request.form.get("provider_id", "").strip()
+        if selected_provider:
+            return redirect(url_for('settings', provider=selected_provider))
         return redirect(url_for('settings'))
     
     # GET request - show settings
@@ -1318,24 +1432,73 @@ def settings():
         current_model = "gpt-5"
         current_temperature = 0.5
     
-    # Get usage statistics
+    # Get system health statistics
     from app.models.agent import agent_manager
     from app.config.knowledge_config import load_knowledge_config
+    from app.config.exam_profile_config import get_all_profiles
     from app.config.api_config import get_api_key_info
+    from app.config.provider_config import (
+        load_provider_config,
+        get_provider_key_rows,
+    )
     
     stats = {
-        'total_emails': 0,  # Could be tracked in future
         'active_agents': len(agent_manager.get_all_agents()),
-        'knowledge_bases': len(load_knowledge_config().get('knowledge_bases', []))
+        'knowledge_bases': len(load_knowledge_config().get('knowledge_bases', [])),
+        'exam_profiles': len(get_all_profiles())
     }
     
     # Get API key information
     api_info = get_api_key_info()
     
-    # Get Gemini API key info
-    from app.config.provider_config import get_provider_api_key
-    gemini_key = get_provider_api_key("gemini")
-    gemini_key_masked = "••••••••" if gemini_key else ""
+    provider_config = load_provider_config()
+    provider_entries = provider_config.get("providers", {})
+    provider_options = [
+        {"provider_id": provider_id, "name": entry.get("name", provider_id)}
+        for provider_id, entry in provider_entries.items()
+    ]
+    selected_provider = request.args.get("provider", "").strip()
+    if not selected_provider and provider_options:
+        selected_provider = provider_options[0]["provider_id"]
+    if selected_provider and selected_provider not in provider_entries:
+        selected_provider = provider_options[0]["provider_id"] if provider_options else ""
+
+    provider_key_rows = []
+    all_provider_key_rows = []
+    selected_provider_sync = {}
+    if selected_provider:
+        try:
+            provider_key_rows = get_provider_key_rows(selected_provider)
+            selected_provider_sync = {
+                "status": provider_entries.get(selected_provider, {}).get(
+                    "models_last_sync_status", "unknown"
+                ),
+                "last_synced_at": provider_entries.get(selected_provider, {}).get(
+                    "models_last_synced_at"
+                ),
+                "last_error": provider_entries.get(selected_provider, {}).get(
+                    "models_last_sync_error", ""
+                ),
+            }
+        except Exception:
+            provider_key_rows = []
+            selected_provider_sync = {}
+
+    for option in provider_options:
+        provider_id = option["provider_id"]
+        provider_name = option["name"]
+        try:
+            rows = get_provider_key_rows(provider_id)
+        except Exception:
+            rows = []
+        for row in rows:
+            all_provider_key_rows.append({
+                "provider_id": provider_id,
+                "provider_name": provider_name,
+                "key_name": row.get("key_name", ""),
+                "description": row.get("description", ""),
+                "key_preview": row.get("key_preview", ""),
+            })
     
     return render_template("settings.html", 
                          current_model=current_model,
@@ -1345,7 +1508,11 @@ def settings():
                          api_key_updated=api_info.get('last_updated'),
                          api_key_status=api_info.get('test_status'),
                          api_key_source=api_info.get('source'),
-                         gemini_key_masked=gemini_key_masked)
+                         provider_options=provider_options,
+                         selected_provider=selected_provider,
+                         provider_key_rows=provider_key_rows,
+                         all_provider_key_rows=all_provider_key_rows,
+                         selected_provider_sync=selected_provider_sync)
 
 # Chat API endpoints for chatbot functionality
 @app.route("/api/chat/session", methods=["POST"])

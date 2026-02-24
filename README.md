@@ -271,9 +271,10 @@ After logging in as admin, you can manage users:
 ### 2. Configure API Keys (Admin Only)
 
 1. Navigate to **Settings** in the menu
-2. Enter your OpenAI and/or Gemini API keys
-3. Click **Save Configuration**
-4. Keys are saved through the application and encrypted at rest
+2. Select a provider card and add an API key
+3. Choose a **Key Name** (for example: `default`, `team_a`, `backup`)
+4. Save the key (keys are encrypted at rest)
+5. Repeat for additional named keys and providers as needed
 
 ### 3. Create Knowledge Bases
 
@@ -372,7 +373,7 @@ exam_blueprint/
 
 ### Sensitive Files (Never Commit)
 - `app/config/api_config.json` - Contains encrypted API keys and key metadata
-- `app/config/providers.json` - Provider metadata (and legacy plaintext keys before migration)
+- `app/config/providers.json` - Provider registry metadata (models/capabilities)
 - `app/config/users.db` - User database with hashed passwords
 - `app/config/agents.json` - User agent configurations
 - `app/config/chat_sessions.json` - Conversation history
@@ -391,6 +392,7 @@ All sensitive files are already in `.gitignore`.
 
 ### API Key Storage
 - API keys are stored encrypted in `app/config/api_config.json`
+- Keys are stored as named key maps per provider under `provider_api_keys_encrypted`
 - Encryption key is stored in `app/config/api_encryption.key`
 - File permissions should be restricted (Unix):
   - `chmod 600 app/config/api_config.json`
@@ -480,10 +482,16 @@ The project follows PEP 8 guidelines with:
 
 ### Adding a New AI Provider
 
-1. Create client in `app/utils/` (e.g., `anthropic_client.py`)
-2. Add provider config to `app/config/provider_config.py`
-3. Update `_generate_with_<provider>()` in `app/agents/agent.py`
-4. Add provider option in `app/web/templates/agents.html`
+1. Add a provider entry in `app/config/providers.json` under `providers`
+2. Include required fields:
+   - `name`
+   - `generation_models`
+   - `embedding_models`
+   - `default_embedding_model`
+   - `embedding_dimensions`
+3. Add provider runtime handling in `app/agents/agent.py` (if new generation client is needed)
+4. Add provider embedding client support in `app/utils/` (if new embedding backend is needed)
+5. Restart the app and configure one or more named keys in **Settings**
 
 ## License
 

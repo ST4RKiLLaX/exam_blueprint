@@ -13,11 +13,11 @@ except ImportError:
 from app.config.provider_config import get_provider_api_key
 
 class GeminiClient:
-    def __init__(self, api_key: Optional[str] = None):
+    def __init__(self, api_key: Optional[str] = None, key_name: str = "default"):
         if genai is None:
             raise ImportError("google-genai package not installed")
         
-        self.api_key = api_key or get_provider_api_key("gemini")
+        self.api_key = api_key or get_provider_api_key("gemini", key_name)
         if not self.api_key:
             raise ValueError("No Gemini API key configured")
         

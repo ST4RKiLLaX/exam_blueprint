@@ -5,13 +5,14 @@ import json
 import os
 from datetime import datetime
 from cryptography.fernet import Fernet
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List, Tuple
 import base64
 import stat
 
 CONFIG_FILE = os.path.join(os.path.dirname(__file__), "api_config.json")
 KEY_FILE = os.path.join(os.path.dirname(__file__), "api_encryption.key")
 KEY_FILE_MODE = 0o600
+DEFAULT_PROVIDER_KEY_NAME = "default"
 
 
 def _ensure_key_file_permissions():
@@ -79,17 +80,74 @@ def load_api_config() -> Dict[str, Any]:
     return default_config
 
 
+def _normalize_provider_encrypted_map(
+    config: Dict[str, Any],
+) -> Tuple[Dict[str, Dict[str, str]], bool]:
+    """
+    Normalize provider_api_keys_encrypted to:
+    {provider: {key_name: encrypted_value}}
+    """
+    raw_map = config.get("provider_api_keys_encrypted", {})
+    changed = False
+
+    if not isinstance(raw_map, dict):
+        raw_map = {}
+        changed = True
+
+    normalized: Dict[str, Dict[str, str]] = {}
+    for provider, value in raw_map.items():
+        if not isinstance(provider, str) or not provider.strip():
+            changed = True
+            continue
+
+        provider_id = provider.strip()
+        if isinstance(value, str):
+            if value:
+                normalized[provider_id] = {DEFAULT_PROVIDER_KEY_NAME: value}
+            changed = True
+            continue
+
+        if isinstance(value, dict):
+            normalized_keys: Dict[str, str] = {}
+            for key_name, encrypted_value in value.items():
+                if (
+                    isinstance(key_name, str)
+                    and key_name.strip()
+                    and isinstance(encrypted_value, str)
+                    and encrypted_value
+                ):
+                    normalized_keys[key_name.strip()] = encrypted_value
+                else:
+                    changed = True
+            if normalized_keys:
+                normalized[provider_id] = normalized_keys
+            if normalized_keys != value:
+                changed = True
+            continue
+
+        changed = True
+
+    if raw_map != normalized:
+        changed = True
+    return normalized, changed
+
+
 def _migrate_legacy_openai_storage(config: Dict[str, Any]) -> bool:
     """
     Migrate legacy OpenAI storage into unified provider map.
     Returns True if config was changed.
     """
-    changed = False
-    provider_map = config.get("provider_api_keys_encrypted", {})
+    provider_map, changed = _normalize_provider_encrypted_map(config)
     legacy_openai = config.get("openai_api_key_encrypted", "")
 
-    if legacy_openai and "openai" not in provider_map:
-        provider_map["openai"] = legacy_openai
+    if legacy_openai:
+        openai_keys = provider_map.get("openai", {})
+        if DEFAULT_PROVIDER_KEY_NAME not in openai_keys:
+            openai_keys[DEFAULT_PROVIDER_KEY_NAME] = legacy_openai
+            provider_map["openai"] = openai_keys
+            changed = True
+
+    if config.get("provider_api_keys_encrypted") != provider_map:
         config["provider_api_keys_encrypted"] = provider_map
         changed = True
 
@@ -112,25 +170,20 @@ def save_api_config(config: Dict[str, Any]) -> bool:
 
 def get_openai_api_key() -> Optional[str]:
     """Get the current OpenAI API key from unified encrypted provider storage."""
-    config = load_api_config()
-
-    # One-time migration path from legacy field to unified provider map
-    if _migrate_legacy_openai_storage(config):
-        save_api_config(config)
-
-    encrypted_key = config.get("provider_api_keys_encrypted", {}).get("openai")
-    if encrypted_key:
-        decrypted = _decrypt_api_key(encrypted_key)
-        return decrypted if decrypted else None
-    return None
+    return get_provider_api_key_encrypted("openai", DEFAULT_PROVIDER_KEY_NAME)
 
 def set_openai_api_key(api_key: str) -> bool:
     """Set and encrypt the OpenAI API key"""
     try:
         config = load_api_config()
-        encrypted_key = _encrypt_api_key(api_key)
+        if _migrate_legacy_openai_storage(config):
+            pass
         provider_map = config.get("provider_api_keys_encrypted", {})
-        provider_map["openai"] = encrypted_key
+        openai_map = provider_map.get("openai", {})
+        if not isinstance(openai_map, dict):
+            openai_map = {}
+        openai_map[DEFAULT_PROVIDER_KEY_NAME] = _encrypt_api_key(api_key)
+        provider_map["openai"] = openai_map
         
         # Create preview (first 7 chars + "..." + last 4 chars)
         if len(api_key) > 11:
@@ -201,8 +254,16 @@ def delete_openai_api_key() -> bool:
     """Delete the stored OpenAI API key"""
     try:
         config = load_api_config()
+        _migrate_legacy_openai_storage(config)
         provider_map = config.get("provider_api_keys_encrypted", {})
-        if "openai" in provider_map:
+        openai_map = provider_map.get("openai", {})
+        if isinstance(openai_map, dict):
+            openai_map.pop(DEFAULT_PROVIDER_KEY_NAME, None)
+            if openai_map:
+                provider_map["openai"] = openai_map
+            elif "openai" in provider_map:
+                del provider_map["openai"]
+        elif "openai" in provider_map:
             del provider_map["openai"]
         
         # Clear the stored key
@@ -222,54 +283,139 @@ def delete_openai_api_key() -> bool:
 def get_api_key_info() -> Dict[str, Any]:
     """Get API key information for display"""
     config = load_api_config()
-    
-    # Check if we have a key
-    has_key = bool(get_openai_api_key())
-    
+
+    if _migrate_legacy_openai_storage(config):
+        save_api_config(config)
+
+    provider_map = config.get("provider_api_keys_encrypted", {})
+    if not isinstance(provider_map, dict):
+        provider_map = {}
+
+    total_keys = 0
+    providers_with_keys = 0
+    for provider_keys in provider_map.values():
+        if not isinstance(provider_keys, dict):
+            continue
+        key_count = len(
+            [
+                encrypted_value
+                for encrypted_value in provider_keys.values()
+                if isinstance(encrypted_value, str) and encrypted_value
+            ]
+        )
+        if key_count > 0:
+            providers_with_keys += 1
+            total_keys += key_count
+
+    has_key = total_keys > 0
+    if has_key:
+        preview = f"{total_keys} key(s) across {providers_with_keys} provider(s)"
+    else:
+        preview = "Not Set"
+
     return {
         "has_key": has_key,
-        "preview": config.get("api_key_preview", "Not Set"),
+        "preview": preview,
         "last_updated": config.get("last_updated"),
         "last_tested": config.get("last_tested"),
         "test_status": config.get("test_status", "unknown"),
-        "source": "Stored Encrypted"
+        "source": "Stored Encrypted (Provider Keys)"
     }
 
 
-def get_provider_api_key_encrypted(provider: str) -> Optional[str]:
-    """Get decrypted provider API key stored in encrypted config."""
+def _validate_provider_id(provider: str) -> str:
+    if not isinstance(provider, str) or not provider.strip():
+        raise ValueError("provider must be a non-empty string")
+    return provider.strip()
+
+
+def _validate_key_name(key_name: str) -> str:
+    if not isinstance(key_name, str) or not key_name.strip():
+        raise ValueError("key_name must be a non-empty string")
+    return key_name.strip()
+
+
+def list_provider_api_key_names_encrypted(provider: str) -> List[str]:
+    """List key names configured for a provider."""
+    provider_id = _validate_provider_id(provider)
     config = load_api_config()
-    encrypted_keys = config.get("provider_api_keys_encrypted", {})
-    encrypted_key = encrypted_keys.get(provider)
+    if _migrate_legacy_openai_storage(config):
+        save_api_config(config)
+    provider_map = config.get("provider_api_keys_encrypted", {})
+    keys_map = provider_map.get(provider_id, {})
+    if not isinstance(keys_map, dict):
+        return []
+    return sorted(keys_map.keys())
+
+
+def get_provider_api_key_encrypted(provider: str, key_name: str = DEFAULT_PROVIDER_KEY_NAME) -> Optional[str]:
+    """Get decrypted provider API key stored in encrypted config."""
+    provider_id = _validate_provider_id(provider)
+    selected_key_name = _validate_key_name(key_name)
+    config = load_api_config()
+    if _migrate_legacy_openai_storage(config):
+        save_api_config(config)
+    provider_map = config.get("provider_api_keys_encrypted", {})
+    provider_keys = provider_map.get(provider_id, {})
+    if not isinstance(provider_keys, dict):
+        return None
+    encrypted_key = provider_keys.get(selected_key_name)
     if encrypted_key:
         return _decrypt_api_key(encrypted_key)
     return None
 
 
-def set_provider_api_key_encrypted(provider: str, api_key: str) -> bool:
+def set_provider_api_key_encrypted(
+    provider: str, api_key: str, key_name: str = DEFAULT_PROVIDER_KEY_NAME
+) -> bool:
     """Set encrypted provider API key in shared encrypted config."""
+    provider_id = _validate_provider_id(provider)
+    selected_key_name = _validate_key_name(key_name)
+    if not isinstance(api_key, str) or not api_key.strip():
+        raise ValueError("api_key must be a non-empty string")
     try:
         config = load_api_config()
+        _migrate_legacy_openai_storage(config)
         encrypted_keys = config.get("provider_api_keys_encrypted", {})
-        encrypted_keys[provider] = _encrypt_api_key(api_key)
+        provider_keys = encrypted_keys.get(provider_id, {})
+        if not isinstance(provider_keys, dict):
+            provider_keys = {}
+        provider_keys[selected_key_name] = _encrypt_api_key(api_key.strip())
+        encrypted_keys[provider_id] = provider_keys
         config["provider_api_keys_encrypted"] = encrypted_keys
         config["last_updated"] = datetime.now().isoformat()
         return save_api_config(config)
     except Exception as e:
-        print(f"Error setting encrypted provider API key for {provider}: {e}")
+        print(f"Error setting encrypted provider API key for {provider_id}: {e}")
         return False
 
 
-def delete_provider_api_key_encrypted(provider: str) -> bool:
+def delete_provider_api_key_encrypted(
+    provider: str, key_name: Optional[str] = DEFAULT_PROVIDER_KEY_NAME
+) -> bool:
     """Delete encrypted provider API key from shared encrypted config."""
+    provider_id = _validate_provider_id(provider)
+    selected_key_name = (
+        _validate_key_name(key_name) if key_name is not None else None
+    )
     try:
         config = load_api_config()
+        _migrate_legacy_openai_storage(config)
         encrypted_keys = config.get("provider_api_keys_encrypted", {})
-        if provider in encrypted_keys:
-            del encrypted_keys[provider]
+        provider_keys = encrypted_keys.get(provider_id, {})
+        if selected_key_name is None:
+            encrypted_keys.pop(provider_id, None)
+        elif isinstance(provider_keys, dict):
+            provider_keys.pop(selected_key_name, None)
+            if provider_keys:
+                encrypted_keys[provider_id] = provider_keys
+            else:
+                encrypted_keys.pop(provider_id, None)
+        else:
+            encrypted_keys.pop(provider_id, None)
         config["provider_api_keys_encrypted"] = encrypted_keys
         config["last_updated"] = datetime.now().isoformat()
         return save_api_config(config)
     except Exception as e:
-        print(f"Error deleting encrypted provider API key for {provider}: {e}")
+        print(f"Error deleting encrypted provider API key for {provider_id}: {e}")
         return False

@@ -36,19 +36,20 @@ def create_embedding(text: str, provider: str = "openai", model: str = None) -> 
     Returns:
         numpy array of embedding vector
     """
-    from app.config.provider_config import SUPPORTED_PROVIDERS, get_provider_api_key
+    from app.config.provider_config import get_provider_metadata
+    provider_metadata = get_provider_metadata(provider)
     
     if provider == "openai":
         from app.config.api_config import get_openai_api_key
         client = OpenAI(api_key=get_openai_api_key())
-        model = model or SUPPORTED_PROVIDERS["openai"]["default_embedding_model"]
+        model = model or provider_metadata.get("default_embedding_model", EMBEDDING_MODEL)
         response = client.embeddings.create(input=text, model=model)
         return np.array(response.data[0].embedding, dtype="float32")
     
     elif provider == "gemini":
         from app.utils.gemini_client import GeminiClient
         client = GeminiClient()
-        model = model or SUPPORTED_PROVIDERS["gemini"]["default_embedding_model"]
+        model = model or provider_metadata.get("default_embedding_model", "text-embedding-004")
         response = client.embed_content(model=model, content=text)
         return np.array(response.data[0]["embedding"], dtype="float32")
     
@@ -200,8 +201,8 @@ def create_embeddings(chunks: List[str], batch_size: int = 32, provider: str = "
     """
     if not chunks:
         # Get default dimension for provider
-        from app.config.provider_config import SUPPORTED_PROVIDERS
-        default_dim = SUPPORTED_PROVIDERS.get(provider, {}).get("embedding_dimensions", DEFAULT_EMBEDDING_DIM)
+        from app.config.provider_config import get_provider_metadata
+        default_dim = get_provider_metadata(provider).get("embedding_dimensions", DEFAULT_EMBEDDING_DIM)
         return np.zeros((0, default_dim), dtype="float32")
 
     embeddings: List[np.ndarray] = []
@@ -219,8 +220,10 @@ def create_embeddings(chunks: List[str], batch_size: int = 32, provider: str = "
         except Exception as e:
             print(f"Error creating embedding for chunk: {e}")
             if embedding_dim is None:
-                from app.config.provider_config import SUPPORTED_PROVIDERS
-                embedding_dim = SUPPORTED_PROVIDERS.get(provider, {}).get("embedding_dimensions", DEFAULT_EMBEDDING_DIM)
+                from app.config.provider_config import get_provider_metadata
+                embedding_dim = get_provider_metadata(provider).get(
+                    "embedding_dimensions", DEFAULT_EMBEDDING_DIM
+                )
             embeddings.append(np.zeros(embedding_dim, dtype="float32"))
 
         print(f"🧠 Embedded {idx}/{total_chunks} chunks")

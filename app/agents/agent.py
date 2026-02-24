@@ -154,11 +154,11 @@ def truncate_history_by_tokens(history: list, max_tokens: int, encoding_name: st
     return selected_messages
 
 # Initialize OpenAI client with API key from config
-def _get_openai_client():
+def _get_openai_client(provider_key_name: str = "default"):
     """Get OpenAI client with proper API key"""
     try:
-        from app.config.api_config import get_openai_api_key
-        api_key = get_openai_api_key()
+        from app.config.provider_config import get_provider_api_key
+        api_key = get_provider_api_key("openai", provider_key_name)
         if not api_key:
             raise ValueError("No API key configured")
         return OpenAI(api_key=api_key)
@@ -613,6 +613,9 @@ def _generate_with_openai(message_body, history=None, agent=None, skip_post_proc
         print("🚫 SECURITY: No agent specified - denying reply generation")
         return "🚫 ACCESS DENIED: No agent specified. Please select an agent to generate a reply."
     
+    provider_key_name = getattr(agent, "provider_key_name", "default")
+    openai_client = _get_openai_client(provider_key_name)
+
     # Use agent-specific personality and style
     personality = agent.personality or DEFAULT_CONFIG["personality"]
     style = agent.style or DEFAULT_CONFIG["style"]
@@ -721,7 +724,7 @@ def _generate_with_openai(message_body, history=None, agent=None, skip_post_proc
             api_params["stop"] = agent.stop
         
         # Call Responses API
-        response = _get_openai_client().responses.create(**api_params)
+        response = openai_client.responses.create(**api_params)
         raw_response = response.output_text.strip()
         
         if skip_post_processing:
@@ -733,7 +736,7 @@ def _generate_with_openai(message_body, history=None, agent=None, skip_post_proc
         if not validation_ok and agent.post_processing_rules.get("validation"):
             try:
                 # Regenerate with same parameters
-                response = _get_openai_client().responses.create(**api_params)
+                response = openai_client.responses.create(**api_params)
                 raw_response = response.output_text.strip()
                 processed, _ = post_process_response(raw_response, agent)
                 # Return second attempt regardless of validation status
@@ -759,7 +762,7 @@ def _generate_with_openai(message_body, history=None, agent=None, skip_post_proc
                 if patterns_match(current_patterns, last_patterns):
                     try:
                         # Regenerate with same parameters
-                        response = _get_openai_client().responses.create(**api_params)
+                        response = openai_client.responses.create(**api_params)
                         raw_response = response.output_text.strip()
                         processed, _ = post_process_response(raw_response, agent)
                         # Don't check repetition again (max 1 retry)
@@ -816,7 +819,7 @@ Do not reuse the same control objective or decision logic.
                             # Modify api_params for regeneration
                             api_params["input"][1]["content"] = prompt + "\n\n" + constraint
                             
-                            response = _get_openai_client().responses.create(**api_params)
+                            response = openai_client.responses.create(**api_params)
                             raw_response = response.output_text.strip()
                             processed, _ = post_process_response(raw_response, agent)
                             
@@ -874,7 +877,7 @@ Do not reuse the same control objective or decision logic.
             api_params["stop"] = agent.stop
         
         # Call Chat Completions API
-        response = _get_openai_client().chat.completions.create(**api_params)
+        response = openai_client.chat.completions.create(**api_params)
         raw_response = response.choices[0].message.content.strip()
         
         if skip_post_processing:
@@ -886,7 +889,7 @@ Do not reuse the same control objective or decision logic.
         if not validation_ok and agent.post_processing_rules.get("validation"):
             try:
                 # Regenerate with same parameters
-                response = _get_openai_client().chat.completions.create(**api_params)
+                response = openai_client.chat.completions.create(**api_params)
                 raw_response = response.choices[0].message.content.strip()
                 processed, _ = post_process_response(raw_response, agent)
                 # Return second attempt regardless of validation status
@@ -912,7 +915,7 @@ Do not reuse the same control objective or decision logic.
                 if patterns_match(current_patterns, last_patterns):
                     try:
                         # Regenerate with same parameters
-                        response = _get_openai_client().chat.completions.create(**api_params)
+                        response = openai_client.chat.completions.create(**api_params)
                         raw_response = response.choices[0].message.content.strip()
                         processed, _ = post_process_response(raw_response, agent)
                         # Don't check repetition again (max 1 retry)
@@ -969,7 +972,7 @@ Do not reuse the same control objective or decision logic.
                             # Modify api_params for regeneration
                             api_params["messages"][1]["content"] = prompt + "\n\n" + constraint
                             
-                            response = _get_openai_client().chat.completions.create(**api_params)
+                            response = openai_client.chat.completions.create(**api_params)
                             raw_response = response.choices[0].message.content.strip()
                             processed, _ = post_process_response(raw_response, agent)
                             
@@ -1073,7 +1076,8 @@ def _generate_with_gemini(message_body, history=None, agent=None, skip_post_proc
             return "🚫 ACCESS DENIED: No knowledge base access granted. Please select an agent with proper permissions."
     
     try:
-        client = GeminiClient()
+        key_name = getattr(agent, "provider_key_name", "default")
+        client = GeminiClient(key_name=key_name)
         
         # Prepare messages for Gemini
         messages = [

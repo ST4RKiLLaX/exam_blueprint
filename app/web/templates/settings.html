@@ -3,320 +3,222 @@
 {% block title %}Settings - Exam Blueprint{% endblock %}
 
 {% block content %}
-<div class="max-w-4xl mx-auto">
+<div class="max-w-6xl mx-auto space-y-6">
     <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <h1 class="text-2xl font-bold text-gray-900">System Settings</h1>
+        <p class="text-gray-600 mt-1">Manage provider keys, system health, and maintenance controls.</p>
+    </div>
+
+    <section class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <div class="flex items-center justify-between mb-6">
             <div>
-                <h1 class="text-2xl font-bold text-gray-900">System Settings</h1>
-                <p class="text-gray-600 mt-1">Configure API keys and system maintenance</p>
+                <h2 class="text-xl font-semibold text-gray-900">Provider Keys</h2>
+                <p class="text-sm text-gray-600 mt-1">Add one key at a time while supporting many keys and providers.</p>
             </div>
         </div>
 
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="mb-4 p-4 rounded-lg {% if category == 'error' %}bg-red-50 text-red-700 border border-red-200{% else %}bg-green-50 text-green-700 border border-green-200{% endif %}">
-                        {{ message }}
-                    </div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
-
-        <!-- Current Usage Stats -->
-        <div class="border-t pt-6">
-            <h2 class="text-xl font-semibold text-gray-900 mb-4">📈 Usage Statistics</h2>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div class="bg-blue-50 p-4 rounded-lg">
-                    <div class="text-2xl font-bold text-blue-600">{{ stats.total_emails or 0 }}</div>
-                    <div class="text-sm text-blue-800">Emails Processed</div>
-                </div>
-                <div class="bg-green-50 p-4 rounded-lg">
-                    <div class="text-2xl font-bold text-green-600">{{ stats.active_agents or 0 }}</div>
-                    <div class="text-sm text-green-800">Active Agents</div>
-                </div>
-                <div class="bg-purple-50 p-4 rounded-lg">
-                    <div class="text-2xl font-bold text-purple-600">{{ stats.knowledge_bases or 0 }}</div>
-                    <div class="text-sm text-purple-800">Knowledge Bases</div>
-                </div>
+        <div class="border border-gray-200 rounded-lg p-5 space-y-5">
+            <div class="max-w-md">
+                <label for="provider_select" class="block text-sm font-medium text-gray-700 mb-2">Provider</label>
+                <select id="provider_select" name="provider" onchange="onProviderSelectionChange()"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    {% for option in provider_options %}
+                    <option value="{{ option.provider_id }}" {% if option.provider_id == selected_provider %}selected{% endif %}>
+                        {{ option.name }} ({{ option.provider_id }})
+                    </option>
+                    {% endfor %}
+                </select>
             </div>
-        </div>
 
-        <!-- System Maintenance -->
-        <div class="border-t pt-6 mt-6">
-            <h2 class="text-xl font-semibold text-gray-900 mb-4">🧹 System Maintenance</h2>
-            <div class="bg-yellow-50 p-4 rounded-lg mb-4">
-                <h4 class="font-medium text-yellow-900 mb-2">Knowledge Base Cleanup</h4>
-                <p class="text-sm text-yellow-800 mb-3">
-                    If you're experiencing issues with deleted knowledge bases still appearing in responses, 
-                    use this cleanup tool to remove orphaned data.
-                </p>
-                <form method="POST" class="inline">
-                    <input type="hidden" name="action" value="cleanup_knowledge_bases">
-                    <button type="submit" class="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors">
-                        🧹 Clean Up Knowledge Bases
+            <form method="POST" class="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+                <input type="hidden" name="action" id="provider_key_action" value="save_provider_key">
+                <input type="hidden" name="provider_id" id="provider_id_input" value="{{ selected_provider }}">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Key Name</label>
+                    <input type="text" name="key_name" id="provider_key_name" value="default" required
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                    <input type="text" name="key_description" id="provider_key_description" placeholder="ex: Team A key"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">API Key</label>
+                    <input type="password" name="api_key" id="provider_api_key" autocomplete="new-password"
+                           placeholder="Required for add, optional for edit"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm">
+                </div>
+                <div class="flex gap-2">
+                    <button type="submit" id="provider_key_submit"
+                            class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                        Add Key
                     </button>
-                </form>
+                    <button type="button" onclick="resetProviderKeyForm()"
+                            class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
+                        Reset
+                    </button>
+                </div>
+            </form>
+
+            <div class="overflow-x-auto border border-gray-200 rounded-lg">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Provider</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Key Name</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Key Preview</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% if all_provider_key_rows %}
+                            {% for row in all_provider_key_rows %}
+                            <tr>
+                                <td class="px-4 py-3 text-sm text-gray-700">{{ row.provider_name }}</td>
+                                <td class="px-4 py-3 text-sm font-mono text-gray-900">{{ row.key_name }}</td>
+                                <td class="px-4 py-3 text-sm text-gray-700">{{ row.description or '—' }}</td>
+                                <td class="px-4 py-3 text-sm font-mono text-gray-600">{{ row.key_preview or '—' }}</td>
+                                <td class="px-4 py-3 text-sm">
+                                    <div class="flex items-center gap-2">
+                                        <button type="button"
+                                                onclick="editProviderKey('{{ row.provider_id|e }}', '{{ row.key_name|e }}', '{{ row.description|e }}')"
+                                                class="px-2 py-1 bg-blue-100 text-blue-800 rounded hover:bg-blue-200">
+                                            Edit
+                                        </button>
+                                        <form method="POST" onsubmit="return confirm('Delete key {{ row.key_name }}?');" class="inline">
+                                            <input type="hidden" name="action" value="delete_provider_key">
+                                            <input type="hidden" name="provider_id" value="{{ row.provider_id }}">
+                                            <input type="hidden" name="key_name" value="{{ row.key_name }}">
+                                            <button type="submit" class="px-2 py-1 bg-red-100 text-red-800 rounded hover:bg-red-200">
+                                                Delete
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="5" class="px-4 py-4 text-sm text-gray-500">No keys configured for this provider yet.</td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
             </div>
         </div>
 
-        <!-- API Key Management -->
-        <div class="border-t pt-6 mt-6">
-            <h2 class="text-xl font-semibold text-gray-900 mb-4">🔑 API Key Management</h2>
-            <p class="text-gray-600 mb-6">Configure API keys for different AI providers</p>
-            
-            <!-- OpenAI API Key Section -->
-            <div class="mb-8">
-                <h3 class="text-lg font-semibold text-gray-900 mb-4">OpenAI</h3>
-                
-                <!-- Current API Key Status -->
-                <div class="bg-gray-50 p-4 rounded-lg mb-4">
-                    <div class="flex items-center justify-between mb-3">
+    </section>
+
+    <section class="bg-white rounded-lg shadow-sm border border-gray-200">
+        <details class="group">
+            <summary class="list-none cursor-pointer px-6 py-4 flex items-center justify-between">
+                <div>
+                    <h2 class="text-lg font-semibold text-gray-900">Advanced Maintenance</h2>
+                    <p class="text-sm text-gray-600">Operational tools for cleanup and recovery.</p>
+                </div>
+                <span class="text-sm text-gray-500 group-open:hidden">Show</span>
+                <span class="text-sm text-gray-500 hidden group-open:inline">Hide</span>
+            </summary>
+            <div class="px-6 pb-6 border-t border-gray-200">
+                <div class="mt-4 border border-blue-200 bg-blue-50 rounded-lg p-4">
+                    <h4 class="font-medium text-blue-900 mb-2">Model Sync</h4>
+                    <p class="text-sm text-blue-800 mb-3">
+                        Refresh provider model lists manually for selected provider or all providers.
+                    </p>
+                    <form method="POST" class="flex flex-wrap items-end gap-3">
+                        <input type="hidden" name="action" value="sync_provider_models">
+                        <input type="hidden" name="provider_id" id="sync_provider_id_input" value="{{ selected_provider }}">
                         <div>
-                            <h4 class="font-medium text-gray-900">API Key Status</h4>
-                            <p class="text-sm text-gray-600">Current API key configuration and connection status</p>
+                            <label for="sync_scope" class="block text-sm font-medium text-gray-700 mb-1">Sync Scope</label>
+                            <select id="sync_scope" name="sync_scope"
+                                    class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                <option value="selected">Selected provider</option>
+                                <option value="all">All providers</option>
+                            </select>
                         </div>
-                    <span id="api-status" class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium 
-                        {% if api_key_status == 'valid' %}bg-green-100 text-green-800{% elif api_key_status == 'invalid' %}bg-red-100 text-red-800{% else %}bg-gray-100 text-gray-800{% endif %}">
-                        {% if api_key_status == 'valid' %}✅ Valid{% elif api_key_status == 'invalid' %}❌ Invalid{% else %}❓ Unknown{% endif %}
-                    </span>
-                </div>
-                
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                    <div>
-                        <span class="font-medium text-gray-700">Key Preview:</span>
-                        <span id="key-preview" class="ml-2 font-mono text-gray-600">sk-...{{ api_key_preview or 'Not Set' }}</span>
-                    </div>
-                    <div>
-                        <span class="font-medium text-gray-700">Last Updated:</span>
-                        <span class="ml-2 text-gray-600">{{ api_key_updated or 'Never' }}</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Update API Key Form -->
-            <div class="bg-blue-50 p-4 rounded-lg">
-                <h4 class="font-medium text-blue-900 mb-3">Update API Key</h4>
-                <form method="POST" class="space-y-4" id="apiKeyForm" onsubmit="return updateAndTestApiKey(event)">
-                    <input type="hidden" name="action" value="update_api_key">
-                    
-                    <div>
-                        <label for="api_key" class="block text-sm font-medium text-gray-700 mb-2">
-                            OpenAI API Key
-                        </label>
-                        <div class="relative">
-                            <input type="password" id="api_key" name="api_key" 
-                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm"
-                                   placeholder="sk-..." 
-                                   autocomplete="new-password">
-                            <button type="button" onclick="toggleApiKeyVisibility()" 
-                                    class="absolute right-3 top-2 text-gray-400 hover:text-gray-600">
-                                <span id="eye-icon">👁️</span>
-                            </button>
-                        </div>
-                        <p class="text-xs text-gray-500 mt-1">
-                            Your API key will be securely stored and encrypted. Get your key from 
-                            <a href="https://platform.openai.com/api-keys" target="_blank" class="text-blue-600 hover:text-blue-800">OpenAI Platform</a>
-                        </p>
-                    </div>
-
-                    <div class="flex items-center space-x-3">
-                        <button type="submit" id="updateApiKeyBtn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                            🔐 Update & Test API Key
+                        <button type="submit"
+                                class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">
+                            Refresh Models
                         </button>
-                        <div id="api-test-spinner" class="hidden">
-                            <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
-                        </div>
-                    </div>
-                </form>
-            </div>
-
-            <!-- Delete API Key Section -->
-            {% if api_key_status == 'valid' or api_key_status == 'invalid' %}
-            <div class="bg-red-50 p-4 rounded-lg mt-4">
-                <h4 class="font-medium text-red-900 mb-3">🗑️ Delete API Key</h4>
-                <p class="text-sm text-red-800 mb-3">
-                    Remove the stored API key from the system. This will prevent the application from making API calls until a new key is configured.
-                </p>
-                <form method="POST" class="inline" onsubmit="return confirmDeleteApiKey()">
-                    <input type="hidden" name="action" value="delete_api_key">
-                    <button type="submit" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
-                        🗑️ Delete API Key
-                    </button>
-                </form>
-            </div>
-            {% endif %}
-
-            <!-- API Usage Information -->
-            <div class="bg-yellow-50 p-4 rounded-lg mt-4">
-                <h4 class="font-medium text-yellow-900 mb-2">💡 API Key Security Tips</h4>
-                <ul class="text-sm text-yellow-800 space-y-1">
-                    <li>• Never share your API key with others</li>
-                    <li>• Set usage limits in your OpenAI dashboard</li>
-                    <li>• Monitor your usage regularly</li>
-                    <li>• Rotate your keys periodically for security</li>
-                </ul>
-                <div class="mt-3 pt-3 border-t border-yellow-200">
-                    <a href="https://platform.openai.com/usage" target="_blank" 
-                       class="text-sm text-yellow-700 hover:text-yellow-900 underline">
-                        📊 View Usage Dashboard →
-                    </a>
-                </div>
-            </div>
-            </div>
-            
-            <!-- Google Gemini API Key Section -->
-            <div class="mb-8">
-                <h3 class="text-lg font-semibold text-gray-900 mb-4">Google Gemini</h3>
-                
-                <!-- Update API Key Form -->
-                <div class="bg-purple-50 p-4 rounded-lg">
-                    <h4 class="font-medium text-purple-900 mb-3">Configure Gemini API Key</h4>
-                    <form method="POST" class="space-y-4">
-                        <input type="hidden" name="action" value="update_gemini_key">
-                        
-                        <div>
-                            <label for="gemini_api_key" class="block text-sm font-medium text-gray-700 mb-2">
-                                Gemini API Key
-                            </label>
-                            <div class="relative">
-                                <input type="password" id="gemini_api_key" name="gemini_api_key" 
-                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 font-mono text-sm"
-                                       placeholder="AIzaSy..." 
-                                       value="{{gemini_key_masked}}"
-                                       autocomplete="new-password">
-                                <button type="button" onclick="toggleGeminiKeyVisibility()" 
-                                        class="absolute right-3 top-2 text-gray-400 hover:text-gray-600">
-                                    <span id="gemini-eye-icon">👁️</span>
-                                </button>
+                    </form>
+                    <div class="mt-3 bg-white border border-blue-100 rounded-lg p-3 text-sm">
+                        <div class="flex flex-wrap gap-4">
+                            <div>
+                                <span class="font-medium text-gray-700">Last Sync Status:</span>
+                                <span class="ml-1 text-gray-600">{{ selected_provider_sync.status or 'unknown' }}</span>
                             </div>
-                            <p class="text-xs text-gray-500 mt-1">
-                                Your API key will be securely stored. Get your key from 
-                                <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-purple-600 hover:text-purple-800">Google AI Studio</a>
-                            </p>
+                            <div>
+                                <span class="font-medium text-gray-700">Last Synced:</span>
+                                <span class="ml-1 text-gray-600">{{ selected_provider_sync.last_synced_at or 'Never' }}</span>
+                            </div>
                         </div>
+                        {% if selected_provider_sync.last_error %}
+                        <div class="mt-2 text-yellow-800">
+                            <span class="font-medium">Warning:</span> {{ selected_provider_sync.last_error }}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
 
-                        <div class="flex items-center space-x-3">
-                            <button type="submit" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
-                                🔐 Update Gemini API Key
-                            </button>
-                        </div>
+                <div class="mt-4 border border-yellow-200 bg-yellow-50 rounded-lg p-4">
+                    <h4 class="font-medium text-yellow-900 mb-2">Knowledge Base Cleanup</h4>
+                    <p class="text-sm text-yellow-800 mb-3">
+                        Use this tool if deleted knowledge bases still appear in generated responses.
+                    </p>
+                    <form method="POST" class="inline">
+                        <input type="hidden" name="action" value="cleanup_knowledge_bases">
+                        <button type="submit" class="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors">
+                            Run Cleanup
+                        </button>
                     </form>
                 </div>
             </div>
-        </div>
-    </div>
+        </details>
+    </section>
 </div>
-
 <script>
-// API Key Management Functions
-function toggleApiKeyVisibility() {
-    const input = document.getElementById('api_key');
-    const eyeIcon = document.getElementById('eye-icon');
-    
-    if (input.type === 'password') {
-        input.type = 'text';
-        eyeIcon.textContent = '🙈';
-    } else {
-        input.type = 'password';
-        eyeIcon.textContent = '👁️';
+function editProviderKey(providerId, keyName, description) {
+    document.getElementById('provider_id_input').value = providerId;
+    const providerSelect = document.getElementById('provider_select');
+    if (providerSelect) {
+        providerSelect.value = providerId;
     }
+    document.getElementById('provider_key_action').value = 'update_provider_key';
+    document.getElementById('provider_key_name').value = keyName;
+    document.getElementById('provider_key_name').readOnly = true;
+    document.getElementById('provider_key_description').value = description || '';
+    document.getElementById('provider_api_key').value = '';
+    document.getElementById('provider_key_submit').textContent = 'Update Key';
 }
 
-async function updateAndTestApiKey(event) {
-    event.preventDefault();
-    
-    const apiKey = document.getElementById('api_key').value;
-    const statusElement = document.getElementById('api-status');
-    const submitBtn = document.getElementById('updateApiKeyBtn');
-    const spinner = document.getElementById('api-test-spinner');
-    
-    if (!apiKey) {
-        alert('Please enter an API key');
-        return false;
+function resetProviderKeyForm() {
+    const providerSelect = document.getElementById('provider_select');
+    if (providerSelect) {
+        document.getElementById('provider_id_input').value = providerSelect.value;
     }
-    
-    // Show loading state
-    submitBtn.disabled = true;
-    submitBtn.textContent = '🔄 Updating & Testing...';
-    spinner.classList.remove('hidden');
-    statusElement.className = 'inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800';
-    statusElement.textContent = '🔄 Testing...';
-    
-    try {
-        // First update the API key
-        const updateResponse = await fetch('/settings', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: new URLSearchParams({
-                'action': 'update_api_key',
-                'api_key': apiKey
-            })
-        });
-        
-        if (!updateResponse.ok) {
-            throw new Error('Failed to update API key');
-        }
-        
-        // Then test the API key
-        const testResponse = await fetch('/settings', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: new URLSearchParams({
-                'action': 'test_api_key',
-                'api_key': apiKey
-            })
-        });
-        
-        const result = await testResponse.json();
-        
-        if (result.success) {
-            statusElement.className = 'inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800';
-            statusElement.textContent = '✅ Valid';
-            alert('✅ API key updated and tested successfully!');
-            
-            // Update the page info
-            setTimeout(() => {
-                window.location.reload();
-            }, 1000);
-        } else {
-            statusElement.className = 'inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800';
-            statusElement.textContent = '❌ Invalid';
-            alert('⚠️ API key was updated but test failed: ' + (result.error || 'Unknown error'));
-        }
-    } catch (error) {
-        statusElement.className = 'inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800';
-        statusElement.textContent = '❌ Error';
-        alert('❌ Error updating API key: ' + error.message);
-    } finally {
-        // Reset button state
-        submitBtn.disabled = false;
-        submitBtn.textContent = '🔐 Update & Test API Key';
-        spinner.classList.add('hidden');
-    }
-    
-    return false; // Prevent default form submission
+    document.getElementById('provider_key_action').value = 'save_provider_key';
+    document.getElementById('provider_key_name').value = 'default';
+    document.getElementById('provider_key_name').readOnly = false;
+    document.getElementById('provider_key_description').value = '';
+    document.getElementById('provider_api_key').value = '';
+    document.getElementById('provider_key_submit').textContent = 'Add Key';
 }
 
-// API Key Delete Confirmation
-function confirmDeleteApiKey() {
-    return confirm('⚠️ Are you sure you want to delete the API key?\n\nThis will prevent the application from making API calls until a new key is configured.\n\nThis action cannot be undone.');
-}
-
-// Gemini Key Management Functions
-function toggleGeminiKeyVisibility() {
-    const input = document.getElementById('gemini_api_key');
-    const eyeIcon = document.getElementById('gemini-eye-icon');
-    
-    if (input.type === 'password') {
-        input.type = 'text';
-        eyeIcon.textContent = '🙈';
-    } else {
-        input.type = 'password';
-        eyeIcon.textContent = '👁️';
+function onProviderSelectionChange() {
+    const providerSelect = document.getElementById('provider_select');
+    if (!providerSelect) {
+        return;
+    }
+    const selectedProviderId = providerSelect.value;
+    const providerInput = document.getElementById('provider_id_input');
+    if (providerInput) {
+        providerInput.value = selectedProviderId;
+    }
+    const syncProviderInput = document.getElementById('sync_provider_id_input');
+    if (syncProviderInput) {
+        syncProviderInput.value = selectedProviderId;
     }
 }
 </script>

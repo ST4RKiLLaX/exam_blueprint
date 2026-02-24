@@ -14,6 +14,7 @@ class Agent:
                  # Provider selection
                  provider: str = "openai",
                  provider_model: str = "gpt-5.2",
+                 provider_key_name: str = "default",
                  # Model parameters with recommended defaults for question generation
                  model: str = "gpt-5.2",  # Kept for backward compatibility
                  temperature: float = 0.9,
@@ -56,6 +57,7 @@ class Agent:
         # Provider selection
         self.provider = provider
         self.provider_model = provider_model
+        self.provider_key_name = provider_key_name
         # Model parameters (kept for backward compatibility)
         self.model = model
         self.temperature = temperature
@@ -97,6 +99,7 @@ class Agent:
             "knowledge_bases": self.knowledge_bases,
             "provider": self.provider,
             "provider_model": self.provider_model,
+            "provider_key_name": self.provider_key_name,
             "model": self.model,
             "temperature": self.temperature,
             "frequency_penalty": self.frequency_penalty,
@@ -193,6 +196,8 @@ class Agent:
         if 'provider_model' not in filtered_data:
             # Use existing model field if available, else default to gpt-5.2
             filtered_data['provider_model'] = filtered_data.get('model', 'gpt-5.2')
+        if 'provider_key_name' not in filtered_data:
+            filtered_data['provider_key_name'] = "default"
             
         return cls(**filtered_data)
     
@@ -269,6 +274,7 @@ class AgentManager:
     def create_agent(self, name: str, personality: str = "", style: str = "", 
                     prompt: str = "", formatting: str = "", knowledge_bases: List[str] = None,
                     provider: str = "openai", provider_model: str = "gpt-5.2",
+                    provider_key_name: str = "default",
                     model: str = "gpt-5.2", temperature: float = 0.9,
                     frequency_penalty: float = 0.7, presence_penalty: float = 0.5,
                     max_tokens: int = 1000, top_p: float = None,
@@ -293,6 +299,7 @@ class AgentManager:
             knowledge_bases=knowledge_bases or [],
             provider=provider,
             provider_model=provider_model,
+            provider_key_name=provider_key_name,
             model=model,
             temperature=temperature,
             frequency_penalty=frequency_penalty,

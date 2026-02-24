@@ -275,6 +275,41 @@
                 
                 <!-- Knowledge Base Access Tab Content -->
                 <div id="create-tab-knowledge-content" class="tab-content hidden">
+                    <!-- Exam Profile Section -->
+                    <div class="mb-6 border border-gray-200 rounded-lg p-4 bg-gray-50">
+                        <h4 class="font-medium text-gray-900 mb-3">Exam Profile</h4>
+                        
+                        <div class="mb-3">
+                            <label for="createExamProfile" class="block text-sm font-medium text-gray-700 mb-2">
+                                Select Exam Profile
+                            </label>
+                            <select id="createExamProfile" name="exam_profile_id" 
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    onchange="toggleCreateProfileSettings()">
+                                <option value="none">None (Standard Mode)</option>
+                                {% for profile in exam_profiles %}
+                                <option value="{{ profile.profile_id }}">{{ profile.name }} - {{ profile.description }}</option>
+                                {% endfor %}
+                            </select>
+                            <p class="text-xs text-gray-500 mt-1">
+                                Select an exam profile to enable two-stage retrieval and reasoning controller for specific certification exams.
+                            </p>
+                        </div>
+                        
+                        <div id="createProfileSettings" class="ml-6 hidden">
+                            <label for="createBlueprintDepth" class="block text-sm font-medium text-gray-700 mb-2">
+                                Blueprint History Depth
+                            </label>
+                            <input type="number" id="createBlueprintDepth" 
+                                   name="blueprint_history_depth"
+                                   min="3" max="15" value="8"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <p class="text-xs text-gray-500 mt-1">
+                                Track last N blueprints for rotation. Controls question type and domain diversity. (8 recommended)
+                            </p>
+                        </div>
+                    </div>
+
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-3">📚 Knowledge Base Access</label>
                         <div class="bg-gray-50 p-4 rounded-lg">
@@ -330,8 +365,9 @@
                         <div>
                             <label for="createProvider" class="block text-sm font-medium text-gray-700 mb-2">Generation Provider</label>
                             <select id="createProvider" name="provider" onchange="updateCreateProviderModels()" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                <option value="openai" selected>OpenAI</option>
-                                <option value="gemini">Google Gemini</option>
+                                {% for provider_id, provider_meta in provider_registry_enabled.items() %}
+                                <option value="{{ provider_id }}" {% if provider_id == 'openai' %}selected{% endif %}>{{ provider_meta.name }}</option>
+                                {% endfor %}
                             </select>
                             <p class="text-xs text-gray-500 mt-1">Choose which AI provider to use for text generation</p>
                         </div>
@@ -341,6 +377,14 @@
                             <select id="createProviderModel" name="provider_model" onchange="updateCreateParameterVisibility()" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
                                 <!-- Populated by JavaScript -->
                             </select>
+                        </div>
+
+                        <div>
+                            <label for="createProviderKeyName" class="block text-sm font-medium text-gray-700 mb-2">Key Name</label>
+                            <select id="createProviderKeyName" name="provider_key_name" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <!-- Populated by JavaScript -->
+                            </select>
+                            <p class="text-xs text-gray-500 mt-1">Select which named key to use for this agent.</p>
                         </div>
                         
                         <!-- Keep old model field for backward compatibility (hidden) -->
@@ -360,34 +404,6 @@
                             </p>
                         </div>
                         
-                        <div id="createFreqPenaltyDiv" data-models="gpt-4.1,gpt-4.1-mini,gpt-4o,gpt-4o-mini,gpt-3.5-turbo,gpt-5.1,gpt-5">
-                            <label for="createFreqPenalty" class="block text-sm font-medium text-gray-700 mb-2">
-                                Frequency Penalty (Reduce Repetition): <span id="createFreqValue" class="font-mono">0.7</span>
-                            </label>
-                            <input type="range" id="createFreqPenalty" name="frequency_penalty" min="0" max="2" step="0.1" value="0.7" 
-                                   class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                                   oninput="document.getElementById('createFreqValue').textContent = this.value">
-                            <p class="text-xs text-gray-500 mt-1">
-                                <strong>Higher (0.5-2.0):</strong> Strongly discourages repeating the same words/phrases<br>
-                                <strong>Lower (0.0-0.3):</strong> Allows more repetition in responses<br>
-                                <strong>Recommended:</strong> 0.7 to prevent "What is X?", "What is Y?" patterns in questions
-                            </p>
-                        </div>
-                        
-                        <div id="createPresPenaltyDiv" data-models="gpt-4.1,gpt-4.1-mini,gpt-4o,gpt-4o-mini,gpt-3.5-turbo,gpt-5.1,gpt-5">
-                            <label for="createPresPenalty" class="block text-sm font-medium text-gray-700 mb-2">
-                                Presence Penalty (Topic Diversity): <span id="createPresValue" class="font-mono">0.5</span>
-                            </label>
-                            <input type="range" id="createPresPenalty" name="presence_penalty" min="0" max="2" step="0.1" value="0.5" 
-                                   class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                                   oninput="document.getElementById('createPresValue').textContent = this.value">
-                            <p class="text-xs text-gray-500 mt-1">
-                                <strong>Higher (0.5-2.0):</strong> Encourages exploring new topics and concepts<br>
-                                <strong>Lower (0.0-0.3):</strong> Allows staying focused on the same topics<br>
-                                <strong>Recommended:</strong> 0.5 for diverse questions across different aspects
-                            </p>
-                        </div>
-                        
                         <div id="createMaxTokensDiv" data-models="gpt-4.1,gpt-4.1-mini,gpt-4o,gpt-4o-mini,gpt-3.5-turbo">
                             <label for="createMaxTokens" class="block text-sm font-medium text-gray-700 mb-2">Maximum Response Length (max_tokens)</label>
                             <input type="number" id="createMaxTokens" name="max_tokens" min="100" max="4000" value="1000" 
@@ -400,48 +416,6 @@
                             <input type="number" id="createMaxCompletionTokens" name="max_completion_tokens" min="100" max="4000" placeholder="1000" 
                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
                             <p class="text-xs text-gray-500 mt-1">For GPT-5.x models. Maximum tokens in the completion.</p>
-                        </div>
-                        
-                        <div id="createMaxOutputTokensDiv" data-models="gpt-5.2" style="display:none;">
-                            <label for="createMaxOutputTokens" class="block text-sm font-medium text-gray-700 mb-2">Maximum Output Tokens (GPT-5.2 only)</label>
-                            <input type="number" id="createMaxOutputTokens" name="max_output_tokens" min="100" max="4000" placeholder="Optional" 
-                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            <p class="text-xs text-gray-500 mt-1">GPT-5.2 specific parameter for output token limit.</p>
-                        </div>
-                        
-                        <div id="createReasoningEffortDiv" data-models="gpt-5.2,gpt-5.1,gpt-5" style="display:none;">
-                            <label for="createReasoningEffort" class="block text-sm font-medium text-gray-700 mb-2">Reasoning Effort (Optional)</label>
-                            <select id="createReasoningEffort" name="reasoning_effort" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                <option value="">None (default)</option>
-                                <option value="low">Low</option>
-                                <option value="medium">Medium</option>
-                                <option value="high">High</option>
-                                <option value="xhigh">Extra High</option>
-                            </select>
-                            <p class="text-xs text-gray-500 mt-1">For GPT-5.x models. Controls reasoning depth.</p>
-                        </div>
-                        
-                        <div id="createVerbosityDiv" data-models="gpt-5.2" style="display:none;">
-                            <label for="createVerbosity" class="block text-sm font-medium text-gray-700 mb-2">Verbosity (GPT-5.2 only)</label>
-                            <select id="createVerbosity" name="verbosity" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                <option value="">Default</option>
-                                <option value="low">Low</option>
-                                <option value="medium">Medium</option>
-                                <option value="high">High</option>
-                            </select>
-                            <p class="text-xs text-gray-500 mt-1">Controls response verbosity level (low, medium, or high).</p>
-                        </div>
-                        
-                        <div>
-                            <label for="createTopP" class="block text-sm font-medium text-gray-700 mb-2">Top P (Nucleus Sampling) - Optional</label>
-                            <input type="number" id="createTopP" name="top_p" min="0" max="1" step="0.05" placeholder="Leave empty to use temperature" 
-                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            <p class="text-xs text-gray-500 mt-1">
-                                <strong>What it does:</strong> Controls randomness by limiting token choices to top probability mass<br>
-                                <strong>Higher (0.9-1.0):</strong> More diverse word choices<br>
-                                <strong>Lower (0.1-0.5):</strong> More focused, predictable word choices<br>
-                                <strong>Note:</strong> Don't use with temperature - pick one or the other (leave empty for temperature)
-                            </p>
                         </div>
                         
                         <div>
@@ -481,50 +455,92 @@
                                 <strong>Default:</strong> 1000 tokens (~650 words)
                             </p>
                         </div>
-                        
-                        <!-- CISSP Question Generation Section -->
-                        <div class="border-t pt-4">
-                            <h4 class="font-medium text-gray-900 mb-3">Exam Profile</h4>
-                            
-                            <div class="mb-3">
-                                <label for="createExamProfile" class="block text-sm font-medium text-gray-700 mb-2">
-                                    Select Exam Profile
+
+                        <details class="border border-gray-200 rounded-lg p-4">
+                            <summary class="cursor-pointer font-medium text-gray-900">Advanced Parameters</summary>
+                            <p class="text-xs text-gray-500 mt-2 mb-4">
+                                Use these only when you need fine-grained generation behavior overrides.
+                            </p>
+
+                            <div id="createFreqPenaltyDiv" data-models="gpt-4.1,gpt-4.1-mini,gpt-4o,gpt-4o-mini,gpt-3.5-turbo,gpt-5.1,gpt-5" class="mt-4">
+                                <label for="createFreqPenalty" class="block text-sm font-medium text-gray-700 mb-2">
+                                    Frequency Penalty (Reduce Repetition): <span id="createFreqValue" class="font-mono">0.7</span>
                                 </label>
-                                <select id="createExamProfile" name="exam_profile_id" 
-                                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                        onchange="toggleCreateProfileSettings()">
-                                    <option value="none">None (Standard Mode)</option>
-                                    {% for profile in exam_profiles %}
-                                    <option value="{{ profile.profile_id }}">{{ profile.name }} - {{ profile.description }}</option>
-                                    {% endfor %}
-                                </select>
+                                <input type="range" id="createFreqPenalty" name="frequency_penalty" min="0" max="2" step="0.1" value="0.7" 
+                                       class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                                       oninput="document.getElementById('createFreqValue').textContent = this.value">
                                 <p class="text-xs text-gray-500 mt-1">
-                                    Select an exam profile to enable two-stage retrieval and reasoning controller for specific certification exams.
+                                    <strong>Higher (0.5-2.0):</strong> Strongly discourages repeating the same words/phrases<br>
+                                    <strong>Lower (0.0-0.3):</strong> Allows more repetition in responses<br>
+                                    <strong>Recommended:</strong> 0.7 to prevent "What is X?", "What is Y?" patterns in questions
                                 </p>
                             </div>
-                            
-                            <div id="createProfileSettings" class="ml-6 hidden">
-                                <label for="createBlueprintDepth" class="block text-sm font-medium text-gray-700 mb-2">
-                                    Blueprint History Depth
+
+                            <div id="createPresPenaltyDiv" data-models="gpt-4.1,gpt-4.1-mini,gpt-4o,gpt-4o-mini,gpt-3.5-turbo,gpt-5.1,gpt-5" class="mt-4">
+                                <label for="createPresPenalty" class="block text-sm font-medium text-gray-700 mb-2">
+                                    Presence Penalty (Topic Diversity): <span id="createPresValue" class="font-mono">0.5</span>
                                 </label>
-                                <input type="number" id="createBlueprintDepth" 
-                                       name="blueprint_history_depth"
-                                       min="3" max="15" value="8"
+                                <input type="range" id="createPresPenalty" name="presence_penalty" min="0" max="2" step="0.1" value="0.5" 
+                                       class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                                       oninput="document.getElementById('createPresValue').textContent = this.value">
+                                <p class="text-xs text-gray-500 mt-1">
+                                    <strong>Higher (0.5-2.0):</strong> Encourages exploring new topics and concepts<br>
+                                    <strong>Lower (0.0-0.3):</strong> Allows staying focused on the same topics<br>
+                                    <strong>Recommended:</strong> 0.5 for diverse questions across different aspects
+                                </p>
+                            </div>
+
+                            <div id="createMaxOutputTokensDiv" data-models="gpt-5.2" style="display:none;" class="mt-4">
+                                <label for="createMaxOutputTokens" class="block text-sm font-medium text-gray-700 mb-2">Maximum Output Tokens (GPT-5.2 only)</label>
+                                <input type="number" id="createMaxOutputTokens" name="max_output_tokens" min="100" max="4000" placeholder="Optional" 
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <p class="text-xs text-gray-500 mt-1">GPT-5.2 specific parameter for output token limit.</p>
+                            </div>
+
+                            <div id="createReasoningEffortDiv" data-models="gpt-5.2,gpt-5.1,gpt-5" style="display:none;" class="mt-4">
+                                <label for="createReasoningEffort" class="block text-sm font-medium text-gray-700 mb-2">Reasoning Effort (Optional)</label>
+                                <select id="createReasoningEffort" name="reasoning_effort" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <option value="">None (default)</option>
+                                    <option value="low">Low</option>
+                                    <option value="medium">Medium</option>
+                                    <option value="high">High</option>
+                                    <option value="xhigh">Extra High</option>
+                                </select>
+                                <p class="text-xs text-gray-500 mt-1">For GPT-5.x models. Controls reasoning depth.</p>
+                            </div>
+
+                            <div id="createVerbosityDiv" data-models="gpt-5.2" style="display:none;" class="mt-4">
+                                <label for="createVerbosity" class="block text-sm font-medium text-gray-700 mb-2">Verbosity (GPT-5.2 only)</label>
+                                <select id="createVerbosity" name="verbosity" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <option value="">Default</option>
+                                    <option value="low">Low</option>
+                                    <option value="medium">Medium</option>
+                                    <option value="high">High</option>
+                                </select>
+                                <p class="text-xs text-gray-500 mt-1">Controls response verbosity level (low, medium, or high).</p>
+                            </div>
+
+                            <div class="mt-4">
+                                <label for="createTopP" class="block text-sm font-medium text-gray-700 mb-2">Top P (Nucleus Sampling) - Optional</label>
+                                <input type="number" id="createTopP" name="top_p" min="0" max="1" step="0.05" placeholder="Leave empty to use temperature" 
                                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
                                 <p class="text-xs text-gray-500 mt-1">
-                                    Track last N blueprints for rotation. Controls question type and domain diversity. (8 recommended)
+                                    <strong>What it does:</strong> Controls randomness by limiting token choices to top probability mass<br>
+                                    <strong>Higher (0.9-1.0):</strong> More diverse word choices<br>
+                                    <strong>Lower (0.1-0.5):</strong> More focused, predictable word choices<br>
+                                    <strong>Note:</strong> Don't use with temperature - pick one or the other (leave empty for temperature)
                                 </p>
                             </div>
-                            
-                            <script>
-                                // Show/hide profile settings based on dropdown
-                                function toggleCreateProfileSettings() {
-                                    const profileSelect = document.getElementById('createExamProfile');
-                                    const settings = document.getElementById('createProfileSettings');
-                                    settings.classList.toggle('hidden', profileSelect.value === 'none');
-                                }
-                            </script>
-                        </div>
+                        </details>
+
+                        <script>
+                            // Show/hide profile settings based on dropdown
+                            function toggleCreateProfileSettings() {
+                                const profileSelect = document.getElementById('createExamProfile');
+                                const settings = document.getElementById('createProfileSettings');
+                                settings.classList.toggle('hidden', profileSelect.value === 'none');
+                            }
+                        </script>
                     </div>
                 </div>
                 
@@ -744,6 +760,41 @@
                 
                 <!-- Knowledge Bases Tab Content -->
                 <div id="edit-tab-knowledge-content" class="tab-content hidden">
+                    <!-- Exam Profile Section -->
+                    <div class="mb-6 border border-gray-200 rounded-lg p-4 bg-gray-50">
+                        <h4 class="font-medium text-gray-900 mb-3">Exam Profile</h4>
+                        
+                        <div class="mb-3">
+                            <label for="editExamProfile" class="block text-sm font-medium text-gray-700 mb-2">
+                                Select Exam Profile
+                            </label>
+                            <select id="editExamProfile" name="exam_profile_id" 
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    onchange="toggleEditProfileSettings()">
+                                <option value="none">None (Standard Mode)</option>
+                                {% for profile in exam_profiles %}
+                                <option value="{{ profile.profile_id }}">{{ profile.name }} - {{ profile.description }}</option>
+                                {% endfor %}
+                            </select>
+                            <p class="text-xs text-gray-500 mt-1">
+                                Select an exam profile to enable two-stage retrieval and reasoning controller for specific certification exams.
+                            </p>
+                        </div>
+                        
+                        <div id="editProfileSettings" class="ml-6 hidden">
+                            <label for="editBlueprintDepth" class="block text-sm font-medium text-gray-700 mb-2">
+                                Blueprint History Depth
+                            </label>
+                            <input type="number" id="editBlueprintDepth" 
+                                   name="blueprint_history_depth"
+                                   min="3" max="15" value="8"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <p class="text-xs text-gray-500 mt-1">
+                                Track last N blueprints for rotation. Controls question type and domain diversity. (8 recommended)
+                            </p>
+                        </div>
+                    </div>
+
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-3">📚 Knowledge Base Access</label>
                         <div class="bg-gray-50 p-4 rounded-lg">
@@ -799,8 +850,9 @@
                         <div>
                             <label for="editProvider" class="block text-sm font-medium text-gray-700 mb-2">Generation Provider</label>
                             <select id="editProvider" name="provider" onchange="updateEditProviderModels()" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                <option value="openai">OpenAI</option>
-                                <option value="gemini">Google Gemini</option>
+                                {% for provider_id, provider_meta in provider_registry_enabled.items() %}
+                                <option value="{{ provider_id }}">{{ provider_meta.name }}</option>
+                                {% endfor %}
                             </select>
                             <p class="text-xs text-gray-500 mt-1">Choose which AI provider to use for text generation</p>
                         </div>
@@ -810,6 +862,14 @@
                             <select id="editProviderModel" name="provider_model" onchange="updateEditParameterVisibility()" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
                                 <!-- Populated by JavaScript -->
                             </select>
+                        </div>
+
+                        <div>
+                            <label for="editProviderKeyName" class="block text-sm font-medium text-gray-700 mb-2">Key Name</label>
+                            <select id="editProviderKeyName" name="provider_key_name" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <!-- Populated by JavaScript -->
+                            </select>
+                            <p class="text-xs text-gray-500 mt-1">Select which named key to use for this agent.</p>
                         </div>
                         
                         <!-- Keep old model field for backward compatibility (hidden) -->
@@ -829,34 +889,6 @@
                             </p>
                         </div>
                         
-                        <div id="editFreqPenaltyDiv" data-models="gpt-4.1,gpt-4.1-mini,gpt-4o,gpt-4o-mini,gpt-3.5-turbo,gpt-5.1,gpt-5">
-                            <label for="editFreqPenalty" class="block text-sm font-medium text-gray-700 mb-2">
-                                Frequency Penalty (Reduce Repetition): <span id="editFreqValue" class="font-mono">0.7</span>
-                            </label>
-                            <input type="range" id="editFreqPenalty" name="frequency_penalty" min="0" max="2" step="0.1" value="0.7" 
-                                   class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                                   oninput="document.getElementById('editFreqValue').textContent = this.value">
-                            <p class="text-xs text-gray-500 mt-1">
-                                <strong>Higher (0.5-2.0):</strong> Strongly discourages repeating the same words/phrases<br>
-                                <strong>Lower (0.0-0.3):</strong> Allows more repetition in responses<br>
-                                <strong>Recommended:</strong> 0.7 to prevent "What is X?", "What is Y?" patterns in questions
-                            </p>
-                        </div>
-                        
-                        <div id="editPresPenaltyDiv" data-models="gpt-4.1,gpt-4.1-mini,gpt-4o,gpt-4o-mini,gpt-3.5-turbo,gpt-5.1,gpt-5">
-                            <label for="editPresPenalty" class="block text-sm font-medium text-gray-700 mb-2">
-                                Presence Penalty (Topic Diversity): <span id="editPresValue" class="font-mono">0.5</span>
-                            </label>
-                            <input type="range" id="editPresPenalty" name="presence_penalty" min="0" max="2" step="0.1" value="0.5" 
-                                   class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                                   oninput="document.getElementById('editPresValue').textContent = this.value">
-                            <p class="text-xs text-gray-500 mt-1">
-                                <strong>Higher (0.5-2.0):</strong> Encourages exploring new topics and concepts<br>
-                                <strong>Lower (0.0-0.3):</strong> Allows staying focused on the same topics<br>
-                                <strong>Recommended:</strong> 0.5 for diverse questions across different aspects
-                            </p>
-                        </div>
-                        
                         <div id="editMaxTokensDiv" data-models="gpt-4.1,gpt-4.1-mini,gpt-4o,gpt-4o-mini,gpt-3.5-turbo">
                             <label for="editMaxTokens" class="block text-sm font-medium text-gray-700 mb-2">Maximum Response Length (max_tokens)</label>
                             <input type="number" id="editMaxTokens" name="max_tokens" min="100" max="4000" value="1000" 
@@ -869,48 +901,6 @@
                             <input type="number" id="editMaxCompletionTokens" name="max_completion_tokens" min="100" max="4000" placeholder="1000" 
                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
                             <p class="text-xs text-gray-500 mt-1">For GPT-5.x models. Maximum tokens in the completion.</p>
-                        </div>
-                        
-                        <div id="editMaxOutputTokensDiv" data-models="gpt-5.2" style="display:none;">
-                            <label for="editMaxOutputTokens" class="block text-sm font-medium text-gray-700 mb-2">Maximum Output Tokens (GPT-5.2 only)</label>
-                            <input type="number" id="editMaxOutputTokens" name="max_output_tokens" min="100" max="4000" placeholder="Optional" 
-                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            <p class="text-xs text-gray-500 mt-1">GPT-5.2 specific parameter for output token limit.</p>
-                        </div>
-                        
-                        <div id="editReasoningEffortDiv" data-models="gpt-5.2,gpt-5.1,gpt-5" style="display:none;">
-                            <label for="editReasoningEffort" class="block text-sm font-medium text-gray-700 mb-2">Reasoning Effort (Optional)</label>
-                            <select id="editReasoningEffort" name="reasoning_effort" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                <option value="">None (default)</option>
-                                <option value="low">Low</option>
-                                <option value="medium">Medium</option>
-                                <option value="high">High</option>
-                                <option value="xhigh">Extra High</option>
-                            </select>
-                            <p class="text-xs text-gray-500 mt-1">For GPT-5.x models. Controls reasoning depth.</p>
-                        </div>
-                        
-                        <div id="editVerbosityDiv" data-models="gpt-5.2" style="display:none;">
-                            <label for="editVerbosity" class="block text-sm font-medium text-gray-700 mb-2">Verbosity (GPT-5.2 only)</label>
-                            <select id="editVerbosity" name="verbosity" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                <option value="">Default</option>
-                                <option value="low">Low</option>
-                                <option value="medium">Medium</option>
-                                <option value="high">High</option>
-                            </select>
-                            <p class="text-xs text-gray-500 mt-1">Controls response verbosity level (low, medium, or high).</p>
-                        </div>
-                        
-                        <div>
-                            <label for="editTopP" class="block text-sm font-medium text-gray-700 mb-2">Top P (Nucleus Sampling) - Optional</label>
-                            <input type="number" id="editTopP" name="top_p" min="0" max="1" step="0.05" placeholder="Leave empty" 
-                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            <p class="text-xs text-gray-500 mt-1">
-                                <strong>What it does:</strong> Controls randomness by limiting token choices to top probability mass<br>
-                                <strong>Higher (0.9-1.0):</strong> More diverse word choices<br>
-                                <strong>Lower (0.1-0.5):</strong> More focused, predictable word choices<br>
-                                <strong>Note:</strong> Don't use with temperature - pick one or the other (leave empty for temperature)
-                            </p>
                         </div>
                         
                         <div>
@@ -950,50 +940,92 @@
                                 <strong>Default:</strong> 1000 tokens (~650 words)
                             </p>
                         </div>
-                        
-                        <!-- Exam Profile Section -->
-                        <div class="border-t pt-4">
-                            <h4 class="font-medium text-gray-900 mb-3">Exam Profile</h4>
-                            
-                            <div class="mb-3">
-                                <label for="editExamProfile" class="block text-sm font-medium text-gray-700 mb-2">
-                                    Select Exam Profile
+
+                        <details class="border border-gray-200 rounded-lg p-4">
+                            <summary class="cursor-pointer font-medium text-gray-900">Advanced Parameters</summary>
+                            <p class="text-xs text-gray-500 mt-2 mb-4">
+                                Use these only when you need fine-grained generation behavior overrides.
+                            </p>
+
+                            <div id="editFreqPenaltyDiv" data-models="gpt-4.1,gpt-4.1-mini,gpt-4o,gpt-4o-mini,gpt-3.5-turbo,gpt-5.1,gpt-5" class="mt-4">
+                                <label for="editFreqPenalty" class="block text-sm font-medium text-gray-700 mb-2">
+                                    Frequency Penalty (Reduce Repetition): <span id="editFreqValue" class="font-mono">0.7</span>
                                 </label>
-                                <select id="editExamProfile" name="exam_profile_id" 
-                                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                        onchange="toggleEditProfileSettings()">
-                                    <option value="none">None (Standard Mode)</option>
-                                    {% for profile in exam_profiles %}
-                                    <option value="{{ profile.profile_id }}">{{ profile.name }} - {{ profile.description }}</option>
-                                    {% endfor %}
-                                </select>
+                                <input type="range" id="editFreqPenalty" name="frequency_penalty" min="0" max="2" step="0.1" value="0.7" 
+                                       class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                                       oninput="document.getElementById('editFreqValue').textContent = this.value">
                                 <p class="text-xs text-gray-500 mt-1">
-                                    Select an exam profile to enable two-stage retrieval and reasoning controller for specific certification exams.
+                                    <strong>Higher (0.5-2.0):</strong> Strongly discourages repeating the same words/phrases<br>
+                                    <strong>Lower (0.0-0.3):</strong> Allows more repetition in responses<br>
+                                    <strong>Recommended:</strong> 0.7 to prevent "What is X?", "What is Y?" patterns in questions
                                 </p>
                             </div>
-                            
-                            <div id="editProfileSettings" class="ml-6 hidden">
-                                <label for="editBlueprintDepth" class="block text-sm font-medium text-gray-700 mb-2">
-                                    Blueprint History Depth
+
+                            <div id="editPresPenaltyDiv" data-models="gpt-4.1,gpt-4.1-mini,gpt-4o,gpt-4o-mini,gpt-3.5-turbo,gpt-5.1,gpt-5" class="mt-4">
+                                <label for="editPresPenalty" class="block text-sm font-medium text-gray-700 mb-2">
+                                    Presence Penalty (Topic Diversity): <span id="editPresValue" class="font-mono">0.5</span>
                                 </label>
-                                <input type="number" id="editBlueprintDepth" 
-                                       name="blueprint_history_depth"
-                                       min="3" max="15" value="8"
+                                <input type="range" id="editPresPenalty" name="presence_penalty" min="0" max="2" step="0.1" value="0.5" 
+                                       class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                                       oninput="document.getElementById('editPresValue').textContent = this.value">
+                                <p class="text-xs text-gray-500 mt-1">
+                                    <strong>Higher (0.5-2.0):</strong> Encourages exploring new topics and concepts<br>
+                                    <strong>Lower (0.0-0.3):</strong> Allows staying focused on the same topics<br>
+                                    <strong>Recommended:</strong> 0.5 for diverse questions across different aspects
+                                </p>
+                            </div>
+
+                            <div id="editMaxOutputTokensDiv" data-models="gpt-5.2" style="display:none;" class="mt-4">
+                                <label for="editMaxOutputTokens" class="block text-sm font-medium text-gray-700 mb-2">Maximum Output Tokens (GPT-5.2 only)</label>
+                                <input type="number" id="editMaxOutputTokens" name="max_output_tokens" min="100" max="4000" placeholder="Optional" 
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <p class="text-xs text-gray-500 mt-1">GPT-5.2 specific parameter for output token limit.</p>
+                            </div>
+
+                            <div id="editReasoningEffortDiv" data-models="gpt-5.2,gpt-5.1,gpt-5" style="display:none;" class="mt-4">
+                                <label for="editReasoningEffort" class="block text-sm font-medium text-gray-700 mb-2">Reasoning Effort (Optional)</label>
+                                <select id="editReasoningEffort" name="reasoning_effort" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <option value="">None (default)</option>
+                                    <option value="low">Low</option>
+                                    <option value="medium">Medium</option>
+                                    <option value="high">High</option>
+                                    <option value="xhigh">Extra High</option>
+                                </select>
+                                <p class="text-xs text-gray-500 mt-1">For GPT-5.x models. Controls reasoning depth.</p>
+                            </div>
+
+                            <div id="editVerbosityDiv" data-models="gpt-5.2" style="display:none;" class="mt-4">
+                                <label for="editVerbosity" class="block text-sm font-medium text-gray-700 mb-2">Verbosity (GPT-5.2 only)</label>
+                                <select id="editVerbosity" name="verbosity" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <option value="">Default</option>
+                                    <option value="low">Low</option>
+                                    <option value="medium">Medium</option>
+                                    <option value="high">High</option>
+                                </select>
+                                <p class="text-xs text-gray-500 mt-1">Controls response verbosity level (low, medium, or high).</p>
+                            </div>
+
+                            <div class="mt-4">
+                                <label for="editTopP" class="block text-sm font-medium text-gray-700 mb-2">Top P (Nucleus Sampling) - Optional</label>
+                                <input type="number" id="editTopP" name="top_p" min="0" max="1" step="0.05" placeholder="Leave empty" 
                                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
                                 <p class="text-xs text-gray-500 mt-1">
-                                    Track last N blueprints for rotation. Controls question type and domain diversity. (8 recommended)
+                                    <strong>What it does:</strong> Controls randomness by limiting token choices to top probability mass<br>
+                                    <strong>Higher (0.9-1.0):</strong> More diverse word choices<br>
+                                    <strong>Lower (0.1-0.5):</strong> More focused, predictable word choices<br>
+                                    <strong>Note:</strong> Don't use with temperature - pick one or the other (leave empty for temperature)
                                 </p>
                             </div>
-                            
-                            <script>
-                                // Show/hide profile settings based on dropdown
-                                function toggleEditProfileSettings() {
-                                    const profileSelect = document.getElementById('editExamProfile');
-                                    const settings = document.getElementById('editProfileSettings');
-                                    settings.classList.toggle('hidden', profileSelect.value === 'none');
-                                }
-                            </script>
-                        </div>
+                        </details>
+
+                        <script>
+                            // Show/hide profile settings based on dropdown
+                            function toggleEditProfileSettings() {
+                                const profileSelect = document.getElementById('editExamProfile');
+                                const settings = document.getElementById('editProfileSettings');
+                                settings.classList.toggle('hidden', profileSelect.value === 'none');
+                            }
+                        </script>
                     </div>
                 </div>
                 
@@ -1231,35 +1263,34 @@ document.addEventListener('DOMContentLoaded', function() {
     updateEditProviderModels();
 });
 
-// Provider model mappings
-const providerModels = {
-    'openai': [
-        {value: 'gpt-5.2', label: 'GPT-5.2 - Latest Generation'},
-        {value: 'gpt-5.1', label: 'GPT-5.1 - Advanced'},
-        {value: 'gpt-5', label: 'GPT-5 - Baseline'},
-        {value: 'gpt-4.1', label: 'GPT-4.1 - Large Context'},
-        {value: 'gpt-4.1-mini', label: 'GPT-4.1 Mini - Efficient'},
-        {value: 'gpt-4o', label: 'GPT-4o - Multimodal'},
-        {value: 'gpt-4o-mini', label: 'GPT-4o Mini - Budget'},
-        {value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo - Legacy'}
-    ],
-    'gemini': [
-        {value: 'gemini-3-pro-preview', label: 'Gemini 3 Pro Preview - Most Intelligent'},
-        {value: 'gemini-3-flash-preview', label: 'Gemini 3 Flash Preview - Frontier Performance'},
-        {value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro - Powerful Reasoning'},
-        {value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash - Balanced (1M Context)'},
-        {value: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash Lite - Fastest'}
-    ]
-};
+const providerRegistry = {{ provider_registry|tojson }};
+const providerKeyNamesByProvider = {{ provider_key_names|tojson }};
+
+function buildModelOptions(provider) {
+    const providerMeta = providerRegistry[provider] || {};
+    const models = providerMeta.generation_models || [];
+    return models.map(modelName => ({ value: modelName, label: modelName }));
+}
+
+function updateProviderKeyOptions(selectId, provider, selectedKey = 'default') {
+    const keySelect = document.getElementById(selectId);
+    const keyNames = providerKeyNamesByProvider[provider] || [];
+    const normalized = keyNames.length ? keyNames : ['default'];
+    keySelect.innerHTML = normalized
+        .map(keyName => `<option value="${keyName}">${keyName}</option>`)
+        .join('');
+    keySelect.value = normalized.includes(selectedKey) ? selectedKey : normalized[0];
+}
 
 function updateCreateProviderModels() {
     const provider = document.getElementById('createProvider').value;
     const modelSelect = document.getElementById('createProviderModel');
-    const models = providerModels[provider] || [];
+    const models = buildModelOptions(provider);
     
     modelSelect.innerHTML = models.map(m => 
         `<option value="${m.value}">${m.label}</option>`
     ).join('');
+    updateProviderKeyOptions('createProviderKeyName', provider, 'default');
     
     // Update hidden model field for backward compatibility
     if (modelSelect.value) {
@@ -1273,11 +1304,12 @@ function updateCreateProviderModels() {
 function updateEditProviderModels() {
     const provider = document.getElementById('editProvider').value;
     const modelSelect = document.getElementById('editProviderModel');
-    const models = providerModels[provider] || [];
+    const models = buildModelOptions(provider);
     
     modelSelect.innerHTML = models.map(m => 
         `<option value="${m.value}">${m.label}</option>`
     ).join('');
+    updateProviderKeyOptions('editProviderKeyName', provider, 'default');
     
     // Update hidden model field for backward compatibility
     if (modelSelect.value) {
@@ -1354,6 +1386,7 @@ function editAgentSafe(agentId) {
     document.getElementById('editProvider').value = agentData.provider || 'openai';
     updateEditProviderModels(); // Populate model list for selected provider
     document.getElementById('editProviderModel').value = agentData.provider_model || agentData.model || 'gpt-5.2';
+    updateProviderKeyOptions('editProviderKeyName', agentData.provider || 'openai', agentData.provider_key_name || 'default');
     document.getElementById('editModel').value = agentData.provider_model || agentData.model || 'gpt-5.2'; // Hidden field for backward compatibility
     document.getElementById('editTemperature').value = agentData.temperature !== undefined ? agentData.temperature : 0.9;
     document.getElementById('editTempValue').textContent = agentData.temperature !== undefined ? agentData.temperature : 0.9;
