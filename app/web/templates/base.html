@@ -8,6 +8,7 @@
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <script>
         tailwind.config = {
+            darkMode: 'class',
             theme: {
                 extend: {
                     colors: {
@@ -28,6 +29,56 @@
             }
         }
     </script>
+    <script>
+        (function initializeTheme() {
+            const THEME_STORAGE_KEY = 'theme_preference';
+            const VALID_THEMES = ['light', 'dark', 'system'];
+
+            function getStoredThemePreference() {
+                try {
+                    const stored = localStorage.getItem(THEME_STORAGE_KEY);
+                    return VALID_THEMES.includes(stored) ? stored : 'system';
+                } catch (error) {
+                    return 'system';
+                }
+            }
+
+            function resolveEffectiveTheme(preference) {
+                const themePreference = VALID_THEMES.includes(preference) ? preference : 'system';
+                if (themePreference === 'system') {
+                    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+                }
+                return themePreference;
+            }
+
+            function applyTheme(preference) {
+                const themePreference = VALID_THEMES.includes(preference) ? preference : 'system';
+                const effectiveTheme = resolveEffectiveTheme(themePreference);
+                const isDark = effectiveTheme === 'dark';
+                document.documentElement.classList.toggle('dark', isDark);
+                document.documentElement.setAttribute('data-theme-preference', themePreference);
+                document.documentElement.setAttribute('data-theme-effective', effectiveTheme);
+                return { preference: themePreference, effective: effectiveTheme };
+            }
+
+            function setThemePreference(preference) {
+                const themePreference = VALID_THEMES.includes(preference) ? preference : 'system';
+                try {
+                    localStorage.setItem(THEME_STORAGE_KEY, themePreference);
+                } catch (error) {
+                    // Ignore storage write errors and still apply in-memory.
+                }
+                return applyTheme(themePreference);
+            }
+
+            window.getStoredThemePreference = getStoredThemePreference;
+            window.resolveEffectiveTheme = resolveEffectiveTheme;
+            window.applyTheme = applyTheme;
+            window.setThemePreference = setThemePreference;
+
+            applyTheme(getStoredThemePreference());
+        })();
+    </script>
     <style>
         .gradient-bg {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -42,9 +93,9 @@
     </style>
     {% block extra_head %}{% endblock %}
 </head>
-<body class="bg-gray-50 min-h-screen">
+<body class="bg-gray-50 text-gray-900 min-h-screen dark:bg-gray-900 dark:text-gray-100">
     <!-- Navigation -->
-    <nav class="bg-white shadow-lg border-b border-gray-200">
+    <nav class="bg-white shadow-lg border-b border-gray-200 dark:bg-gray-800 dark:border-gray-700">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between h-16">
                 <div class="flex items-center">
@@ -53,28 +104,37 @@
                             <div class="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
                                 <span class="text-white font-bold text-sm">EB</span>
                             </div>
-                            <span class="text-xl font-bold text-gray-900">Exam Blueprint</span>
+                            <span class="text-xl font-bold text-gray-900 dark:text-white">Exam Blueprint</span>
                         </a>
                     </div>
                 </div>
                 <div class="flex items-center space-x-4">
-                    <a href="/" class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium transition-colors">
+                    <div class="flex items-center space-x-2">
+                        <label for="themePreference" class="text-sm text-gray-600 dark:text-gray-300">Theme</label>
+                        <select id="themePreference" onchange="onThemePreferenceChange(this.value)"
+                                class="px-2 py-1 text-sm border border-gray-300 rounded-md bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100">
+                            <option value="system">System</option>
+                            <option value="light">Light</option>
+                            <option value="dark">Dark</option>
+                        </select>
+                    </div>
+                    <a href="/" class="text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors">
                         🏠 Home
                     </a>
-                    <a href="/agents" class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium transition-colors">
+                    <a href="/agents" class="text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors">
                         🤖 Agents
                     </a>
-                    <a href="/knowledge_bases" class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium transition-colors">
+                    <a href="/knowledge_bases" class="text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors">
                         📚 Knowledge Bases
                     </a>
                     {% if current_user.is_authenticated and current_user.has_role('admin') %}
-                    <a href="/exam_profiles" class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium transition-colors">
+                    <a href="/exam_profiles" class="text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors">
                         📋 Exam Profiles
                     </a>
-                    <a href="/users" class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium transition-colors">
+                    <a href="/users" class="text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors">
                         👥 Users
                     </a>
-                    <a href="/settings" class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium transition-colors">
+                    <a href="/settings" class="text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors">
                         ⚙️ Settings
                     </a>
                     {% endif %}
@@ -82,15 +142,15 @@
                     <!-- User Dropdown -->
                     {% if current_user.is_authenticated %}
                     <div class="relative" x-data="{ open: false }">
-                        <button @click="open = !open" class="flex items-center space-x-2 text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium transition-colors">
+                        <button @click="open = !open" class="flex items-center space-x-2 text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors">
                             <span>{{ current_user.email }}</span>
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                             </svg>
                         </button>
-                        <div x-show="open" @click.away="open = false" class="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5">
+                        <div x-show="open" @click.away="open = false" class="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 dark:bg-gray-800 dark:ring-gray-700">
                             <div class="py-1">
-                                <a href="{{ url_for_security('logout') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                <a href="{{ url_for_security('logout') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-100 dark:hover:bg-gray-700">
                                     Logout
                                 </a>
                             </div>
@@ -105,10 +165,10 @@
     <!-- API Key Warning -->
     {% if not api_key_has_key %}
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
-            <div class="mb-4 p-4 rounded-lg bg-yellow-50 border border-yellow-200 text-yellow-800">
+            <div class="mb-4 p-4 rounded-lg bg-yellow-50 border border-yellow-200 text-yellow-800 dark:bg-yellow-900/30 dark:border-yellow-700 dark:text-yellow-200">
                 <div class="flex">
                     <div class="flex-shrink-0">
-                        <svg class="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                        <svg class="h-5 w-5 text-yellow-400 dark:text-yellow-300" viewBox="0 0 20 20" fill="currentColor">
                             <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
                         </svg>
                     </div>
@@ -118,7 +178,7 @@
                         </p>
                         <p class="text-sm mt-1">
                             The application cannot generate AI responses without at least one provider API key.
-                            <a href="/settings" class="font-medium underline hover:text-yellow-900">Configure your provider keys in Settings</a> to enable AI functionality.
+                            <a href="/settings" class="font-medium underline hover:text-yellow-900 dark:hover:text-yellow-100">Configure your provider keys in Settings</a> to enable AI functionality.
                         </p>
                     </div>
                 </div>
@@ -131,7 +191,7 @@
         {% if messages %}
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
                 {% for category, message in messages %}
-                    <div class="mb-4 p-4 rounded-lg {% if category == 'success' %}bg-green-50 border border-green-200 text-green-800{% elif category == 'error' %}bg-red-50 border border-red-200 text-red-800{% else %}bg-blue-50 border border-blue-200 text-blue-800{% endif %}">
+                    <div class="mb-4 p-4 rounded-lg {% if category == 'success' %}bg-green-50 border border-green-200 text-green-800 dark:bg-green-900/30 dark:border-green-700 dark:text-green-200{% elif category == 'error' %}bg-red-50 border border-red-200 text-red-800 dark:bg-red-900/30 dark:border-red-700 dark:text-red-200{% else %}bg-blue-50 border border-blue-200 text-blue-800 dark:bg-blue-900/30 dark:border-blue-700 dark:text-blue-200{% endif %}">
                         <div class="flex">
                             <div class="flex-shrink-0">
                                 {% if category == 'success' %}
@@ -164,12 +224,45 @@
     </main>
 
     <!-- Footer -->
-    <footer class="bg-white border-t border-gray-200 mt-12">
+    <footer class="bg-white border-t border-gray-200 mt-12 dark:bg-gray-800 dark:border-gray-700">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-            <div class="text-center text-gray-500 text-sm">
+            <div class="text-center text-gray-500 text-sm dark:text-gray-300">
                 <p>Exam Blueprint • AI-Powered Certification Question Generation</p>
             </div>
         </div>
     </footer>
+    <script>
+        function syncThemePreferenceControl() {
+            const select = document.getElementById('themePreference');
+            if (!select || typeof window.getStoredThemePreference !== 'function') {
+                return;
+            }
+            select.value = window.getStoredThemePreference();
+        }
+
+        function onThemePreferenceChange(preference) {
+            if (typeof window.setThemePreference !== 'function') {
+                return;
+            }
+            window.setThemePreference(preference);
+            syncThemePreferenceControl();
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            syncThemePreferenceControl();
+            const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+            const handler = function () {
+                if (typeof window.getStoredThemePreference === 'function' && window.getStoredThemePreference() === 'system') {
+                    window.applyTheme('system');
+                    syncThemePreferenceControl();
+                }
+            };
+            if (typeof mediaQuery.addEventListener === 'function') {
+                mediaQuery.addEventListener('change', handler);
+            } else if (typeof mediaQuery.addListener === 'function') {
+                mediaQuery.addListener(handler);
+            }
+        });
+    </script>
 </body>
 </html> 

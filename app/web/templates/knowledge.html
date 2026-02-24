@@ -2,8 +2,34 @@
 
 {% block title %}Knowledge Management - Exam Blueprint{% endblock %}
 
+{% block extra_head %}
+<style>
+    .dark .knowledge-legacy-page .bg-white { background-color: rgb(31 41 55); }
+    .dark .knowledge-legacy-page .bg-gray-50 { background-color: rgb(55 65 81); }
+    .dark .knowledge-legacy-page .bg-blue-100 { background-color: rgb(30 58 138 / 0.35); }
+    .dark .knowledge-legacy-page .bg-green-100 { background-color: rgb(20 83 45 / 0.35); }
+    .dark .knowledge-legacy-page .text-gray-900 { color: rgb(243 244 246); }
+    .dark .knowledge-legacy-page .text-gray-700 { color: rgb(209 213 219); }
+    .dark .knowledge-legacy-page .text-gray-600 { color: rgb(156 163 175); }
+    .dark .knowledge-legacy-page .text-gray-500 { color: rgb(156 163 175); }
+    .dark .knowledge-legacy-page .text-blue-600 { color: rgb(147 197 253); }
+    .dark .knowledge-legacy-page .text-green-600 { color: rgb(134 239 172); }
+    .dark .knowledge-legacy-page .border-gray-200 { border-color: rgb(75 85 99); }
+    .dark .knowledge-legacy-page .border-gray-300 { border-color: rgb(107 114 128); }
+    .dark .knowledge-legacy-page input,
+    .dark .knowledge-legacy-page select,
+    .dark .knowledge-legacy-page textarea {
+        background-color: rgb(31 41 55);
+        color: rgb(243 244 246);
+        border-color: rgb(107 114 128);
+    }
+    .dark .knowledge-legacy-page input::placeholder,
+    .dark .knowledge-legacy-page textarea::placeholder { color: rgb(156 163 175); }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="space-y-8">
+<div class="knowledge-legacy-page space-y-8">
     <!-- Header -->
     <div class="text-center">
         <h1 class="text-3xl font-bold text-gray-900 mb-2">📚 Knowledge Management</h1>

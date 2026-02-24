@@ -2,8 +2,43 @@
 
 {% block title %}Generate Questions - Exam Blueprint{% endblock %}
 
+{% block extra_head %}
+<style>
+    .dark .questions-page .bg-white { background-color: rgb(31 41 55); }
+    .dark .questions-page .bg-gray-50 { background-color: rgb(55 65 81); }
+    .dark .questions-page .text-gray-900 { color: rgb(243 244 246); }
+    .dark .questions-page .text-gray-700 { color: rgb(209 213 219); }
+    .dark .questions-page .text-gray-600 { color: rgb(156 163 175); }
+    .dark .questions-page .text-gray-500 { color: rgb(156 163 175); }
+    .dark .questions-page .border-gray-200 { border-color: rgb(75 85 99); }
+    .dark .questions-page .border-gray-300 { border-color: rgb(107 114 128); }
+    .dark .questions-page .bg-blue-50 { background-color: rgb(30 58 138 / 0.25); }
+    .dark .questions-page .bg-green-50 { background-color: rgb(20 83 45 / 0.25); }
+    .dark .questions-page .bg-red-50 { background-color: rgb(127 29 29 / 0.25); }
+    .dark .questions-page .bg-gray-100 { background-color: rgb(75 85 99); }
+    .dark .questions-page .text-blue-900 { color: rgb(191 219 254); }
+    .dark .questions-page .text-blue-800,
+    .dark .questions-page .text-blue-700 { color: rgb(147 197 253); }
+    .dark .questions-page .text-red-800 { color: rgb(252 165 165); }
+    .dark .questions-page .text-gray-800 { color: rgb(229 231 235); }
+    .dark .questions-page .hover\:bg-blue-700:hover { background-color: rgb(37 99 235); }
+    .dark .questions-page input,
+    .dark .questions-page select,
+    .dark .questions-page textarea {
+        background-color: rgb(31 41 55);
+        color: rgb(243 244 246);
+        border-color: rgb(107 114 128);
+    }
+    .dark .questions-page input::placeholder,
+    .dark .questions-page textarea::placeholder { color: rgb(156 163 175); }
+    .dark .questions-page #chat-messages .bg-white {
+        background-color: rgb(17 24 39);
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="max-w-6xl mx-auto space-y-8">
+<div class="questions-page max-w-6xl mx-auto space-y-8">
     <!-- Header -->
     <div class="text-center">
         <h1 class="text-3xl font-bold text-gray-900 mb-2">❓ Generate Questions</h1>

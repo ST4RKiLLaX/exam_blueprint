@@ -2,8 +2,115 @@
 
 {% block title %}Knowledge Base Management - Exam Blueprint{% endblock %}
 
+{% block extra_head %}
+<style>
+    .dark .knowledge-page .bg-white { background-color: rgb(31 41 55); }
+    .dark .knowledge-page .bg-gray-50 { background-color: rgb(55 65 81); }
+    .dark .knowledge-page .text-gray-900 { color: rgb(243 244 246); }
+    .dark .knowledge-page .text-gray-700 { color: rgb(209 213 219); }
+    .dark .knowledge-page .text-gray-600 { color: rgb(156 163 175); }
+    .dark .knowledge-page .text-gray-500 { color: rgb(156 163 175); }
+    .dark .knowledge-page .border-gray-200 { border-color: rgb(75 85 99); }
+    .dark .knowledge-page .border-gray-300 { border-color: rgb(107 114 128); }
+    .dark .knowledge-page .bg-blue-50 { background-color: rgb(30 58 138 / 0.25); }
+    .dark .knowledge-page .bg-green-50 { background-color: rgb(20 83 45 / 0.25); }
+    .dark .knowledge-page .bg-red-50 { background-color: rgb(127 29 29 / 0.25); }
+    .dark .knowledge-page .bg-yellow-50 { background-color: rgb(113 63 18 / 0.25); }
+    .dark .knowledge-page .bg-purple-50 { background-color: rgb(88 28 135 / 0.25); }
+    .dark .knowledge-page .bg-gray-100 { background-color: rgb(75 85 99); }
+    .dark .knowledge-page .bg-blue-100 { background-color: rgb(30 64 175 / 0.55); }
+    .dark .knowledge-page .bg-green-100 { background-color: rgb(21 128 61 / 0.55); }
+    .dark .knowledge-page .bg-red-100 { background-color: rgb(185 28 28 / 0.55); }
+    .dark .knowledge-page .bg-yellow-100 { background-color: rgb(161 98 7 / 0.6); }
+    .dark .knowledge-page .bg-purple-100 { background-color: rgb(107 33 168 / 0.6); }
+    .dark .knowledge-page .text-blue-800,
+    .dark .knowledge-page .text-blue-700 { color: rgb(219 234 254); }
+    .dark .knowledge-page .text-green-800,
+    .dark .knowledge-page .text-green-700 { color: rgb(220 252 231); }
+    .dark .knowledge-page .text-red-800,
+    .dark .knowledge-page .text-red-700 { color: rgb(254 226 226); }
+    .dark .knowledge-page .text-yellow-800,
+    .dark .knowledge-page .text-yellow-700 { color: rgb(254 243 199); }
+    .dark .knowledge-page .text-purple-800,
+    .dark .knowledge-page .text-purple-700 { color: rgb(243 232 255); }
+    .dark .knowledge-page .text-gray-800 { color: rgb(229 231 235); }
+    .dark .knowledge-page .hover\:bg-gray-100:hover { background-color: rgb(107 114 128); }
+    .dark .knowledge-page input,
+    .dark .knowledge-page select,
+    .dark .knowledge-page textarea {
+        background-color: rgb(31 41 55);
+        color: rgb(243 244 246);
+        border-color: rgb(107 114 128);
+    }
+    .dark .knowledge-page input::placeholder,
+    .dark .knowledge-page textarea::placeholder { color: rgb(156 163 175); }
+    .dark #uploadModal .bg-white,
+    .dark #editModal .bg-white,
+    .dark #exportKBModal .bg-white,
+    .dark #importKBModal .bg-white { background-color: rgb(31 41 55); }
+    .dark #uploadModal .bg-gray-50,
+    .dark #editModal .bg-gray-50,
+    .dark #exportKBModal .bg-gray-50,
+    .dark #importKBModal .bg-gray-50 { background-color: rgb(55 65 81); }
+    .dark #editModal .bg-blue-50 { background-color: rgb(30 58 138 / 0.45); }
+    .dark #editModal .border-blue-200 { border-color: rgb(59 130 246 / 0.55); }
+    .dark #uploadModal .text-gray-900,
+    .dark #editModal .text-gray-900,
+    .dark #exportKBModal .text-gray-900,
+    .dark #importKBModal .text-gray-900 { color: rgb(243 244 246); }
+    .dark #uploadModal .text-gray-700,
+    .dark #editModal .text-gray-700,
+    .dark #exportKBModal .text-gray-700,
+    .dark #importKBModal .text-gray-700 { color: rgb(209 213 219); }
+    .dark #uploadModal .text-gray-600,
+    .dark #editModal .text-gray-600,
+    .dark #exportKBModal .text-gray-600,
+    .dark #importKBModal .text-gray-600 { color: rgb(156 163 175); }
+    .dark #uploadModal .text-gray-500,
+    .dark #editModal .text-gray-500,
+    .dark #exportKBModal .text-gray-500,
+    .dark #importKBModal .text-gray-500 { color: rgb(156 163 175); }
+    .dark #edit_profile_metadata .text-gray-700 { color: rgb(219 234 254); }
+    .dark #edit_profile_metadata .text-gray-600 { color: rgb(191 219 254); }
+    .dark #edit_profile_metadata .text-gray-500 { color: rgb(147 197 253); }
+    .dark #edit_profile_metadata .font-medium { color: rgb(239 246 255); }
+    .dark #uploadModal .border-gray-200,
+    .dark #editModal .border-gray-200,
+    .dark #exportKBModal .border-gray-200,
+    .dark #importKBModal .border-gray-200 { border-color: rgb(75 85 99); }
+    .dark #uploadModal .border-gray-300,
+    .dark #editModal .border-gray-300,
+    .dark #exportKBModal .border-gray-300,
+    .dark #importKBModal .border-gray-300 { border-color: rgb(107 114 128); }
+    .dark #uploadModal input,
+    .dark #uploadModal select,
+    .dark #uploadModal textarea,
+    .dark #editModal input,
+    .dark #editModal select,
+    .dark #editModal textarea,
+    .dark #exportKBModal input,
+    .dark #exportKBModal select,
+    .dark #exportKBModal textarea,
+    .dark #importKBModal input,
+    .dark #importKBModal select,
+    .dark #importKBModal textarea {
+        background-color: rgb(31 41 55);
+        color: rgb(243 244 246);
+        border-color: rgb(107 114 128);
+    }
+    .dark #uploadModal input::placeholder,
+    .dark #uploadModal textarea::placeholder,
+    .dark #editModal input::placeholder,
+    .dark #editModal textarea::placeholder,
+    .dark #exportKBModal input::placeholder,
+    .dark #exportKBModal textarea::placeholder,
+    .dark #importKBModal input::placeholder,
+    .dark #importKBModal textarea::placeholder { color: rgb(156 163 175); }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="max-w-7xl mx-auto space-y-6">
+<div class="knowledge-page max-w-7xl mx-auto space-y-6">
     <!-- Header -->
     <div class="flex items-center justify-between">
         <div>

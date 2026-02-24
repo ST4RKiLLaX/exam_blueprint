@@ -2,8 +2,73 @@
 
 {% block title %}User Management - Exam Blueprint{% endblock %}
 
+{% block extra_head %}
+<style>
+    .dark .users-page .bg-white { background-color: rgb(31 41 55); }
+    .dark .users-page .bg-gray-50 { background-color: rgb(55 65 81); }
+    .dark .users-page .bg-green-50 { background-color: rgb(20 83 45 / 0.25); }
+    .dark .users-page .bg-red-50 { background-color: rgb(127 29 29 / 0.25); }
+    .dark .users-page .bg-blue-100 { background-color: rgb(30 58 138 / 0.35); }
+    .dark .users-page .bg-purple-100 { background-color: rgb(88 28 135 / 0.35); }
+    .dark .users-page .bg-green-100 { background-color: rgb(21 128 61 / 0.6); }
+    .dark .users-page .bg-red-100 { background-color: rgb(185 28 28 / 0.6); }
+    .dark .users-page .bg-gray-100 { background-color: rgb(75 85 99 / 0.9); }
+    .dark .users-page .text-gray-900 { color: rgb(243 244 246); }
+    .dark .users-page .text-gray-600 { color: rgb(156 163 175); }
+    .dark .users-page .text-gray-500 { color: rgb(156 163 175); }
+    .dark .users-page .text-green-800 { color: rgb(187 247 208); }
+    .dark .users-page .text-red-800 { color: rgb(252 165 165); }
+    .dark .users-page .text-gray-800 { color: rgb(229 231 235); }
+    .dark .users-page .text-blue-800 { color: rgb(191 219 254); }
+    .dark .users-page .text-purple-800 { color: rgb(221 214 254); }
+    .dark .users-page .border-green-200 { border-color: rgb(22 101 52 / 0.55); }
+    .dark .users-page .border-red-200 { border-color: rgb(153 27 27 / 0.55); }
+    .dark .users-page .divide-gray-200 > :not([hidden]) ~ :not([hidden]) { border-color: rgb(75 85 99); }
+    .dark .users-page .hover\:text-indigo-900:hover,
+    .dark .users-page .hover\:text-blue-900:hover,
+    .dark .users-page .hover\:text-orange-900:hover,
+    .dark .users-page .hover\:text-green-900:hover,
+    .dark .users-page .hover\:text-red-900:hover { color: rgb(243 244 246); }
+    .dark .users-page input,
+    .dark .users-page select,
+    .dark .users-page textarea {
+        background-color: rgb(31 41 55);
+        color: rgb(243 244 246);
+        border-color: rgb(107 114 128);
+    }
+    .dark #addUserModal .bg-white,
+    .dark #editEmailModal .bg-white { background-color: rgb(31 41 55); }
+    .dark #addUserModal .bg-gray-100,
+    .dark #editEmailModal .bg-gray-100 { background-color: rgb(75 85 99); }
+    .dark #addUserModal .text-gray-900,
+    .dark #editEmailModal .text-gray-900 { color: rgb(243 244 246); }
+    .dark #addUserModal .text-gray-700,
+    .dark #editEmailModal .text-gray-700 { color: rgb(209 213 219); }
+    .dark #addUserModal .text-gray-600,
+    .dark #editEmailModal .text-gray-600 { color: rgb(156 163 175); }
+    .dark #addUserModal .border-gray-300,
+    .dark #editEmailModal .border-gray-300 { border-color: rgb(107 114 128); }
+    .dark #addUserModal .hover\:bg-gray-50:hover,
+    .dark #editEmailModal .hover\:bg-gray-50:hover { background-color: rgb(107 114 128); }
+    .dark #addUserModal input,
+    .dark #addUserModal select,
+    .dark #addUserModal textarea,
+    .dark #editEmailModal input,
+    .dark #editEmailModal select,
+    .dark #editEmailModal textarea {
+        background-color: rgb(31 41 55);
+        color: rgb(243 244 246);
+        border-color: rgb(107 114 128);
+    }
+    .dark #addUserModal input::placeholder,
+    .dark #addUserModal textarea::placeholder,
+    .dark #editEmailModal input::placeholder,
+    .dark #editEmailModal textarea::placeholder { color: rgb(156 163 175); }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+<div class="users-page max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
     <div class="mb-8">
         <h1 class="text-3xl font-bold text-gray-900">User Management</h1>
         <p class="text-gray-600 mt-2">Manage user accounts and permissions</p>

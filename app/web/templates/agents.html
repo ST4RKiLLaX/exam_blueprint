@@ -2,8 +2,91 @@
 
 {% block title %}Agent Management - Exam Blueprint{% endblock %}
 
+{% block extra_head %}
+<style>
+    .dark .agents-page .bg-white { background-color: rgb(31 41 55); }
+    .dark .agents-page .bg-gray-50 { background-color: rgb(55 65 81); }
+    .dark .agents-page .text-gray-900 { color: rgb(243 244 246); }
+    .dark .agents-page .text-gray-700 { color: rgb(209 213 219); }
+    .dark .agents-page .text-gray-600 { color: rgb(156 163 175); }
+    .dark .agents-page .text-gray-500 { color: rgb(156 163 175); }
+    .dark .agents-page .border-gray-200 { border-color: rgb(75 85 99); }
+    .dark .agents-page .border-gray-300 { border-color: rgb(107 114 128); }
+    .dark .agents-page .bg-blue-50 { background-color: rgb(30 58 138 / 0.25); }
+    .dark .agents-page .bg-green-50 { background-color: rgb(20 83 45 / 0.25); }
+    .dark .agents-page .bg-red-50 { background-color: rgb(127 29 29 / 0.25); }
+    .dark .agents-page .bg-yellow-50 { background-color: rgb(113 63 18 / 0.25); }
+    .dark .agents-page .bg-gray-100 { background-color: rgb(75 85 99); }
+    .dark .agents-page .text-blue-800,
+    .dark .agents-page .text-blue-700 { color: rgb(191 219 254); }
+    .dark .agents-page .text-green-800,
+    .dark .agents-page .text-green-700 { color: rgb(187 247 208); }
+    .dark .agents-page .text-red-800,
+    .dark .agents-page .text-red-700 { color: rgb(252 165 165); }
+    .dark .agents-page .text-yellow-800,
+    .dark .agents-page .text-yellow-700 { color: rgb(253 230 138); }
+    .dark .agents-page .text-gray-800 { color: rgb(229 231 235); }
+    .dark .agents-page .hover\:bg-blue-100:hover { background-color: rgb(30 64 175 / 0.35); }
+    .dark .agents-page .hover\:bg-green-100:hover { background-color: rgb(22 101 52 / 0.35); }
+    .dark .agents-page .hover\:bg-red-100:hover { background-color: rgb(153 27 27 / 0.35); }
+    .dark .agents-page .hover\:bg-gray-100:hover { background-color: rgb(107 114 128); }
+    .dark .agents-page input,
+    .dark .agents-page select,
+    .dark .agents-page textarea {
+        background-color: rgb(31 41 55);
+        color: rgb(243 244 246);
+        border-color: rgb(107 114 128);
+    }
+    .dark .agents-page input::placeholder,
+    .dark .agents-page textarea::placeholder { color: rgb(156 163 175); }
+    .dark #createAgentModal .bg-white,
+    .dark #editAgentModal .bg-white,
+    .dark #importAgentModal .bg-white { background-color: rgb(31 41 55); }
+    .dark #createAgentModal .bg-gray-50,
+    .dark #editAgentModal .bg-gray-50,
+    .dark #importAgentModal .bg-gray-50 { background-color: rgb(55 65 81); }
+    .dark #createAgentModal .text-gray-900,
+    .dark #editAgentModal .text-gray-900,
+    .dark #importAgentModal .text-gray-900 { color: rgb(243 244 246); }
+    .dark #createAgentModal .text-gray-700,
+    .dark #editAgentModal .text-gray-700,
+    .dark #importAgentModal .text-gray-700 { color: rgb(209 213 219); }
+    .dark #createAgentModal .text-gray-600,
+    .dark #editAgentModal .text-gray-600,
+    .dark #importAgentModal .text-gray-600 { color: rgb(156 163 175); }
+    .dark #createAgentModal .text-gray-500,
+    .dark #editAgentModal .text-gray-500,
+    .dark #importAgentModal .text-gray-500 { color: rgb(156 163 175); }
+    .dark #createAgentModal .border-gray-200,
+    .dark #editAgentModal .border-gray-200,
+    .dark #importAgentModal .border-gray-200 { border-color: rgb(75 85 99); }
+    .dark #createAgentModal .border-gray-300,
+    .dark #editAgentModal .border-gray-300,
+    .dark #importAgentModal .border-gray-300 { border-color: rgb(107 114 128); }
+    .dark #createAgentModal input,
+    .dark #createAgentModal select,
+    .dark #createAgentModal textarea,
+    .dark #editAgentModal input,
+    .dark #editAgentModal select,
+    .dark #editAgentModal textarea,
+    .dark #importAgentModal input,
+    .dark #importAgentModal select,
+    .dark #importAgentModal textarea {
+        background-color: rgb(31 41 55);
+        color: rgb(243 244 246);
+        border-color: rgb(107 114 128);
+    }
+    .dark #createAgentModal input::placeholder,
+    .dark #createAgentModal textarea::placeholder,
+    .dark #editAgentModal input::placeholder,
+    .dark #editAgentModal textarea::placeholder,
+    .dark #importAgentModal input::placeholder,
+    .dark #importAgentModal textarea::placeholder { color: rgb(156 163 175); }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="max-w-7xl mx-auto">
+<div class="agents-page max-w-7xl mx-auto">
     <div class="flex justify-between items-center mb-8">
         <h1 class="text-3xl font-bold text-gray-900">🤖 Agent Management</h1>
         <div class="flex space-x-3">

@@ -2,8 +2,24 @@
 
 {% block title %}Embed - {{ agent.name }} - Exam Blueprint{% endblock %}
 
+{% block extra_head %}
+<style>
+    .dark .embed-page .bg-white { background-color: rgb(31 41 55); }
+    .dark .embed-page .bg-gray-50 { background-color: rgb(55 65 81); }
+    .dark .embed-page .text-gray-900 { color: rgb(243 244 246); }
+    .dark .embed-page .text-gray-800 { color: rgb(229 231 235); }
+    .dark .embed-page .text-gray-700 { color: rgb(209 213 219); }
+    .dark .embed-page .text-gray-600 { color: rgb(156 163 175); }
+    .dark .embed-page .text-gray-500 { color: rgb(156 163 175); }
+    .dark .embed-page .border-gray-200 { border-color: rgb(75 85 99); }
+    .dark .embed-page .bg-green-100 { background-color: rgb(20 83 45 / 0.35); }
+    .dark .embed-page .text-green-800 { color: rgb(187 247 208); }
+    .dark .embed-page code { color: rgb(229 231 235); }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="max-w-4xl mx-auto space-y-8">
+<div class="embed-page max-w-4xl mx-auto space-y-8">
     <!-- Header -->
     <div class="text-center">
         <h1 class="text-3xl font-bold text-gray-900 mb-2">🔗 Embed Code Generator</h1>

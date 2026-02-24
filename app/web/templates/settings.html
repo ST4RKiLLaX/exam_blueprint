@@ -2,8 +2,47 @@
 
 {% block title %}Settings - Exam Blueprint{% endblock %}
 
+{% block extra_head %}
+<style>
+    .dark .settings-page .bg-white { background-color: rgb(31 41 55); }
+    .dark .settings-page .bg-gray-50 { background-color: rgb(55 65 81); }
+    .dark .settings-page .bg-blue-50 { background-color: rgb(30 58 138 / 0.25); }
+    .dark .settings-page .bg-yellow-50 { background-color: rgb(113 63 18 / 0.25); }
+    .dark .settings-page .bg-gray-100 { background-color: rgb(75 85 99 / 0.95); }
+    .dark .settings-page .bg-blue-100 { background-color: rgb(30 64 175 / 0.55); }
+    .dark .settings-page .bg-red-100 { background-color: rgb(185 28 28 / 0.55); }
+    .dark .settings-page .text-gray-900 { color: rgb(243 244 246); }
+    .dark .settings-page .text-gray-700 { color: rgb(209 213 219); }
+    .dark .settings-page .text-gray-600 { color: rgb(156 163 175); }
+    .dark .settings-page .text-gray-500 { color: rgb(156 163 175); }
+    .dark .settings-page .text-blue-900,
+    .dark .settings-page .text-blue-800,
+    .dark .settings-page .text-blue-700 { color: rgb(191 219 254); }
+    .dark .settings-page .text-yellow-900,
+    .dark .settings-page .text-yellow-800 { color: rgb(253 230 138); }
+    .dark .settings-page .text-blue-800 { color: rgb(219 234 254); }
+    .dark .settings-page .text-red-800 { color: rgb(254 226 226); }
+    .dark .settings-page .border-gray-200 { border-color: rgb(75 85 99); }
+    .dark .settings-page .border-gray-300 { border-color: rgb(107 114 128); }
+    .dark .settings-page .border-blue-200 { border-color: rgb(30 64 175 / 0.5); }
+    .dark .settings-page .border-yellow-200 { border-color: rgb(161 98 7 / 0.5); }
+    .dark .settings-page .hover\:bg-gray-200:hover { background-color: rgb(107 114 128); }
+    .dark .settings-page .hover\:bg-blue-200:hover { background-color: rgb(30 64 175 / 0.75); }
+    .dark .settings-page .hover\:bg-red-200:hover { background-color: rgb(153 27 27 / 0.75); }
+    .dark .settings-page input,
+    .dark .settings-page select,
+    .dark .settings-page textarea {
+        background-color: rgb(31 41 55);
+        color: rgb(243 244 246);
+        border-color: rgb(107 114 128);
+    }
+    .dark .settings-page input::placeholder,
+    .dark .settings-page textarea::placeholder { color: rgb(156 163 175); }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="max-w-6xl mx-auto space-y-6">
+<div class="settings-page max-w-6xl mx-auto space-y-6">
     <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <h1 class="text-2xl font-bold text-gray-900">System Settings</h1>
         <p class="text-gray-600 mt-1">Manage provider keys, system health, and maintenance controls.</p>

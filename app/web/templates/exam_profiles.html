@@ -2,8 +2,89 @@
 
 {% block title %}Exam Profiles - Exam Blueprint{% endblock %}
 
+{% block extra_head %}
+<style>
+    .dark .exam-profiles-page .bg-white { background-color: rgb(31 41 55); }
+    .dark .exam-profiles-page .bg-gray-50 { background-color: rgb(55 65 81); }
+    .dark .exam-profiles-page .bg-blue-50 { background-color: rgb(30 58 138 / 0.25); }
+    .dark .exam-profiles-page .bg-green-50 { background-color: rgb(20 83 45 / 0.25); }
+    .dark .exam-profiles-page .bg-red-50 { background-color: rgb(127 29 29 / 0.25); }
+    .dark .exam-profiles-page .text-gray-900 { color: rgb(243 244 246); }
+    .dark .exam-profiles-page .text-gray-700 { color: rgb(209 213 219); }
+    .dark .exam-profiles-page .text-gray-600 { color: rgb(156 163 175); }
+    .dark .exam-profiles-page .text-gray-500 { color: rgb(156 163 175); }
+    .dark .exam-profiles-page .text-blue-800,
+    .dark .exam-profiles-page .text-blue-700,
+    .dark .exam-profiles-page .text-blue-600 { color: rgb(191 219 254); }
+    .dark .exam-profiles-page .text-green-800,
+    .dark .exam-profiles-page .text-green-600 { color: rgb(187 247 208); }
+    .dark .exam-profiles-page .text-red-800,
+    .dark .exam-profiles-page .text-red-600 { color: rgb(252 165 165); }
+    .dark .exam-profiles-page .border-gray-200 { border-color: rgb(75 85 99); }
+    .dark .exam-profiles-page .border-gray-300 { border-color: rgb(107 114 128); }
+    .dark .exam-profiles-page .border-red-200 { border-color: rgb(153 27 27 / 0.55); }
+    .dark .exam-profiles-page .border-green-200 { border-color: rgb(22 101 52 / 0.55); }
+    .dark .exam-profiles-page .hover\:bg-blue-100:hover { background-color: rgb(30 64 175 / 0.35); }
+    .dark .exam-profiles-page .hover\:bg-green-100:hover { background-color: rgb(22 101 52 / 0.35); }
+    .dark .exam-profiles-page .hover\:bg-red-100:hover { background-color: rgb(153 27 27 / 0.35); }
+    .dark .exam-profiles-page .hover\:text-gray-600:hover { color: rgb(229 231 235); }
+    .dark .exam-profiles-page input,
+    .dark .exam-profiles-page select,
+    .dark .exam-profiles-page textarea {
+        background-color: rgb(31 41 55);
+        color: rgb(243 244 246);
+        border-color: rgb(107 114 128);
+    }
+    .dark .exam-profiles-page input::placeholder,
+    .dark .exam-profiles-page textarea::placeholder { color: rgb(156 163 175); }
+    .dark #profileModal .bg-white,
+    .dark #deleteModal .bg-white,
+    .dark #importModal .bg-white { background-color: rgb(31 41 55); }
+    .dark #profileModal .bg-gray-50,
+    .dark #deleteModal .bg-gray-50,
+    .dark #importModal .bg-gray-50 { background-color: rgb(55 65 81); }
+    .dark #profileModal .text-gray-900,
+    .dark #deleteModal .text-gray-900,
+    .dark #importModal .text-gray-900 { color: rgb(243 244 246); }
+    .dark #profileModal .text-gray-700,
+    .dark #deleteModal .text-gray-700,
+    .dark #importModal .text-gray-700 { color: rgb(209 213 219); }
+    .dark #profileModal .text-gray-600,
+    .dark #deleteModal .text-gray-600,
+    .dark #importModal .text-gray-600 { color: rgb(156 163 175); }
+    .dark #profileModal .text-gray-500,
+    .dark #deleteModal .text-gray-500,
+    .dark #importModal .text-gray-500 { color: rgb(156 163 175); }
+    .dark #profileModal .border-gray-200,
+    .dark #deleteModal .border-gray-200,
+    .dark #importModal .border-gray-200 { border-color: rgb(75 85 99); }
+    .dark #profileModal .border-gray-300,
+    .dark #deleteModal .border-gray-300,
+    .dark #importModal .border-gray-300 { border-color: rgb(107 114 128); }
+    .dark #profileModal input,
+    .dark #profileModal select,
+    .dark #profileModal textarea,
+    .dark #deleteModal input,
+    .dark #deleteModal select,
+    .dark #deleteModal textarea,
+    .dark #importModal input,
+    .dark #importModal select,
+    .dark #importModal textarea {
+        background-color: rgb(31 41 55);
+        color: rgb(243 244 246);
+        border-color: rgb(107 114 128);
+    }
+    .dark #profileModal input::placeholder,
+    .dark #profileModal textarea::placeholder,
+    .dark #deleteModal input::placeholder,
+    .dark #deleteModal textarea::placeholder,
+    .dark #importModal input::placeholder,
+    .dark #importModal textarea::placeholder { color: rgb(156 163 175); }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+<div class="exam-profiles-page max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
     <!-- Header -->
     <div class="flex justify-between items-center mb-8">
         <div>
