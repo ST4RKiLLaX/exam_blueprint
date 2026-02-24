@@ -11,6 +11,38 @@ DEFAULT_KNOWLEDGE_BASES = {
     "knowledge_bases": []
 }
 
+
+def _resolve_kb_source_path(source_path: Optional[str]) -> Optional[str]:
+    """
+    Resolve a KB source path across environments.
+
+    Supports legacy absolute paths (including Windows paths) by falling back
+    to local knowledge base storage using filename matching.
+    """
+    if not source_path or not isinstance(source_path, str):
+        return None
+
+    normalized_source = source_path.strip()
+    if os.path.exists(normalized_source):
+        return normalized_source
+
+    source_filename = os.path.basename(normalized_source.replace("\\", "/"))
+    if not source_filename:
+        return None
+
+    app_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), ".."))
+    candidate_paths = [
+        os.path.join(app_dir, "knowledge_bases", source_filename),
+        os.path.join(os.getcwd(), "app", "knowledge_bases", source_filename),
+        os.path.join(os.getcwd(), "knowledge_bases", source_filename),
+    ]
+
+    for candidate in candidate_paths:
+        if os.path.exists(candidate):
+            return candidate
+
+    return None
+
 def load_knowledge_config():
     """Load knowledge bases configuration from JSON file"""
     if not os.path.exists(KNOWLEDGE_CONFIG_PATH):
@@ -309,9 +341,11 @@ def export_knowledge_base(kb_id: str, include_embeddings: bool = True) -> tuple[
         return False, "Knowledge base not found", None
     
     # Locate source file
-    source_path = kb_config.get("source")
-    if not source_path or not os.path.exists(source_path):
-        return False, "Source file not found", None
+    stored_source_path = kb_config.get("source")
+    source_path = _resolve_kb_source_path(stored_source_path)
+    if not source_path:
+        missing_source = stored_source_path or "(empty)"
+        return False, f"Source file not found: {missing_source}", None
     
     # Locate processed folder
     kb_base_dir = os.path.join(os.path.dirname(__file__), "..", "knowledge_bases")
