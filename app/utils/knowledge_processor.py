@@ -2,7 +2,11 @@ import os
 import gzip
 import json
 import time
+import ipaddress
+import socket
+import logging
 from typing import Iterable, Iterator, List
+from urllib.parse import urlparse
 
 import faiss
 import numpy as np
@@ -21,6 +25,12 @@ except ImportError:
 
 EMBEDDING_MODEL = "text-embedding-3-large"
 DEFAULT_EMBEDDING_DIM = 3072
+CHUNKS_JSON_GZ = "chunks.json.gz"
+LEGACY_CHUNKS_GZ = "chunks.pkl.gz"
+LEGACY_CHUNKS_RAW = "chunks.pkl"
+MAX_REDIRECTS = 5
+
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 
@@ -107,11 +117,19 @@ def extract_text_from_pdf(file_path):
 
 def fetch_content_from_url(url):
     """Fetch content from URL (HTML or JSON)"""
+    is_valid, error_message = validate_url_for_ssrf(url)
+    if not is_valid:
+        raise ValueError(error_message)
+
     try:
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
         }
-        response = requests.get(url, headers=headers, timeout=30)
+        session = requests.Session()
+        session.max_redirects = MAX_REDIRECTS
+        response = session.get(url, headers=headers, timeout=30, allow_redirects=True)
+        if len(response.history) > MAX_REDIRECTS:
+            raise ValueError("Too many redirects")
         response.raise_for_status()
         
         content_type = response.headers.get('content-type', '').lower()
@@ -139,6 +157,121 @@ def fetch_content_from_url(url):
     except Exception as e:
         print(f"Error fetching content from URL: {e}")
         return ""
+
+
+def _host_is_allowlisted(hostname: str) -> bool:
+    raw = os.environ.get("ALLOWED_INTERNAL_DOMAINS", "")
+    allowlist = [item.strip().lower() for item in raw.split(",") if item.strip()]
+    if not allowlist:
+        return False
+    hostname = (hostname or "").lower()
+    return hostname in allowlist
+
+
+def _is_blocked_ip(ip_text: str) -> bool:
+    ip = ipaddress.ip_address(ip_text)
+    return (
+        ip.is_private
+        or ip.is_loopback
+        or ip.is_link_local
+        or ip.is_multicast
+        or ip.is_reserved
+        or ip.is_unspecified
+    )
+
+
+def validate_url_for_ssrf(url: str):
+    """Validate URL to reduce SSRF risk."""
+    try:
+        parsed = urlparse((url or "").strip())
+        if parsed.scheme not in {"http", "https"}:
+            return False, "Only http/https URLs are allowed"
+
+        hostname = parsed.hostname
+        if not hostname:
+            return False, "URL hostname is required"
+
+        # Direct IP path
+        try:
+            if _is_blocked_ip(hostname) and not _host_is_allowlisted(hostname):
+                return False, "Private or reserved hosts are not allowed"
+        except ValueError:
+            # Hostname path: resolve and validate target addresses
+            try:
+                resolved_addresses = {
+                    result[4][0] for result in socket.getaddrinfo(hostname, parsed.port or 80)
+                }
+            except socket.gaierror:
+                return False, "Hostname cannot be resolved"
+
+            for addr in resolved_addresses:
+                if _is_blocked_ip(addr) and not _host_is_allowlisted(hostname):
+                    return False, "URL resolves to a private or reserved host"
+
+        return True, ""
+    except Exception:
+        return False, "Invalid URL format"
+
+
+def _validate_chunks(chunks):
+    if not isinstance(chunks, list):
+        raise ValueError(f"Chunks must be a list, got {type(chunks).__name__}")
+    for idx, item in enumerate(chunks):
+        if not isinstance(item, str):
+            raise ValueError(f"Chunk {idx} must be a string, got {type(item).__name__}")
+
+
+def _write_chunks_json_gz(chunks, path):
+    _validate_chunks(chunks)
+    with gzip.open(path, "wt", encoding="utf-8") as f:
+        json.dump(chunks, f, ensure_ascii=False)
+
+
+def _load_chunks_safe(chunks_path, allow_legacy_pickle=False):
+    """Load chunks safely and validate shape."""
+    try:
+        if chunks_path.endswith(".json.gz"):
+            with gzip.open(chunks_path, "rt", encoding="utf-8") as f:
+                chunks = json.load(f)
+            _validate_chunks(chunks)
+            return chunks
+
+        if allow_legacy_pickle and (
+            chunks_path.endswith(".pkl.gz") or chunks_path.endswith(".pkl")
+        ):
+            with (
+                gzip.open(chunks_path, "rb")
+                if chunks_path.endswith(".gz")
+                else open(chunks_path, "rb")
+            ) as f:
+                chunks = pickle.load(f)
+            _validate_chunks(chunks)
+            return chunks
+
+        raise ValueError("Unsupported chunk format")
+    except Exception as exc:
+        raise ValueError(f"Failed to load chunks: {exc}") from exc
+
+
+def _migrate_legacy_chunks_to_json(kb_id):
+    """Migrate legacy pickle chunk files to JSON gz format."""
+    kb_folder = f"app/knowledge_bases/{kb_id}"
+    target_path = os.path.join(kb_folder, CHUNKS_JSON_GZ)
+    if os.path.exists(target_path):
+        return target_path
+
+    legacy_candidates = [
+        os.path.join(kb_folder, LEGACY_CHUNKS_GZ),
+        os.path.join(kb_folder, LEGACY_CHUNKS_RAW),
+    ]
+    for legacy_path in legacy_candidates:
+        if not os.path.exists(legacy_path):
+            continue
+        chunks = _load_chunks_safe(legacy_path, allow_legacy_pickle=True)
+        _write_chunks_json_gz(chunks, target_path)
+        logger.warning("Migrated legacy chunks format for KB %s", kb_id)
+        return target_path
+    return None
 
 def chunk_text(
     text_stream: Iterable[str],
@@ -367,11 +500,10 @@ def process_knowledge_base(kb_id, kb_type, source_path, generate_summary=False, 
         os.makedirs(kb_folder, exist_ok=True)
         
         index_path = f"{kb_folder}/index.faiss"
-        chunks_path = f"{kb_folder}/chunks.pkl.gz"
+        chunks_path = f"{kb_folder}/{CHUNKS_JSON_GZ}"
         embeddings_path = f"{kb_folder}/embeddings.npy"
         
-        with gzip.open(chunks_path, "wb") as f:
-            pickle.dump(chunks, f, protocol=pickle.HIGHEST_PROTOCOL)
+        _write_chunks_json_gz(chunks, chunks_path)
         np.save(embeddings_path, embeddings)
 
         # Create FAISS index
@@ -405,24 +537,18 @@ def search_knowledge_base_with_embedding(kb_id, query_embedding, top_k=3):
     try:
         kb_folder = f"app/knowledge_bases/{kb_id}"
         index_path = f"{kb_folder}/index.faiss"
-        chunks_path = f"{kb_folder}/chunks.pkl.gz"
+        chunks_path = f"{kb_folder}/{CHUNKS_JSON_GZ}"
         if not os.path.exists(chunks_path):
-            # Backwards compatibility for legacy storage
-            legacy_path = f"{kb_folder}/chunks.pkl"
-            if os.path.exists(legacy_path):
-                chunks_path = legacy_path
+            migrated_path = _migrate_legacy_chunks_to_json(kb_id)
+            if migrated_path:
+                chunks_path = migrated_path
         
-        if not os.path.exists(index_path) or not os.path.exists(chunks_path):
+        if not os.path.exists(index_path) or not chunks_path or not os.path.exists(chunks_path):
             return []
         
         # Load index and chunks
         index = faiss.read_index(index_path)
-        if chunks_path.endswith(".gz"):
-            with gzip.open(chunks_path, "rb") as f:
-                chunks = pickle.load(f)
-        else:
-            with open(chunks_path, "rb") as f:
-                chunks = pickle.load(f)
+        chunks = _load_chunks_safe(chunks_path, allow_legacy_pickle=False)
         
         # Ensure embedding is the right shape
         if query_embedding.ndim == 1:

@@ -1,6 +1,10 @@
 # Knowledge Base Configuration
 import json
 import os
+import hashlib
+import zipfile
+import tempfile
+import shutil
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
 
@@ -10,6 +14,93 @@ KNOWLEDGE_CONFIG_PATH = os.path.join(os.path.dirname(__file__), "knowledge_bases
 DEFAULT_KNOWLEDGE_BASES = {
     "knowledge_bases": []
 }
+
+MAX_IMPORT_ZIP_BYTES = 100 * 1024 * 1024
+MAX_IMPORT_MEMBER_BYTES = 500 * 1024 * 1024
+CHUNKS_JSON_GZ = "chunks.json.gz"
+LEGACY_CHUNKS_GZ = "chunks.pkl.gz"
+
+
+def _safe_member_path(root_dir: str, member_name: str) -> Optional[str]:
+    normalized = os.path.normpath(member_name)
+    if normalized.startswith("..") or os.path.isabs(normalized):
+        return None
+    return os.path.abspath(os.path.join(root_dir, normalized))
+
+
+def _validate_zip_integrity(zip_file) -> tuple[bool, str]:
+    """Validate zip structure and reject unsafe entries."""
+    try:
+        zip_file.seek(0, os.SEEK_END)
+        size = zip_file.tell()
+        zip_file.seek(0)
+    except Exception:
+        return False, "Unable to read uploaded ZIP file"
+
+    if size <= 0:
+        return False, "Uploaded ZIP is empty"
+    if size > MAX_IMPORT_ZIP_BYTES:
+        return False, "ZIP package exceeds size limit"
+
+    try:
+        with zipfile.ZipFile(zip_file, "r") as zf:
+            for info in zf.infolist():
+                if _safe_member_path("/tmp", info.filename) is None:
+                    return False, f"Unsafe ZIP path: {info.filename}"
+                if info.file_size > MAX_IMPORT_MEMBER_BYTES:
+                    return False, f"ZIP member exceeds size limit: {info.filename}"
+            bad_file = zf.testzip()
+            if bad_file:
+                return False, f"Corrupted ZIP member: {bad_file}"
+    except zipfile.BadZipFile:
+        return False, "Invalid ZIP format"
+    except Exception:
+        return False, "Unable to validate ZIP contents"
+    finally:
+        try:
+            zip_file.seek(0)
+        except Exception:
+            pass
+
+    return True, ""
+
+
+def _extract_zip_safely(zip_file, target_dir: str) -> tuple[bool, str]:
+    """Extract ZIP entries with path traversal protections."""
+    try:
+        with zipfile.ZipFile(zip_file, "r") as zf:
+            for info in zf.infolist():
+                dest_path = _safe_member_path(target_dir, info.filename)
+                if dest_path is None:
+                    return False, f"Unsafe ZIP path: {info.filename}"
+                if info.is_dir():
+                    os.makedirs(dest_path, exist_ok=True)
+                    continue
+                os.makedirs(os.path.dirname(dest_path), exist_ok=True)
+                with zf.open(info, "r") as src, open(dest_path, "wb") as dst:
+                    shutil.copyfileobj(src, dst)
+    except Exception:
+        return False, "Failed to extract ZIP package"
+    finally:
+        try:
+            zip_file.seek(0)
+        except Exception:
+            pass
+
+    return True, ""
+
+
+def _sha256_for_file(path: str) -> Optional[str]:
+    if not os.path.exists(path):
+        return None
+    digest = hashlib.sha256()
+    with open(path, "rb") as f:
+        while True:
+            chunk = f.read(65536)
+            if not chunk:
+                break
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 def _resolve_kb_source_path(source_path: Optional[str]) -> Optional[str]:
@@ -325,8 +416,6 @@ def export_knowledge_base(kb_id: str, include_embeddings: bool = True) -> tuple[
     Returns:
         Tuple of (success, message, zip_bytes)
     """
-    import zipfile
-    import shutil
     from io import BytesIO
     
     # Load KB config
@@ -396,19 +485,28 @@ def export_knowledge_base(kb_id: str, include_embeddings: bool = True) -> tuple[
     zip_buffer = BytesIO()
     
     try:
+        checksums: Dict[str, str] = {}
         with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zipf:
-            # Add manifest
-            zipf.writestr('manifest.json', json.dumps(manifest, indent=2, ensure_ascii=False))
-            
             # Add source file
             zipf.write(source_path, f'source/{original_filename}')
+            source_checksum = _sha256_for_file(source_path)
+            if source_checksum:
+                checksums[f"source/{original_filename}"] = source_checksum
             
             # Add processed files if requested and available
             if include_embeddings and os.path.exists(processed_folder):
-                for filename in ['chunks.pkl.gz', 'embeddings.npy', 'index.faiss']:
+                for filename in [CHUNKS_JSON_GZ, LEGACY_CHUNKS_GZ, 'embeddings.npy', 'index.faiss']:
                     file_path = os.path.join(processed_folder, filename)
                     if os.path.exists(file_path):
-                        zipf.write(file_path, f'processed/{filename}')
+                        archive_name = f'processed/{filename}'
+                        zipf.write(file_path, archive_name)
+                        checksum = _sha256_for_file(file_path)
+                        if checksum:
+                            checksums[archive_name] = checksum
+
+            # Add manifest last so checksums capture all artifacts.
+            manifest["file_checksums"] = checksums
+            zipf.writestr('manifest.json', json.dumps(manifest, indent=2, ensure_ascii=False))
         
         zip_buffer.seek(0)
         return True, "Knowledge base exported successfully", zip_buffer.getvalue()
@@ -429,20 +527,21 @@ def import_knowledge_base(zip_file, user_embedding_provider: str, user_embedding
     Returns:
         Tuple of (success, message, warnings, new_kb_id)
     """
-    import zipfile
-    import tempfile
-    import shutil
-    
     warnings = []
     temp_dir = None
     
     try:
+        is_valid_zip, validation_message = _validate_zip_integrity(zip_file)
+        if not is_valid_zip:
+            return False, f"Invalid package: {validation_message}", [], None
+
         # Create temp directory for extraction
         temp_dir = tempfile.mkdtemp()
         
-        # Extract ZIP
-        with zipfile.ZipFile(zip_file, 'r') as zipf:
-            zipf.extractall(temp_dir)
+        # Extract ZIP safely
+        extracted, extract_message = _extract_zip_safely(zip_file, temp_dir)
+        if not extracted:
+            return False, f"Invalid package: {extract_message}", [], None
         
         # Read manifest
         manifest_path = os.path.join(temp_dir, 'manifest.json')
@@ -451,6 +550,20 @@ def import_knowledge_base(zip_file, user_embedding_provider: str, user_embedding
         
         with open(manifest_path, 'r', encoding='utf-8') as f:
             manifest = json.load(f)
+
+        # Validate checksums if present
+        expected_checksums = manifest.get("file_checksums", {})
+        if isinstance(expected_checksums, dict):
+            for archive_name, expected_digest in expected_checksums.items():
+                if not isinstance(archive_name, str) or not isinstance(expected_digest, str):
+                    continue
+                actual_path = _safe_member_path(temp_dir, archive_name)
+                if not actual_path or not os.path.exists(actual_path):
+                    warnings.append(f"Missing file for checksum validation: {archive_name}")
+                    continue
+                actual_digest = _sha256_for_file(actual_path)
+                if actual_digest != expected_digest:
+                    return False, f"Invalid package: checksum mismatch for {archive_name}", [], None
         
         # Validate required fields
         required_fields = ["title", "description", "kb_type", "source_filename"]
@@ -510,16 +623,23 @@ def import_knowledge_base(zip_file, user_embedding_provider: str, user_embedding
             # Copy processed files
             os.makedirs(new_processed_folder, exist_ok=True)
             processed_temp_path = os.path.join(temp_dir, 'processed')
+
+            safe_reuse_files = [CHUNKS_JSON_GZ, 'embeddings.npy', 'index.faiss']
+            if not os.path.exists(os.path.join(processed_temp_path, CHUNKS_JSON_GZ)):
+                can_reuse_embeddings = False
+                warnings.append("Package does not contain JSON chunks; reprocessing required")
+            else:
+                for filename in safe_reuse_files:
+                    src = os.path.join(processed_temp_path, filename)
+                    dst = os.path.join(new_processed_folder, filename)
+                    if os.path.exists(src):
+                        if os.path.getsize(src) > MAX_IMPORT_MEMBER_BYTES:
+                            return False, f"Invalid package: {filename} exceeds size limit", [], None
+                        shutil.copy2(src, dst)
             
-            for filename in ['chunks.pkl.gz', 'embeddings.npy', 'index.faiss']:
-                src = os.path.join(processed_temp_path, filename)
-                dst = os.path.join(new_processed_folder, filename)
-                if os.path.exists(src):
-                    shutil.copy2(src, dst)
-            
-            embedding_status = "completed"
-            warnings.append(f"Reused embeddings from package (provider: {manifest_provider})")
-        else:
+                embedding_status = "completed"
+                warnings.append(f"Reused embeddings from package (provider: {manifest_provider})")
+        if not can_reuse_embeddings:
             # Will need to re-process
             embedding_status = "pending"
             if not has_embeddings:

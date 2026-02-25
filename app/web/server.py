@@ -18,7 +18,7 @@ from app.config.knowledge_config import (
     get_active_knowledge_bases, update_embedding_status,
     save_knowledge_config, cleanup_orphaned_kb_references
 )
-from app.utils.knowledge_processor import process_knowledge_base
+from app.utils.knowledge_processor import process_knowledge_base, validate_url_for_ssrf
 from app.api.agent_api import AgentAPI
 from app.models.chat_session import chat_session_manager
 from app.models.user import db, User, Role
@@ -27,10 +27,13 @@ from app.models.question_record import QuestionRecord
 
 app = Flask(__name__)
 logger = logging.getLogger(__name__)
+security_logger = logging.getLogger("security")
 
 
 def _api_error(message: str = "An unexpected error occurred. Please try again.", status: int = 500, include_success: bool = True):
     """Return a safe API error response without leaking internals."""
+    if status >= 500 and os.environ.get("FLASK_ENV", "").lower() == "production":
+        message = "An unexpected error occurred. Please try again."
     payload = {"error": message}
     if include_success:
         payload["success"] = False
@@ -45,6 +48,19 @@ def _unique_secure_filename(original_name: str) -> str:
     stem, ext = os.path.splitext(safe_name)
     token = uuid.uuid4().hex[:10]
     return f"{stem}_{token}{ext}"
+
+
+def _log_security_event(event_type: str, details: dict, severity: str = "warning"):
+    """Emit structured security events for monitoring."""
+    payload = {
+        "event_type": event_type,
+        "path": request.path if request else None,
+        "ip": request.remote_addr if request else None,
+        "user_id": str(getattr(current_user, "id", "")) if current_user else None,
+        "details": details or {},
+    }
+    log_method = getattr(security_logger, severity, security_logger.warning)
+    log_method(json.dumps(payload, ensure_ascii=False))
 
 # Generate secure secret keys (persistent across restarts)
 def get_or_create_secret(filename, key_name):
@@ -674,6 +690,15 @@ def knowledge_bases():
                     if not source_url:
                         flash('Source URL is required', 'error')
                         return redirect(request.url)
+                    is_valid_url, url_validation_message = validate_url_for_ssrf(source_url)
+                    if not is_valid_url:
+                        _log_security_event(
+                            "kb_url_blocked",
+                            {"url": source_url, "reason": url_validation_message},
+                            severity="warning",
+                        )
+                        flash('Source URL is not allowed by security policy', 'error')
+                        return redirect(request.url)
                     
                     # Add to knowledge base configuration
                     kb_id = add_knowledge_base(
@@ -774,8 +799,9 @@ def knowledge_bases():
                         update_embedding_status(kb_id, "failed")
                         flash(f'Knowledge base "{title}" uploaded but processing failed', 'warning')
                     
-            except Exception as e:
-                flash(f'Error processing knowledge base: {str(e)}', 'error')
+            except Exception:
+                logger.exception("knowledge_bases upload action failed")
+                flash('Error processing knowledge base.', 'error')
         
         elif action == "edit":
             # Handle knowledge base edit
@@ -823,8 +849,9 @@ def knowledge_bases():
                                     embedding_provider=new_embedding_provider
                                 )
                                 flash('Knowledge base reprocessed successfully', 'success')
-                            except Exception as e:
-                                flash(f'Reprocessing failed: {str(e)}', 'error')
+                            except Exception:
+                                logger.exception("knowledge_bases embedding reprocess failed")
+                                flash('Reprocessing failed.', 'error')
                         
                         break
                 
@@ -868,8 +895,9 @@ def knowledge_bases():
                             flash('Knowledge base reprocessed successfully!', 'success')
                         else:
                             flash('Knowledge base reprocessing failed!', 'error')
-                    except Exception as e:
-                        flash(f'Error reprocessing knowledge base: {str(e)}', 'error')
+                    except Exception:
+                        logger.exception("knowledge_bases manual reprocess failed")
+                        flash('Error reprocessing knowledge base.', 'error')
                 else:
                     flash('Knowledge base not found', 'error')
         
@@ -894,20 +922,19 @@ def knowledge_bases():
         # Count chunks if available
         chunks_count = None
         base_dir = os.path.join(os.path.dirname(__file__), "..", "knowledge_bases", kb_id)
-        chunks_path = os.path.join(base_dir, "chunks.pkl.gz")
+        chunks_path = os.path.join(base_dir, "chunks.json.gz")
+        if not os.path.exists(chunks_path):
+            chunks_path = os.path.join(base_dir, "chunks.pkl.gz")
         if not os.path.exists(chunks_path):
             chunks_path = os.path.join(base_dir, "chunks.pkl")
         if os.path.exists(chunks_path):
             try:
-                import pickle
-                import gzip
-                if chunks_path.endswith(".gz"):
-                    with gzip.open(chunks_path, 'rb') as f:
-                        chunks = pickle.load(f)
-                else:
-                    with open(chunks_path, 'rb') as f:
-                        chunks = pickle.load(f)
-                    chunks_count = len(chunks)
+                from app.utils.knowledge_processor import _load_chunks_safe
+                chunks = _load_chunks_safe(
+                    chunks_path,
+                    allow_legacy_pickle=chunks_path.endswith(".pkl") or chunks_path.endswith(".pkl.gz"),
+                )
+                chunks_count = len(chunks)
             except Exception:
                 pass
         
@@ -1581,8 +1608,9 @@ def settings():
                     flash(f'Model updated to {chat_model} with temperature {temperature}!', 'success')
                 else:
                     flash('Error updating model configuration', 'error')
-            except Exception as e:
-                flash(f'Error updating model: {str(e)}', 'error')
+            except Exception:
+                logger.exception("settings update_model failed")
+                flash('Error updating model.', 'error')
         
         elif action == "cleanup_knowledge_bases":
             try:
@@ -1591,8 +1619,9 @@ def settings():
                     flash('Knowledge base cleanup completed! Orphaned data has been removed.', 'success')
                 else:
                     flash('Knowledge base cleanup completed - no orphaned data found.', 'info')
-            except Exception as e:
-                flash(f'Error during cleanup: {str(e)}', 'error')
+            except Exception:
+                logger.exception("settings cleanup_knowledge_bases failed")
+                flash('Error during cleanup.', 'error')
         
         elif action == "update_api_key":
             api_key = request.form.get("api_key", "").strip()
@@ -1605,8 +1634,9 @@ def settings():
                     from app.config.provider_config import set_provider_api_key
                     set_provider_api_key("openai", api_key, "default")
                     flash('API key updated successfully!', 'success')
-                except Exception as e:
-                    flash(f'Error updating API key: {str(e)}', 'error')
+                except Exception:
+                    logger.exception("settings update_api_key failed")
+                    flash('Error updating API key.', 'error')
         
         elif action == "update_gemini_key":
             gemini_key = request.form.get("gemini_api_key", "").strip()
@@ -1615,8 +1645,9 @@ def settings():
                     from app.config.provider_config import set_provider_api_key
                     set_provider_api_key("gemini", gemini_key, "default")
                     flash('Gemini API key updated successfully!', 'success')
-                except Exception as e:
-                    flash(f'Error updating Gemini API key: {str(e)}', 'error')
+                except Exception:
+                    logger.exception("settings update_gemini_key failed")
+                    flash('Error updating Gemini API key.', 'error')
             elif not gemini_key:
                 flash('Gemini API key is required', 'error')
 
@@ -1644,8 +1675,9 @@ def settings():
                         set_provider_api_key(provider_id, api_key, key_name)
                         set_provider_key_description(provider_id, key_name, key_description)
                         flash('API key updated successfully!', 'success')
-                except Exception as e:
-                    flash(f"Error saving provider key: {str(e)}", "error")
+                except Exception:
+                    logger.exception("settings save_provider_key failed")
+                    flash("Error saving provider key.", "error")
 
         elif action == "update_provider_key":
             provider_id = request.form.get("provider_id", "").strip()
@@ -1671,8 +1703,9 @@ def settings():
                             set_provider_api_key(provider_id, api_key, key_name)
                         set_provider_key_description(provider_id, key_name, key_description)
                         flash("Provider key updated successfully!", "success")
-                except Exception as e:
-                    flash(f"Error updating provider key: {str(e)}", "error")
+                except Exception:
+                    logger.exception("settings update_provider_key failed")
+                    flash("Error updating provider key.", "error")
         
         elif action == "test_api_key":
             api_key = request.form.get("api_key", "").strip()
@@ -1689,8 +1722,9 @@ def settings():
                 from app.config.provider_config import delete_provider_api_key
                 delete_provider_api_key("openai", "default")
                 flash('API key deleted successfully!', 'success')
-            except Exception as e:
-                flash(f'Error deleting API key: {str(e)}', 'error')
+            except Exception:
+                logger.exception("settings delete_api_key failed")
+                flash('Error deleting API key.', 'error')
 
         elif action == "delete_provider_key":
             provider_id = request.form.get("provider_id", "").strip()
@@ -1704,8 +1738,9 @@ def settings():
                     from app.config.provider_config import delete_provider_api_key
                     delete_provider_api_key(provider_id, key_name)
                     flash("Provider key deleted successfully!", "success")
-                except Exception as e:
-                    flash(f"Error deleting provider key: {str(e)}", "error")
+                except Exception:
+                    logger.exception("settings delete_provider_key failed")
+                    flash("Error deleting provider key.", "error")
 
         elif action == "sync_provider_models":
             provider_id = request.form.get("provider_id", "").strip()
@@ -1722,8 +1757,9 @@ def settings():
                     f"Warnings: {failure_count}, Skipped: {skipped_count}",
                     "success" if failure_count == 0 else "info",
                 )
-            except Exception as e:
-                flash(f"Error syncing provider models: {str(e)}", "error")
+            except Exception:
+                logger.exception("settings sync_provider_models failed")
+                flash("Error syncing provider models.", "error")
         
         selected_provider = request.form.get("provider_id", "").strip()
         if selected_provider:
@@ -1822,6 +1858,27 @@ def settings():
                          selected_provider_sync=selected_provider_sync)
 
 # Chat API endpoints for chatbot functionality
+def _validate_session_ownership(session_id: str):
+    """Validate that the current user can access a session."""
+    if not session_id:
+        return True, None
+
+    session = chat_session_manager.get_session(session_id)
+    if not session:
+        return False, "Session not found"
+
+    is_admin = bool(current_user and current_user.has_role('admin'))
+    if chat_session_manager.user_can_access(session_id, str(current_user.id), is_admin=is_admin):
+        return True, None
+
+    _log_security_event(
+        "chat_session_access_denied",
+        {"session_id": session_id, "owner_user_id": getattr(session, "user_id", None)},
+        severity="warning",
+    )
+    return False, "Session not found or access denied"
+
+
 @app.route("/api/chat/session", methods=["POST"])
 @login_required
 def create_chat_session():
@@ -1839,7 +1896,7 @@ def create_chat_session():
             return jsonify({"success": False, "error": "Agent not found"})
         
         # Create new session
-        session = chat_session_manager.create_session(agent_id)
+        session = chat_session_manager.create_session(agent_id, user_id=str(current_user.id))
         
         return jsonify({
             "success": True,
@@ -1885,6 +1942,9 @@ def chat_with_agent(agent_id):
         # Get chat history if session exists
         history = []
         if session_id:
+            allowed, error_message = _validate_session_ownership(session_id)
+            if not allowed:
+                return jsonify({"success": False, "error": error_message}), 403
             history = chat_session_manager.get_chat_history(session_id, limit=10)
         
         # Set thread_id in request context for semantic cache
@@ -1903,6 +1963,9 @@ def chat_with_agent(agent_id):
         
         # Store the conversation if session exists
         if session_id:
+            allowed, error_message = _validate_session_ownership(session_id)
+            if not allowed:
+                return jsonify({"success": False, "error": error_message}), 403
             chat_session_manager.add_message(session_id, "user", message)
             chat_session_manager.add_message(session_id, "assistant", response)
         
@@ -2147,8 +2210,9 @@ def add_user():
         flash(f"User {email} created successfully", "success")
         return redirect(url_for("users"))
         
-    except Exception as e:
-        flash(f"Error creating user: {str(e)}", "error")
+    except Exception:
+        logger.exception("add_user failed")
+        flash("Error creating user.", "error")
         return redirect(url_for("users"))
 
 @app.route("/users/reset-password", methods=["POST"])

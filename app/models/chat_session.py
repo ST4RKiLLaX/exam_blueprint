@@ -7,9 +7,17 @@ from typing import Dict, List, Optional
 class ChatSession:
     """Represents a chat session between a user and an agent"""
     
-    def __init__(self, session_id: str, agent_id: str, created_at: str = None, messages: List[Dict] = None):
+    def __init__(
+        self,
+        session_id: str,
+        agent_id: str,
+        user_id: str = None,
+        created_at: str = None,
+        messages: List[Dict] = None,
+    ):
         self.session_id = session_id
         self.agent_id = agent_id
+        self.user_id = user_id
         self.created_at = created_at or datetime.now().isoformat()
         self.messages = messages or []
     
@@ -30,6 +38,7 @@ class ChatSession:
         return {
             "session_id": self.session_id,
             "agent_id": self.agent_id,
+            "user_id": self.user_id,
             "created_at": self.created_at,
             "messages": self.messages
         }
@@ -49,10 +58,10 @@ class ChatSessionManager:
         self._sessions = {}
         self.load_sessions()
     
-    def create_session(self, agent_id: str) -> ChatSession:
+    def create_session(self, agent_id: str, user_id: str = None) -> ChatSession:
         """Create a new chat session"""
         session_id = str(uuid.uuid4())
-        session = ChatSession(session_id, agent_id)
+        session = ChatSession(session_id, agent_id, user_id=user_id)
         self._sessions[session_id] = session
         self.save_sessions()
         return session
@@ -60,6 +69,18 @@ class ChatSessionManager:
     def get_session(self, session_id: str) -> Optional[ChatSession]:
         """Get a chat session by ID"""
         return self._sessions.get(session_id)
+
+    def user_can_access(self, session_id: str, user_id: str, is_admin: bool = False) -> bool:
+        """Check whether a user can access a session."""
+        session = self.get_session(session_id)
+        if not session:
+            return False
+        if is_admin:
+            return True
+        # Legacy sessions without ownership are intentionally non-shareable.
+        if not session.user_id:
+            return False
+        return session.user_id == str(user_id)
     
     def add_message(self, session_id: str, role: str, content: str):
         """Add a message to a session"""
