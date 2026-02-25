@@ -146,6 +146,7 @@
     // Chat functionality
     let chatSessionId = null;
     let currentAgentId = null;
+    const AGENTS = {{ agents|tojson }};
     const HOT_TOPICS_MODE_STORAGE_KEY = 'hot_topics_mode_by_agent';
 
     function getUrlHotTopicsModeOverride() {
@@ -245,8 +246,7 @@
     async function loadDifficultyLevels(agentId) {
         try {
             // Get agent details to find exam_profile_id
-            const agents = {{ agents|tojson }};
-            const agent = agents.find(a => a.agent_id === agentId);
+            const agent = AGENTS.find(a => a.agent_id === agentId);
             
             if (!agent || !agent.exam_profile_id) {
                 document.getElementById('difficulty-controls').style.display = 'none';
@@ -412,7 +412,25 @@
             removeThinkingIndicator();
             
             if (data.success) {
-                addChatMessage('assistant', data.response);
+                const selectedAgent = AGENTS.find(agent => agent.agent_id === currentAgentId) || null;
+                const difficulty = data.difficulty || {};
+                const assistantMetadata = {
+                    agent_id: currentAgentId,
+                    session_id: chatSessionId,
+                    exam_profile_id: selectedAgent ? selectedAgent.exam_profile_id : null,
+                    domain: difficulty.domain || null,
+                    difficulty_level_id: difficulty.difficulty_level_id || null,
+                    difficulty_display_name: difficulty.difficulty_level_display_name || null,
+                    question_type_id: difficulty.question_type_id || null,
+                    question_type_phrase: difficulty.question_type_phrase || null,
+                    hot_topics_mode_effective: data.hot_topics_mode_effective || null,
+                    hot_topics_used: data.hot_topics_used,
+                    retrieval_path: data.retrieval_path || null,
+                    provider: selectedAgent ? selectedAgent.provider : null,
+                    provider_model: selectedAgent ? selectedAgent.provider_model : null,
+                    source_type: 'chat'
+                };
+                addChatMessage('assistant', data.response, assistantMetadata);
                 const effectiveMode = data.hot_topics_mode_effective || 'default';
                 updateChatStatus(`Chatting with ${data.agent_name} • Hot topics mode: ${effectiveMode}`);
                 updateRetrievalInfo(data.retrieval_path ? `Retrieval path: ${data.retrieval_path}` : '');
@@ -469,7 +487,225 @@
         }
     }
 
-    function addChatMessage(role, content) {
+    function deriveDefaultTopics(metadata) {
+        const topicCandidates = [
+            metadata?.domain,
+            metadata?.difficulty_display_name,
+            metadata?.question_type_phrase
+        ];
+        const cleaned = topicCandidates
+            .filter(item => typeof item === 'string' && item.trim())
+            .map(item => item.trim());
+        return Array.from(new Set(cleaned));
+    }
+
+    function parseAssistantQuestionContent(rawContent) {
+        const raw = String(rawContent || '').replace(/\r\n/g, '\n').trim();
+        if (!raw) {
+            return {
+                question_text: '',
+                options: [],
+                answer_text: null,
+                explanation: null
+            };
+        }
+
+        // JSON-first parsing for structured model outputs.
+        try {
+            const parsed = JSON.parse(raw);
+            if (parsed && typeof parsed === 'object') {
+                const questionText = String(
+                    parsed.question || parsed.question_text || parsed.prompt || ''
+                ).trim();
+                const parsedOptions = Array.isArray(parsed.options) ? parsed.options : [];
+                const options = parsedOptions
+                    .map((item, idx) => {
+                        if (typeof item === 'string') {
+                            return { label: String.fromCharCode(65 + idx), text: item.trim(), is_correct: false };
+                        }
+                        if (item && typeof item === 'object') {
+                            const text = String(item.text || item.option || item.value || '').trim();
+                            if (!text) return null;
+                            const label = String(item.label || String.fromCharCode(65 + idx)).trim();
+                            return { label, text, is_correct: Boolean(item.is_correct) };
+                        }
+                        return null;
+                    })
+                    .filter(Boolean);
+                const answerText = String(parsed.answer || parsed.correct_answer || '').trim() || null;
+                const explanation = String(parsed.explanation || '').trim() || null;
+                if (questionText || options.length > 0 || answerText || explanation) {
+                    return {
+                        question_text: questionText || raw,
+                        options,
+                        answer_text: answerText,
+                        explanation
+                    };
+                }
+            }
+        } catch (_ignored) {
+            // Fall through to text parsing.
+        }
+
+        const lines = raw.split('\n').map(line => line.trim()).filter(Boolean);
+        let answerText = null;
+        let explanation = null;
+        const options = [];
+        const questionLines = [];
+        let parsingSection = 'question';
+        let sawAnyOption = false;
+
+        lines.forEach((line) => {
+            if (/^question\s*[:\-]/i.test(line)) {
+                parsingSection = 'question';
+                const strippedQuestion = line.replace(/^question\s*[:\-]\s*/i, '').trim();
+                if (strippedQuestion) questionLines.push(strippedQuestion);
+                return;
+            }
+            if (/^(choices?|options?)\s*[:\-]?$/i.test(line)) {
+                parsingSection = 'options';
+                return;
+            }
+            if (/^(correct\s*answer|answer)\s*[:\-]/i.test(line)) {
+                parsingSection = 'answer';
+                answerText = line.replace(/^(correct\s*answer|answer)\s*[:\-]\s*/i, '').trim() || null;
+                return;
+            }
+            if (/^explanation\s*[:\-]/i.test(line)) {
+                parsingSection = 'explanation';
+                explanation = line.replace(/^explanation\s*[:\-]\s*/i, '').trim() || null;
+                return;
+            }
+
+            // Require explicit delimiter after option label (A), A., A:, A-).
+            // This avoids false positives like "A security architect..."
+            const optionMatch = line.match(/^([A-H])[\)\].:\-]\s+(.+)$/i);
+            if (optionMatch) {
+                sawAnyOption = true;
+                parsingSection = 'options';
+                options.push({
+                    label: optionMatch[1].toUpperCase(),
+                    text: optionMatch[2].trim(),
+                    is_correct: false
+                });
+                return;
+            }
+
+            if (parsingSection === 'explanation') {
+                explanation = [explanation, line].filter(Boolean).join('\n');
+                return;
+            }
+
+            // If we are in options section and the line doesn't start as a new option,
+            // treat it as continuation text for the previous option.
+            if (parsingSection === 'options' && options.length > 0) {
+                options[options.length - 1].text = `${options[options.length - 1].text} ${line}`.trim();
+                return;
+            }
+
+            if (parsingSection === 'question' && !sawAnyOption) {
+                questionLines.push(line);
+            }
+        });
+
+        // Guard against false-positive parsing from a single "A..." line.
+        if (options.length < 2) {
+            options.length = 0;
+            if (answerText && !questionLines.length) {
+                questionLines.push(raw.split('\n')[0].trim());
+            }
+            answerText = null;
+        }
+
+        if (answerText && options.length > 0) {
+            const normalizedAnswer = answerText.toLowerCase().trim();
+            options.forEach((option) => {
+                const labelMatch = normalizedAnswer === option.label.toLowerCase();
+                const textMatch = normalizedAnswer === option.text.toLowerCase();
+                option.is_correct = labelMatch || textMatch;
+            });
+            if (!options.some(option => option.is_correct)) {
+                const labelPrefixMatch = options.find(
+                    option => normalizedAnswer.startsWith(`${option.label.toLowerCase()})`)
+                        || normalizedAnswer.startsWith(`${option.label.toLowerCase()}.`)
+                        || normalizedAnswer.startsWith(`${option.label.toLowerCase()}:`)
+                );
+                if (labelPrefixMatch) {
+                    labelPrefixMatch.is_correct = true;
+                }
+            }
+        }
+
+        const questionText = questionLines.join('\n').trim() || raw.split('\n')[0].trim() || raw;
+        return {
+            question_text: questionText,
+            options,
+            answer_text: answerText,
+            explanation
+        };
+    }
+
+    async function saveAssistantQuestion(content, metadata, saveBtn) {
+        if (saveBtn.dataset.saved === 'true') {
+            return;
+        }
+
+        if (!metadata) {
+            alert('Question metadata is missing for this message.');
+            return;
+        }
+
+        const defaultTopics = deriveDefaultTopics(metadata);
+        const suggested = defaultTopics.join(', ');
+        const editedTopics = prompt(
+            'Edit topics before save (comma-separated):',
+            suggested
+        );
+        if (editedTopics === null) {
+            return;
+        }
+
+        saveBtn.disabled = true;
+        const originalTitle = saveBtn.title;
+        saveBtn.title = 'Saving...';
+
+        try {
+            const parsed = parseAssistantQuestionContent(content);
+            const response = await fetch('/api/questions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    question_text: parsed.question_text || content,
+                    options: parsed.options,
+                    answer_text: parsed.answer_text,
+                    explanation: parsed.explanation,
+                    topics: editedTopics,
+                    ...metadata
+                })
+            });
+            const data = await response.json();
+            if (!data.success) {
+                throw new Error(data.error || 'Failed to save question');
+            }
+
+            saveBtn.classList.remove('text-gray-400', 'hover:text-blue-600', 'hover:bg-gray-100');
+            saveBtn.classList.add('text-green-600', 'bg-green-50');
+            saveBtn.dataset.saved = 'true';
+            saveBtn.disabled = true;
+            saveBtn.title = 'Saved';
+            updateChatStatus('Question saved to library');
+        } catch (error) {
+            console.error('Failed to save question:', error);
+            alert(error.message || 'Failed to save question');
+            saveBtn.title = originalTitle;
+        } finally {
+            if (saveBtn.dataset.saved !== 'true') {
+                saveBtn.disabled = false;
+            }
+        }
+    }
+
+    function addChatMessage(role, content, metadata = null) {
         const messagesDiv = document.getElementById('chat-messages');
         const wrapper = document.createElement('div');
         wrapper.className = 'flex';
@@ -483,11 +719,11 @@
         if (role === 'user') {
             bgColor = 'bg-blue-600 text-white';
             wrapperAlignment = 'justify-end';
-            copyBtnClass = 'absolute top-2 right-2 p-1.5 text-blue-200 hover:text-white hover:bg-blue-500 rounded transition-colors opacity-0 group-hover:opacity-100';
+            copyBtnClass = 'p-1.5 text-blue-200 hover:text-white hover:bg-blue-500 rounded transition-colors';
         } else if (role === 'assistant') {
             bgColor = 'bg-white text-gray-800 border border-gray-200';
             wrapperAlignment = 'justify-start';
-            copyBtnClass = 'absolute top-2 right-2 p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors opacity-0 group-hover:opacity-100';
+            copyBtnClass = 'p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors';
         } else {
             bgColor = 'bg-red-100 text-red-800 border border-red-200';
             wrapperAlignment = 'justify-start';
@@ -498,8 +734,11 @@
         messageDiv.className = `${bgColor} rounded-lg px-3 py-2 whitespace-pre-wrap break-words max-w-full md:max-w-3xl`;
         messageDiv.textContent = content;
         
-        // Add copy button for user and assistant messages
+        // Add action buttons for user and assistant messages
         if (role === 'user' || role === 'assistant') {
+            const actionBar = document.createElement('div');
+            actionBar.className = 'absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100';
+
             const copyBtn = document.createElement('button');
             copyBtn.className = copyBtnClass;
             copyBtn.innerHTML = `
@@ -512,7 +751,25 @@
                 e.stopPropagation();
                 copyToClipboard(content, copyBtn, role);
             };
-            messageContainer.appendChild(copyBtn);
+            actionBar.appendChild(copyBtn);
+
+            if (role === 'assistant') {
+                const saveBtn = document.createElement('button');
+                saveBtn.className = 'p-1.5 text-gray-400 hover:text-blue-600 hover:bg-gray-100 rounded transition-colors';
+                saveBtn.innerHTML = `
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v14l-7-4-7 4V5z"></path>
+                    </svg>
+                `;
+                saveBtn.title = 'Save question';
+                saveBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    saveAssistantQuestion(content, metadata, saveBtn);
+                };
+                actionBar.appendChild(saveBtn);
+            }
+
+            messageContainer.appendChild(actionBar);
         }
         
         messageContainer.appendChild(messageDiv);
@@ -609,7 +866,7 @@
     // Initialize on page load
     (function() {
         // Debug: Check what agents are loaded
-        console.log('Agents loaded:', {{ agents|tojson }});
+        console.log('Agents loaded:', AGENTS);
     })();
 </script>
 

@@ -21,6 +21,7 @@ from app.api.agent_api import AgentAPI
 from app.models.chat_session import chat_session_manager
 from app.models.user import db, User, Role
 from app.models.audit_log import AuditLog
+from app.models.question_record import QuestionRecord
 
 app = Flask(__name__)
 
@@ -192,6 +193,8 @@ def initialize_database_once():
         try:
             # Try to query users table - if it works, DB is initialized
             User.query.first()
+            # Ensure newly added SQLAlchemy models/tables are created.
+            db.create_all()
             _db_initialized = True
         except:
             # Database not initialized, create it
@@ -222,6 +225,52 @@ ALLOWED_EXTENSIONS = {'pdf', 'docx'}
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+
+def _parse_csv_or_list(raw_value):
+    """Normalize topic-like input to a clean list of strings."""
+    if raw_value is None:
+        return []
+    if isinstance(raw_value, list):
+        return [str(item).strip() for item in raw_value if str(item).strip()]
+    if isinstance(raw_value, str):
+        value = raw_value.strip()
+        if not value:
+            return []
+        try:
+            parsed = json.loads(value)
+            if isinstance(parsed, list):
+                return [str(item).strip() for item in parsed if str(item).strip()]
+        except Exception:
+            pass
+        return [item.strip() for item in value.split(",") if item.strip()]
+    return []
+
+
+def _derive_default_topics(payload):
+    """Derive topic defaults from available question metadata."""
+    topics = []
+    for key in ("domain", "difficulty_display_name", "question_type_phrase"):
+        value = payload.get(key)
+        if isinstance(value, str) and value.strip():
+            topics.append(value.strip())
+    # Deduplicate while preserving order
+    seen = set()
+    unique = []
+    for topic in topics:
+        lowered = topic.lower()
+        if lowered in seen:
+            continue
+        seen.add(lowered)
+        unique.append(topic)
+    return unique
+
+
+def _question_record_or_404(question_id):
+    record = QuestionRecord.query.filter_by(id=question_id, is_deleted=False).first()
+    if not record:
+        return None, jsonify({"success": False, "error": "Question not found"}), 404
+    return record, None, None
+
 @app.route("/")
 @login_required
 def home():
@@ -242,6 +291,12 @@ def home():
                          agents=agents,
                          current_model=current_model,
                          kb_count=kb_count)
+
+
+@app.route("/questions")
+@login_required
+def questions_library():
+    return render_template("questions_library.html")
 
 @app.route("/agents", methods=["GET", "POST"])
 @login_required
@@ -1178,6 +1233,216 @@ def get_global_difficulty_levels_api():
     levels_list = list(levels.values())
     return jsonify({"success": True, "levels": levels_list})
 
+
+@app.route("/api/questions", methods=["POST"])
+@login_required
+def create_question_api():
+    """Persist a generated question and metadata."""
+    try:
+        payload = request.get_json(silent=True) or {}
+        question_text = payload.get("question_text", "")
+        if not isinstance(question_text, str) or not question_text.strip():
+            return jsonify({"success": False, "error": "question_text is required"}), 400
+
+        status = payload.get("status", "active")
+        valid_statuses = {"active", "draft", "archived"}
+        if status not in valid_statuses:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": "status must be active, draft, or archived",
+                    }
+                ),
+                400,
+            )
+
+        topics = _parse_csv_or_list(payload.get("topics"))
+        if not topics:
+            topics = _derive_default_topics(payload)
+
+        record = QuestionRecord(
+            question_text=question_text.strip(),
+            answer_text=(payload.get("answer_text") or "").strip() or None,
+            explanation=(payload.get("explanation") or "").strip() or None,
+            status=status,
+            user_id=getattr(current_user, "id", None),
+            agent_id=(payload.get("agent_id") or "").strip() or None,
+            session_id=(payload.get("session_id") or "").strip() or None,
+            exam_profile_id=(payload.get("exam_profile_id") or "").strip() or None,
+            domain=(payload.get("domain") or "").strip() or None,
+            difficulty_level_id=(payload.get("difficulty_level_id") or "").strip() or None,
+            difficulty_display_name=(payload.get("difficulty_display_name") or "").strip()
+            or None,
+            question_type_id=(payload.get("question_type_id") or "").strip() or None,
+            question_type_phrase=(payload.get("question_type_phrase") or "").strip()
+            or None,
+            hot_topics_mode_effective=(
+                payload.get("hot_topics_mode_effective") or ""
+            ).strip()
+            or None,
+            hot_topics_used=payload.get("hot_topics_used"),
+            retrieval_path=(payload.get("retrieval_path") or "").strip() or None,
+            source_type=(payload.get("source_type") or "chat").strip() or "chat",
+            provider=(payload.get("provider") or "").strip() or None,
+            provider_model=(payload.get("provider_model") or "").strip() or None,
+        )
+        record.set_topics(topics)
+        record.set_options(payload.get("options", []))
+
+        db.session.add(record)
+        db.session.commit()
+
+        return jsonify({"success": True, "question": record.to_dict()})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/questions", methods=["GET"])
+@login_required
+def list_questions_api():
+    """List saved questions with filter and pagination support."""
+    try:
+        query = QuestionRecord.query.filter_by(is_deleted=False)
+
+        domain = request.args.get("domain", "").strip()
+        difficulty_level_id = request.args.get("difficulty_level_id", "").strip()
+        topic = request.args.get("topic", "").strip()
+        status = request.args.get("status", "").strip()
+        agent_id = request.args.get("agent_id", "").strip()
+
+        if domain:
+            query = query.filter(QuestionRecord.domain == domain)
+        if difficulty_level_id:
+            query = query.filter(QuestionRecord.difficulty_level_id == difficulty_level_id)
+        if status:
+            query = query.filter(QuestionRecord.status == status)
+        if agent_id:
+            query = query.filter(QuestionRecord.agent_id == agent_id)
+        if topic:
+            query = query.filter(QuestionRecord.topics_json.ilike(f"%{topic}%"))
+
+        page = max(int(request.args.get("page", 1)), 1)
+        page_size = min(max(int(request.args.get("page_size", 20)), 1), 100)
+
+        total = query.count()
+        records = (
+            query.order_by(QuestionRecord.created_at.desc())
+            .offset((page - 1) * page_size)
+            .limit(page_size)
+            .all()
+        )
+
+        all_active = QuestionRecord.query.filter_by(is_deleted=False).all()
+        domains = sorted({row.domain for row in all_active if row.domain})
+        difficulties = sorted(
+            {row.difficulty_level_id for row in all_active if row.difficulty_level_id}
+        )
+        topic_set = set()
+        for row in all_active:
+            for item in row.get_topics():
+                if item:
+                    topic_set.add(item)
+        topics = sorted(topic_set)
+
+        return jsonify(
+            {
+                "success": True,
+                "questions": [row.to_dict() for row in records],
+                "pagination": {
+                    "page": page,
+                    "page_size": page_size,
+                    "total": total,
+                    "total_pages": (total + page_size - 1) // page_size,
+                },
+                "filters": {
+                    "domains": domains,
+                    "difficulty_level_ids": difficulties,
+                    "topics": topics,
+                },
+            }
+        )
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/questions/<int:question_id>", methods=["GET"])
+@login_required
+def get_question_api(question_id):
+    """Fetch a single question by id."""
+    try:
+        record, error_response, error_code = _question_record_or_404(question_id)
+        if not record:
+            return error_response, error_code
+        return jsonify({"success": True, "question": record.to_dict()})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/questions/<int:question_id>", methods=["PUT"])
+@login_required
+def update_question_api(question_id):
+    """Update editable question fields."""
+    try:
+        record, error_response, error_code = _question_record_or_404(question_id)
+        if not record:
+            return error_response, error_code
+
+        payload = request.get_json(silent=True) or {}
+        if "question_text" in payload:
+            question_text = payload.get("question_text", "")
+            if not isinstance(question_text, str) or not question_text.strip():
+                return (
+                    jsonify({"success": False, "error": "question_text cannot be empty"}),
+                    400,
+                )
+            record.question_text = question_text.strip()
+
+        if "answer_text" in payload:
+            record.answer_text = (payload.get("answer_text") or "").strip() or None
+        if "explanation" in payload:
+            record.explanation = (payload.get("explanation") or "").strip() or None
+        if "options" in payload:
+            record.set_options(payload.get("options"))
+        if "topics" in payload:
+            record.set_topics(payload.get("topics"))
+        if "status" in payload:
+            status = payload.get("status")
+            if status not in {"active", "draft", "archived"}:
+                return jsonify({"success": False, "error": "invalid status"}), 400
+            record.status = status
+        if "domain" in payload:
+            record.domain = (payload.get("domain") or "").strip() or None
+        if "difficulty_level_id" in payload:
+            record.difficulty_level_id = (
+                payload.get("difficulty_level_id") or ""
+            ).strip() or None
+
+        db.session.commit()
+        return jsonify({"success": True, "question": record.to_dict()})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/questions/<int:question_id>", methods=["DELETE"])
+@login_required
+def delete_question_api(question_id):
+    """Soft-delete a question record."""
+    try:
+        record, error_response, error_code = _question_record_or_404(question_id)
+        if not record:
+            return error_response, error_code
+
+        record.is_deleted = True
+        record.status = "archived"
+        db.session.commit()
+        return jsonify({"success": True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 500
+
 @app.route("/knowledge", methods=["GET", "POST"])
 @login_required
 def knowledge():
@@ -1629,7 +1894,8 @@ def chat_with_agent(agent_id):
                                 'question_type_phrase': question_type.get('phrase'),
                                 'difficulty_level_id': difficulty_level_id,
                                 'difficulty_level_display_name': display_name,
-                                'difficulty_level_global_name': global_level['name']
+                                'difficulty_level_global_name': global_level['name'],
+                                'domain': blueprint.get('domain')
                             }
         except (RuntimeError, AttributeError):
             pass
