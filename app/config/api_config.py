@@ -169,8 +169,34 @@ def save_api_config(config: Dict[str, Any]) -> bool:
         return False
 
 def get_openai_api_key() -> Optional[str]:
-    """Get the current OpenAI API key from unified encrypted provider storage."""
-    return get_provider_api_key_encrypted("openai", DEFAULT_PROVIDER_KEY_NAME)
+    """
+    Get the current OpenAI API key from unified encrypted provider storage.
+
+    Uses `default` when present. For backward compatibility with earlier UI key
+    naming variations, falls back to a single available OpenAI key.
+    """
+    default_key = get_provider_api_key_encrypted("openai", DEFAULT_PROVIDER_KEY_NAME)
+    if default_key:
+        return default_key
+
+    fallback_names = list_provider_api_key_names_encrypted("openai")
+    if not fallback_names:
+        return None
+
+    # Prefer legacy-like variants first, then fall back to first configured key.
+    preferred_candidates = ["default OpenAI", "openai", "default-openai"]
+    for candidate in preferred_candidates:
+        if candidate in fallback_names:
+            key_value = get_provider_api_key_encrypted("openai", candidate)
+            if key_value:
+                return key_value
+
+    if len(fallback_names) == 1:
+        key_value = get_provider_api_key_encrypted("openai", fallback_names[0])
+        if key_value:
+            return key_value
+
+    return None
 
 def set_openai_api_key(api_key: str) -> bool:
     """Set and encrypt the OpenAI API key"""
