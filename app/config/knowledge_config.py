@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
 
 KNOWLEDGE_CONFIG_PATH = os.path.join(os.path.dirname(__file__), "knowledge_bases.json")
+PROJECT_ROOT = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", ".."))
 
 # Default knowledge bases structure - no hardcoded defaults
 DEFAULT_KNOWLEDGE_BASES = {
@@ -103,6 +104,47 @@ def _sha256_for_file(path: str) -> Optional[str]:
     return digest.hexdigest()
 
 
+def _to_posix_relative(path_value: str) -> str:
+    return path_value.replace("\\", "/")
+
+
+def _kb_relative_source_path_from_absolute(abs_path: str) -> Optional[str]:
+    """
+    Convert an absolute local KB file path to project-relative form.
+    """
+    try:
+        normalized_abs = os.path.normpath(abs_path)
+        rel_to_project = os.path.relpath(normalized_abs, PROJECT_ROOT)
+        rel_posix = _to_posix_relative(rel_to_project)
+        if rel_posix.startswith("app/knowledge_bases/"):
+            return rel_posix
+    except Exception:
+        return None
+    return None
+
+
+def _normalize_kb_source_for_storage(source_path: Optional[str]) -> Optional[str]:
+    """
+    Normalize KB source storage to project-relative paths when possible.
+    """
+    if not source_path or not isinstance(source_path, str):
+        return source_path
+
+    normalized_source = source_path.strip()
+    if not normalized_source:
+        return normalized_source
+
+    resolved_source = _resolve_kb_source_path(normalized_source)
+    if not resolved_source:
+        return _to_posix_relative(normalized_source)
+
+    relative_source = _kb_relative_source_path_from_absolute(resolved_source)
+    if relative_source:
+        return relative_source
+
+    return _to_posix_relative(normalized_source)
+
+
 def _resolve_kb_source_path(source_path: Optional[str]) -> Optional[str]:
     """
     Resolve a KB source path across environments.
@@ -115,7 +157,14 @@ def _resolve_kb_source_path(source_path: Optional[str]) -> Optional[str]:
 
     normalized_source = source_path.strip()
     if os.path.exists(normalized_source):
-        return normalized_source
+        return os.path.normpath(normalized_source)
+
+    # Resolve project-relative paths like app/knowledge_bases/<filename>.
+    project_relative_candidate = os.path.normpath(
+        os.path.join(PROJECT_ROOT, normalized_source)
+    )
+    if os.path.exists(project_relative_candidate):
+        return project_relative_candidate
 
     source_filename = os.path.basename(normalized_source.replace("\\", "/"))
     if not source_filename:
@@ -142,7 +191,21 @@ def load_knowledge_config():
     
     try:
         with open(KNOWLEDGE_CONFIG_PATH, "r", encoding="utf-8") as f:
-            return json.load(f)
+            config = json.load(f)
+        changed = False
+        for kb in config.get("knowledge_bases", []):
+            if not isinstance(kb, dict):
+                continue
+            kb_type = str(kb.get("type", "")).strip().lower()
+            if kb_type in {"url", "embedded"}:
+                continue
+            normalized_source = _normalize_kb_source_for_storage(kb.get("source"))
+            if normalized_source and normalized_source != kb.get("source"):
+                kb["source"] = normalized_source
+                changed = True
+        if changed:
+            save_knowledge_config(config)
+        return config
     except (json.JSONDecodeError, FileNotFoundError):
         return DEFAULT_KNOWLEDGE_BASES
 
@@ -179,13 +242,17 @@ def add_knowledge_base(title, description, kb_type, source, chunks_path=None, ac
         exam_profile_ids = [exam_profile_id] if exam_profile_id else []
     elif exam_profile_ids is None:
         exam_profile_ids = []
+
+    source_value = source
+    if kb_type in {"document", "file"}:
+        source_value = _normalize_kb_source_for_storage(source)
     
     new_kb = {
         "id": kb_id,
         "title": title,
         "description": description,
         "type": kb_type,
-        "source": source,
+        "source": source_value,
         "chunks_path": chunks_path,
         "created_at": datetime.now().isoformat(),
         "exam_profile_ids": exam_profile_ids,  # List of profile IDs
@@ -227,9 +294,10 @@ def remove_knowledge_base(kb_id):
         if kb_to_remove["type"] == "file":
             # Remove the original uploaded file
             try:
-                if os.path.exists(kb_to_remove["source"]):
-                    os.remove(kb_to_remove["source"])
-                    print(f"Removed source file: {kb_to_remove['source']}")
+                source_path = _resolve_kb_source_path(kb_to_remove.get("source"))
+                if source_path and os.path.exists(source_path):
+                    os.remove(source_path)
+                    print(f"Removed source file: {source_path}")
             except Exception as e:
                 print(f"Error removing source file: {e}")
         
@@ -435,6 +503,12 @@ def export_knowledge_base(kb_id: str, include_embeddings: bool = True) -> tuple[
     if not source_path:
         missing_source = stored_source_path or "(empty)"
         return False, f"Source file not found: {missing_source}", None
+
+    # Keep persisted source OS-agnostic and normalized during export flows too.
+    normalized_source = _normalize_kb_source_for_storage(source_path)
+    if normalized_source and normalized_source != kb_config.get("source"):
+        kb_config["source"] = normalized_source
+        save_knowledge_config(config)
     
     # Locate processed folder
     kb_base_dir = os.path.join(os.path.dirname(__file__), "..", "knowledge_bases")
@@ -462,6 +536,7 @@ def export_knowledge_base(kb_id: str, include_embeddings: bool = True) -> tuple[
         "description": kb_config.get("description"),
         "kb_type": kb_config.get("type"),
         "source_filename": original_filename,
+        "source_relative_path": kb_config.get("source"),
         "exam_profile_ids": kb_config.get("exam_profile_ids", []),
         "profile_type": kb_config.get("profile_type"),
         "profile_domain": kb_config.get("profile_domain"),
@@ -615,6 +690,7 @@ def import_knowledge_base(zip_file, user_embedding_provider: str, user_embedding
         base_name, ext = os.path.splitext(source_filename)
         new_source_path = os.path.join(kb_base_dir, f"{base_name}_{int(datetime.now().timestamp())}{ext}")
         shutil.copy2(source_temp_path, new_source_path)
+        stored_source_path = _normalize_kb_source_for_storage(new_source_path)
         
         # Handle embeddings
         new_processed_folder = os.path.join(kb_base_dir, new_kb_id)
@@ -651,7 +727,7 @@ def import_knowledge_base(zip_file, user_embedding_provider: str, user_embedding
             "title": manifest["title"],
             "description": manifest["description"],
             "type": manifest["kb_type"],
-            "source": new_source_path,
+            "source": stored_source_path,
             "chunks_path": None,
             "created_at": datetime.now().isoformat(),
             "exam_profile_ids": exam_profile_ids,

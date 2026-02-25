@@ -421,7 +421,12 @@ def process_knowledge_base(kb_id, kb_type, source_path, generate_summary=False, 
     """
     try:
         # Check if this is an event knowledge base
-        from app.config.knowledge_config import load_knowledge_config
+        from app.config.knowledge_config import (
+            load_knowledge_config,
+            save_knowledge_config,
+            _resolve_kb_source_path,
+            _normalize_kb_source_for_storage,
+        )
         config = load_knowledge_config()
         is_event_kb = False
         kb_info = None
@@ -433,6 +438,25 @@ def process_knowledge_base(kb_id, kb_type, source_path, generate_summary=False, 
                 kb_info = kb
                 break
         
+        # Resolve legacy cross-OS source paths before processing local files.
+        if kb_type == "file":
+            resolved_source_path = _resolve_kb_source_path(source_path)
+            if not resolved_source_path:
+                print(f"Source file not found for KB {kb_id}: {source_path}")
+                return False, None
+            if resolved_source_path != source_path:
+                print(
+                    f"Resolved legacy source path for KB {kb_id}: "
+                    f"{source_path} -> {resolved_source_path}"
+                )
+                source_path = resolved_source_path
+                normalized_source_for_storage = _normalize_kb_source_for_storage(
+                    resolved_source_path
+                )
+                if kb_info is not None and kb_info.get("source") != normalized_source_for_storage:
+                    kb_info["source"] = normalized_source_for_storage
+                    save_knowledge_config(config)
+
         # Extract text based on type
         if kb_type == "file":
             if source_path.lower().endswith(".docx"):
