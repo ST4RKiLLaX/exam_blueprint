@@ -392,21 +392,32 @@
                 document.querySelectorAll('.difficulty-checkbox:checked')
             ).map(cb => cb.value);
             
+            async function postChatMessage() {
+                return await fetch(`/api/chat/${currentAgentId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message: message,
+                        session_id: chatSessionId,
+                        enabled_levels: enabledLevels.length > 0 ? enabledLevels : null,
+                        hot_topics_mode: getSelectedHotTopicsMode()
+                    })
+                });
+            }
+
             // Send message
-            const response = await fetch(`/api/chat/${currentAgentId}`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    message: message,
-                    session_id: chatSessionId,
-                    enabled_levels: enabledLevels.length > 0 ? enabledLevels : null,
-                    hot_topics_mode: getSelectedHotTopicsMode()
-                })
-            });
-            
-            const data = await response.json();
+            let response = await postChatMessage();
+            let data = await response.json();
+
+            // Auto-recover once if session went stale server-side.
+            if (!data.success && typeof data.error === 'string' && data.error.includes('Session not found')) {
+                chatSessionId = null;
+                await initializeChatSession();
+                response = await postChatMessage();
+                data = await response.json();
+            }
             
             // Remove thinking indicator
             removeThinkingIndicator();

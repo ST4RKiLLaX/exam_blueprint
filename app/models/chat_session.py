@@ -56,10 +56,12 @@ class ChatSessionManager:
             os.path.dirname(__file__), "..", "config", "chat_sessions.json"
         )
         self._sessions = {}
+        self._last_loaded_mtime = None
         self.load_sessions()
     
     def create_session(self, agent_id: str, user_id: str = None) -> ChatSession:
         """Create a new chat session"""
+        self._sync_from_disk_if_changed()
         session_id = str(uuid.uuid4())
         session = ChatSession(session_id, agent_id, user_id=user_id)
         self._sessions[session_id] = session
@@ -68,6 +70,7 @@ class ChatSessionManager:
     
     def get_session(self, session_id: str) -> Optional[ChatSession]:
         """Get a chat session by ID"""
+        self._sync_from_disk_if_changed()
         return self._sessions.get(session_id)
 
     def user_can_access(self, session_id: str, user_id: str, is_admin: bool = False) -> bool:
@@ -84,6 +87,7 @@ class ChatSessionManager:
     
     def add_message(self, session_id: str, role: str, content: str):
         """Add a message to a session"""
+        self._sync_from_disk_if_changed()
         session = self.get_session(session_id)
         if session:
             session.add_message(role, content)
@@ -91,6 +95,7 @@ class ChatSessionManager:
     
     def get_chat_history(self, session_id: str, limit: int = 10) -> List[Dict]:
         """Get chat history for a session in the format expected by generate_reply"""
+        self._sync_from_disk_if_changed()
         session = self.get_session(session_id)
         if not session:
             return []
@@ -107,6 +112,7 @@ class ChatSessionManager:
     
     def cleanup_old_sessions(self, days_old: int = 7):
         """Clean up old sessions to prevent storage bloat"""
+        self._sync_from_disk_if_changed()
         cutoff_date = datetime.now().timestamp() - (days_old * 24 * 60 * 60)
         
         sessions_to_remove = []
@@ -129,6 +135,7 @@ class ChatSessionManager:
         """Load sessions from storage"""
         if os.path.exists(self.storage_path):
             try:
+                self._last_loaded_mtime = os.path.getmtime(self.storage_path)
                 with open(self.storage_path, "r", encoding="utf-8") as f:
                     data = json.load(f)
                     self._sessions = {
@@ -137,6 +144,9 @@ class ChatSessionManager:
                     }
             except (json.JSONDecodeError, FileNotFoundError):
                 self._sessions = {}
+                self._last_loaded_mtime = None
+        else:
+            self._last_loaded_mtime = None
     
     def save_sessions(self):
         """Save sessions to storage"""
@@ -149,6 +159,18 @@ class ChatSessionManager:
         }
         with open(self.storage_path, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
+        self._last_loaded_mtime = os.path.getmtime(self.storage_path)
+
+    def _sync_from_disk_if_changed(self):
+        """Reload sessions when another process updates chat_sessions.json."""
+        if not os.path.exists(self.storage_path):
+            return
+        try:
+            current_mtime = os.path.getmtime(self.storage_path)
+        except OSError:
+            return
+        if self._last_loaded_mtime is None or current_mtime > self._last_loaded_mtime:
+            self.load_sessions()
 
 # Global instance
 chat_session_manager = ChatSessionManager()
