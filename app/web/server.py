@@ -7,6 +7,8 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 import os
 import json
 import secrets
+import logging
+import uuid
 from werkzeug.utils import secure_filename
 from datetime import datetime
 from app.agents.agent import generate_reply
@@ -24,6 +26,25 @@ from app.models.audit_log import AuditLog
 from app.models.question_record import QuestionRecord
 
 app = Flask(__name__)
+logger = logging.getLogger(__name__)
+
+
+def _api_error(message: str = "An unexpected error occurred. Please try again.", status: int = 500, include_success: bool = True):
+    """Return a safe API error response without leaking internals."""
+    payload = {"error": message}
+    if include_success:
+        payload["success"] = False
+    return jsonify(payload), status
+
+
+def _unique_secure_filename(original_name: str) -> str:
+    """Generate a secure, collision-resistant filename while preserving extension."""
+    safe_name = secure_filename(original_name or "")
+    if not safe_name:
+        safe_name = "upload"
+    stem, ext = os.path.splitext(safe_name)
+    token = uuid.uuid4().hex[:10]
+    return f"{stem}_{token}{ext}"
 
 # Generate secure secret keys (persistent across restarts)
 def get_or_create_secret(filename, key_name):
@@ -140,9 +161,24 @@ limiter = Limiter(
     default_limits=["200 per day", "50 per hour"]
 )
 
-# Enable CORS for external embedding (quiz widgets remain public)
+# Enable CORS for external embedding.
+# Compatibility-first:
+# - /api/chat/* can be allowlisted via env var CHAT_API_CORS_ORIGINS (comma-separated).
+# - if unset, limit to localhost patterns for explicit cross-origin use.
+# - embed/quiz remain broadly accessible for widget usage.
+chat_api_origins_env = os.environ.get("CHAT_API_CORS_ORIGINS", "").strip()
+if chat_api_origins_env:
+    chat_api_origins = [origin.strip() for origin in chat_api_origins_env.split(",") if origin.strip()]
+else:
+    chat_api_origins = [
+        r"http://localhost(:\d+)?",
+        r"http://127\.0\.0\.1(:\d+)?",
+        r"https://localhost(:\d+)?",
+        r"https://127\.0\.0\.1(:\d+)?",
+    ]
+
 CORS(app, resources={
-    r"/api/chat/*": {"origins": "*"},
+    r"/api/chat/*": {"origins": chat_api_origins},
     r"/embed/*": {"origins": "*"},
     r"/api/quiz/*": {"origins": "*"},
     r"/quiz/*": {"origins": "*"}
@@ -196,7 +232,7 @@ def initialize_database_once():
             # Ensure newly added SQLAlchemy models/tables are created.
             db.create_all()
             _db_initialized = True
-        except:
+        except Exception:
             # Database not initialized, create it
             create_initial_setup()
             _db_initialized = True
@@ -213,7 +249,7 @@ def inject_context():
             'api_key_status': api_info.get('test_status', 'unknown'),
             'current_user': current_user
         }
-    except:
+    except Exception:
         return {
             'api_key_has_key': False,
             'api_key_status': 'unknown',
@@ -692,7 +728,7 @@ def knowledge_bases():
                         return redirect(request.url)
                     
                     # Save uploaded file
-                    filename = secure_filename(file.filename)
+                    filename = _unique_secure_filename(file.filename)
                     upload_path = os.path.join(os.path.dirname(__file__), "..", "knowledge_bases", filename)
                     os.makedirs(os.path.dirname(upload_path), exist_ok=True)
                     file.save(upload_path)
@@ -872,7 +908,7 @@ def knowledge_bases():
                     with open(chunks_path, 'rb') as f:
                         chunks = pickle.load(f)
                     chunks_count = len(chunks)
-            except:
+            except Exception:
                 pass
         
         # Get profile names from IDs
@@ -1017,8 +1053,8 @@ def import_agent_api():
     
     try:
         agent_data = json.load(file)
-    except json.JSONDecodeError as e:
-        return jsonify({"error": f"Invalid JSON format: {str(e)}"}), 400
+    except json.JSONDecodeError:
+        return jsonify({"error": "Invalid JSON format"}), 400
     
     success, message, warnings = agent_manager.import_agent(agent_data)
     
@@ -1064,7 +1100,7 @@ def exam_profiles():
             qt_json = request.form.get("question_types_json", "[]")
             try:
                 profile_data["question_types"] = json.loads(qt_json)
-            except:
+            except json.JSONDecodeError:
                 flash("Invalid question types data", "error")
                 return redirect(url_for('exam_profiles'))
             
@@ -1072,7 +1108,7 @@ def exam_profiles():
             domains_json = request.form.get("domains_json", "[]")
             try:
                 profile_data["domains"] = json.loads(domains_json)
-            except:
+            except json.JSONDecodeError:
                 flash("Invalid domains data", "error")
                 return redirect(url_for('exam_profiles'))
             
@@ -1080,7 +1116,7 @@ def exam_profiles():
             modes_json = request.form.get("reasoning_modes_json", "[]")
             try:
                 profile_data["reasoning_modes"] = json.loads(modes_json)
-            except:
+            except json.JSONDecodeError:
                 flash("Invalid reasoning modes data", "error")
                 return redirect(url_for('exam_profiles'))
             
@@ -1187,8 +1223,8 @@ def import_exam_profile():
     try:
         # Parse JSON from uploaded file
         profile_data = json.load(file)
-    except json.JSONDecodeError as e:
-        return jsonify({"error": f"Invalid JSON format: {str(e)}"}), 400
+    except json.JSONDecodeError:
+        return jsonify({"error": "Invalid JSON format"}), 400
     
     # Get overwrite flag from form data
     overwrite = request.form.get('overwrite', 'false').lower() == 'true'
@@ -1294,9 +1330,10 @@ def create_question_api():
         db.session.commit()
 
         return jsonify({"success": True, "question": record.to_dict()})
-    except Exception as e:
+    except Exception:
+        logger.exception("create_question_api failed")
         db.session.rollback()
-        return jsonify({"success": False, "error": str(e)}), 500
+        return _api_error(status=500)
 
 
 @app.route("/api/questions", methods=["GET"])
@@ -1363,8 +1400,9 @@ def list_questions_api():
                 },
             }
         )
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+    except Exception:
+        logger.exception("list_questions_api failed")
+        return _api_error(status=500)
 
 
 @app.route("/api/questions/<int:question_id>", methods=["GET"])
@@ -1376,8 +1414,9 @@ def get_question_api(question_id):
         if not record:
             return error_response, error_code
         return jsonify({"success": True, "question": record.to_dict()})
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+    except Exception:
+        logger.exception("get_question_api failed")
+        return _api_error(status=500)
 
 
 @app.route("/api/questions/<int:question_id>", methods=["PUT"])
@@ -1421,9 +1460,10 @@ def update_question_api(question_id):
 
         db.session.commit()
         return jsonify({"success": True, "question": record.to_dict()})
-    except Exception as e:
+    except Exception:
+        logger.exception("update_question_api failed")
         db.session.rollback()
-        return jsonify({"success": False, "error": str(e)}), 500
+        return _api_error(status=500)
 
 
 @app.route("/api/questions/<int:question_id>", methods=["DELETE"])
@@ -1439,9 +1479,10 @@ def delete_question_api(question_id):
         record.status = "archived"
         db.session.commit()
         return jsonify({"success": True})
-    except Exception as e:
+    except Exception:
+        logger.exception("delete_question_api failed")
         db.session.rollback()
-        return jsonify({"success": False, "error": str(e)}), 500
+        return _api_error(status=500)
 
 @app.route("/knowledge", methods=["GET", "POST"])
 @login_required
@@ -1468,7 +1509,7 @@ def knowledge():
                 return redirect(request.url)
             
             if file and allowed_file(file.filename):
-                filename = secure_filename(file.filename)
+                filename = _unique_secure_filename(file.filename)
                 filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
                 file.save(filepath)
                 
@@ -1639,8 +1680,9 @@ def settings():
                 from app.config.api_config import test_openai_api_key
                 result = test_openai_api_key(api_key if api_key else None)
                 return jsonify(result)
-            except Exception as e:
-                return jsonify({"success": False, "error": str(e)})
+            except Exception:
+                logger.exception("settings test_api_key action failed")
+                return _api_error(status=500)
         
         elif action == "delete_api_key":
             try:
@@ -1693,7 +1735,7 @@ def settings():
         from app.config.model_config import get_current_model, get_current_temperature
         current_model = get_current_model()
         current_temperature = get_current_temperature()
-    except:
+    except Exception:
         current_model = "gpt-5"
         current_temperature = 0.5
     
@@ -1806,8 +1848,9 @@ def create_chat_session():
             "created_at": session.created_at
         })
         
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)})
+    except Exception:
+        logger.exception("create_chat_session failed")
+        return _api_error(status=500)
 
 @app.route("/api/chat/<agent_id>", methods=["POST"])
 @login_required
@@ -1911,8 +1954,9 @@ def chat_with_agent(agent_id):
             "retrieval_path": getattr(g, 'retrieval_path', None)
         })
         
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)})
+    except Exception:
+        logger.exception("chat_with_agent failed")
+        return _api_error(status=500)
 
 @app.route("/embed/<agent_id>")
 def get_embed_code(agent_id):
@@ -1928,8 +1972,9 @@ def get_embed_code(agent_id):
                              agent=agent,
                              agent_id=agent_id)
         
-    except Exception as e:
-        return str(e), 500
+    except Exception:
+        logger.exception("get_embed_code failed")
+        return "An unexpected error occurred.", 500
 
 @app.route("/embed-code/<agent_id>")
 @login_required
@@ -1965,8 +2010,9 @@ def embed_code_generator(agent_id):
                              embed_codes=embed_codes,
                              base_url=base_url)
         
-    except Exception as e:
-        return str(e), 500
+    except Exception:
+        logger.exception("embed_code_generator failed")
+        return "An unexpected error occurred.", 500
 
 @app.route("/quiz/<agent_id>")
 def quiz_widget(agent_id):
@@ -1982,8 +2028,9 @@ def quiz_widget(agent_id):
                              agent=agent,
                              agent_id=agent_id)
         
-    except Exception as e:
-        return str(e), 500
+    except Exception:
+        logger.exception("quiz_widget failed")
+        return "An unexpected error occurred.", 500
 
 @app.route("/quiz-code/<agent_id>")
 @login_required
@@ -2024,8 +2071,9 @@ def quiz_embed_code_generator(agent_id):
                              embed_codes=embed_codes,
                              base_url=base_url)
         
-    except Exception as e:
-        return str(e), 500
+    except Exception:
+        logger.exception("quiz_embed_code_generator failed")
+        return "An unexpected error occurred.", 500
 
 @app.route("/api/quiz/<agent_id>/generate", methods=["POST"])
 def generate_quiz_questions(agent_id):
@@ -2052,11 +2100,9 @@ def generate_quiz_questions(agent_id):
             "session_id": session_id
         })
         
-    except Exception as e:
-        print(f"[ERROR] Error generating quiz questions: {e}")
-        import traceback
-        traceback.print_exc()
-        return jsonify({"success": False, "error": str(e)})
+    except Exception:
+        logger.exception("generate_quiz_questions failed")
+        return _api_error(status=500)
 
 # User Management Routes
 @app.route("/users")
@@ -2132,8 +2178,9 @@ def reset_user_password():
         
         return jsonify({"success": True, "password": new_password})
         
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)})
+    except Exception:
+        logger.exception("reset_user_password failed")
+        return _api_error(status=500)
 
 @app.route("/users/edit-email", methods=["POST"])
 @roles_required('admin')
@@ -2176,8 +2223,9 @@ def edit_user_email():
         
         return jsonify({"success": True})
         
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)})
+    except Exception:
+        logger.exception("edit_user_email failed")
+        return _api_error(status=500)
 
 @app.route("/users/toggle-status", methods=["POST"])
 @roles_required('admin')
@@ -2208,8 +2256,9 @@ def toggle_user_status():
         
         return jsonify({"success": True})
         
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)})
+    except Exception:
+        logger.exception("toggle_user_status failed")
+        return _api_error(status=500)
 
 @app.route("/users/delete", methods=["POST"])
 @roles_required('admin')
@@ -2239,8 +2288,9 @@ def delete_user():
         
         return jsonify({"success": True})
         
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)})
+    except Exception:
+        logger.exception("delete_user failed")
+        return _api_error(status=500)
 
 if __name__ == "__main__":
     try:
