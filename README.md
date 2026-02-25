@@ -107,7 +107,7 @@ python3 --version  # Check system Python version
 1. **Clone the repository**
    ```bash
    git clone <repository-url>
-   cd exam_blueprint
+   cd examblueprint
    ```
 
 2. **Create a virtual environment**
@@ -273,9 +273,9 @@ After logging in as admin, you can manage users:
 ### 2. Configure API Keys (Admin Only)
 
 1. Navigate to **Settings** in the menu
-2. Select a provider card and add an API key
+2. Select a provider in the provider dropdown
 3. Choose a **Key Name** (for example: `default`, `team_a`, `backup`)
-4. Save the key (keys are encrypted at rest)
+4. Add/edit the key in the provider key form (keys are encrypted at rest)
 5. Repeat for additional named keys and providers as needed
 
 ### 3. Create Knowledge Bases
@@ -304,6 +304,14 @@ After logging in as admin, you can manage users:
 2. Select your agent
 3. Enter a prompt (e.g., "Generate a question about access control")
 4. Review the generated question
+5. Use **Save Question** on an assistant response to store it
+
+### 6. Manage Saved Questions
+
+1. Open **Question Library** from the top navigation
+2. Filter by domain, difficulty level, topic, or status
+3. Edit saved question content/topics/status
+4. Delete questions (soft-delete)
 
 **Via Quiz Widget:**
 1. Go to **Agents**
@@ -352,10 +360,11 @@ exam_blueprint/
 │   ├── data/            # Runtime data
 │   ├── embeddings/      # Generated embeddings (gitignored)
 │   ├── knowledge_bases/ # Uploaded documents (gitignored)
-│   ├── models/          # Data models (Agent, ChatSession, User, AuditLog)
+│   ├── models/          # Data models (Agent, ChatSession, User, AuditLog, QuestionRecord)
 │   │   ├── agent.py
 │   │   ├── user.py      # User and Role models
-│   │   └── audit_log.py # Admin action audit logging
+│   │   ├── audit_log.py # Admin action audit logging
+│   │   └── question_record.py # Saved question metadata/content
 │   ├── utils/           # Utilities (KB processing, response processing)
 │   └── web/             # Flask server and templates
 │       ├── server.py
@@ -481,6 +490,12 @@ Update pins after dependency changes:
 
 ```bash
 venv/bin/pip install pip-tools
+venv/bin/python update_requirements.py
+```
+
+Direct command (equivalent):
+
+```bash
 venv/bin/pip-compile requirements.in --output-file requirements.txt
 ```
 
@@ -489,8 +504,8 @@ venv/bin/pip-compile requirements.in --output-file requirements.txt
 Generate a local CycloneDX SBOM from `requirements.txt`:
 
 ```bash
-pip install -r requirements.txt
-python ./generate_sbom.py
+venv/bin/pip install -r requirements.txt
+venv/bin/python ./generate_sbom.py
 ```
 
 This writes `sbom.cdx.json` in the project root (gitignored by default).
@@ -498,18 +513,18 @@ This writes `sbom.cdx.json` in the project root (gitignored by default).
 Optional: write to a custom output path:
 
 ```bash
-python ./generate_sbom.py ./artifacts/sbom.cdx.json
+venv/bin/python ./generate_sbom.py ./artifacts/sbom.cdx.json
 ```
 
 Optional: validate JSON structure locally:
 
 ```bash
-python -m json.tool sbom.cdx.json >/dev/null
+venv/bin/python -m json.tool sbom.cdx.json >/dev/null
 ```
 
 ### Running Tests
 ```bash
-pytest tests/
+venv/bin/python -m pytest
 ```
 
 ### Code Style
