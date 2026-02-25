@@ -66,6 +66,11 @@ app/data/thread_store.json
 # Logs
 *.log
 
+# SBOM artifacts
+sbom.cdx.json
+sbom*.cdx.json
+*.sbom.json
+
 # Flask
 instance/
 .webassets-cache

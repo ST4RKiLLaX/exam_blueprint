@@ -142,10 +142,12 @@ python3 --version  # Check system Python version
    source venv/bin/activate
    ```
 
-4. **Install dependencies**
+4. **Install dependencies (pinned)**
    ```bash
    pip install -r requirements.txt
    ```
+
+   `requirements.txt` is compiled from `requirements.in` using `pip-tools`.
 
 5. **Create local config files (no manual key edits required)**
    
@@ -364,6 +366,7 @@ exam_blueprint/
 ├── venv/                # Virtual environment (gitignored)
 ├── .gitignore
 ├── README.md
+├── requirements.in
 ├── requirements.txt
 ├── SECURITY_NOTICE.md
 └── main.py
@@ -468,6 +471,41 @@ $env:PYTHONIOENCODING = "utf-8"
 - Local domains like `@localhost` are not accepted
 
 ## Development
+
+### Dependency Management (Pinned)
+
+Top-level dependencies live in `requirements.in`.  
+Pinned, reproducible dependencies live in `requirements.txt`.
+
+Update pins after dependency changes:
+
+```bash
+venv/bin/pip install pip-tools
+venv/bin/pip-compile requirements.in --output-file requirements.txt
+```
+
+### Generate SBOM (CycloneDX)
+
+Generate a local CycloneDX SBOM from `requirements.txt`:
+
+```bash
+pip install -r requirements.txt
+python ./generate_sbom.py
+```
+
+This writes `sbom.cdx.json` in the project root (gitignored by default).
+
+Optional: write to a custom output path:
+
+```bash
+python ./generate_sbom.py ./artifacts/sbom.cdx.json
+```
+
+Optional: validate JSON structure locally:
+
+```bash
+python -m json.tool sbom.cdx.json >/dev/null
+```
 
 ### Running Tests
 ```bash
