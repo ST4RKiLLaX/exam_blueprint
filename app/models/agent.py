@@ -217,6 +217,7 @@ class AgentManager:
             os.path.dirname(__file__), "..", "config", "agents.json"
         )
         self._agents = {}
+        self._last_loaded_mtime = None
         self.load_agents()
     
     def load_agents(self):
@@ -224,6 +225,7 @@ class AgentManager:
         needs_save = False
         if os.path.exists(self.storage_path):
             try:
+                self._last_loaded_mtime = os.path.getmtime(self.storage_path)
                 with open(self.storage_path, "r", encoding="utf-8") as f:
                     data = json.load(f)
                     self._agents = {
@@ -237,6 +239,9 @@ class AgentManager:
                             break
             except (json.JSONDecodeError, FileNotFoundError):
                 self._agents = {}
+                self._last_loaded_mtime = None
+        else:
+            self._last_loaded_mtime = None
         
         # If no agents exist, create a default one from current config
         if not self._agents:
@@ -270,6 +275,23 @@ class AgentManager:
         }
         with open(self.storage_path, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
+        self._last_loaded_mtime = os.path.getmtime(self.storage_path)
+
+    def _sync_from_disk_if_changed(self):
+        """
+        Reload agents from disk when another process modifies storage.
+
+        This avoids stale in-memory state when running with multiple workers
+        or the Flask debug reloader.
+        """
+        if not os.path.exists(self.storage_path):
+            return
+        try:
+            current_mtime = os.path.getmtime(self.storage_path)
+        except OSError:
+            return
+        if self._last_loaded_mtime is None or current_mtime > self._last_loaded_mtime:
+            self.load_agents()
     
     def create_agent(self, name: str, personality: str = "", style: str = "", 
                     prompt: str = "", formatting: str = "", knowledge_bases: List[str] = None,
@@ -290,6 +312,7 @@ class AgentManager:
                     exam_profile_id: str = None,
                     blueprint_history_depth: int = 8) -> Agent:
         """Create a new agent"""
+        self._sync_from_disk_if_changed()
         agent = Agent(
             name=name,
             personality=personality,
@@ -328,18 +351,22 @@ class AgentManager:
     
     def get_agent(self, agent_id: str) -> Optional[Agent]:
         """Get agent by ID"""
+        self._sync_from_disk_if_changed()
         return self._agents.get(agent_id)
     
     def get_all_agents(self) -> List[Agent]:
         """Get all agents"""
+        self._sync_from_disk_if_changed()
         return list(self._agents.values())
     
     def get_active_agents(self) -> List[Agent]:
         """Get all active agents"""
+        self._sync_from_disk_if_changed()
         return [agent for agent in self._agents.values() if agent.status == "active"]
     
     def update_agent(self, agent_id: str, **kwargs) -> bool:
         """Update an agent"""
+        self._sync_from_disk_if_changed()
         agent = self._agents.get(agent_id)
         if agent:
             agent.update(**kwargs)
@@ -349,6 +376,7 @@ class AgentManager:
     
     def delete_agent(self, agent_id: str) -> bool:
         """Delete an agent"""
+        self._sync_from_disk_if_changed()
         if agent_id in self._agents:
             del self._agents[agent_id]
             self.save_agents()
@@ -402,6 +430,7 @@ class AgentManager:
             Tuple of (success, message, warnings)
         """
         warnings = []
+        self._sync_from_disk_if_changed()
         
         # Remove metadata if present
         agent_data.pop("_metadata", None)
