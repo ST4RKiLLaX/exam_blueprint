@@ -9,6 +9,7 @@ import json
 import secrets
 import logging
 import uuid
+import threading
 from werkzeug.utils import secure_filename
 from datetime import datetime
 from app.agents.agent import generate_reply
@@ -61,6 +62,48 @@ def _log_security_event(event_type: str, details: dict, severity: str = "warning
     }
     log_method = getattr(security_logger, severity, security_logger.warning)
     log_method(json.dumps(payload, ensure_ascii=False))
+
+
+def _start_kb_processing_job(
+    kb_id: str,
+    kb_type: str,
+    source_path: str,
+    embedding_provider: str,
+    generate_summary: bool = False,
+) -> None:
+    """
+    Run KB embedding processing in a background thread to avoid request timeouts.
+    """
+    def _worker() -> None:
+        try:
+            update_embedding_status(kb_id, "processing")
+            success, ai_summary = process_knowledge_base(
+                kb_id=kb_id,
+                kb_type=kb_type,
+                source_path=source_path,
+                generate_summary=generate_summary,
+                embedding_provider=embedding_provider,
+            )
+            if success:
+                update_embedding_status(kb_id, "completed")
+                if ai_summary and generate_summary:
+                    config = load_knowledge_config()
+                    for kb in config.get("knowledge_bases", []):
+                        if kb.get("id") == kb_id:
+                            kb["description"] = ai_summary
+                            break
+                    save_knowledge_config(config)
+            else:
+                update_embedding_status(kb_id, "failed")
+        except Exception:
+            logger.exception("background KB processing failed for %s", kb_id)
+            update_embedding_status(kb_id, "failed")
+
+    threading.Thread(
+        target=_worker,
+        name=f"kb-process-{kb_id}",
+        daemon=True,
+    ).start()
 
 # Generate secure secret keys (persistent across restarts)
 def get_or_create_secret(filename, key_name):
@@ -715,31 +758,19 @@ def knowledge_bases():
                         embedding_provider=embedding_provider
                     )
                     
-                    # Process the knowledge base
-                    from app.utils.knowledge_processor import process_knowledge_base
-                    update_embedding_status(kb_id, "processing")
-                    
-                    # Generate AI summary if description is empty
+                    # Process asynchronously to avoid Gunicorn request timeouts.
                     generate_summary = not description.strip()
-                    success, ai_summary = process_knowledge_base(kb_id, "url", source_url, generate_summary=generate_summary, 
-                                                                 embedding_provider=embedding_provider)
-                    
-                    if success:
-                        update_embedding_status(kb_id, "completed")
-                        
-                        # Update description with AI summary if generated
-                        if ai_summary and generate_summary:
-                            config = load_knowledge_config()
-                            for kb in config.get('knowledge_bases', []):
-                                if kb.get('id') == kb_id:
-                                    kb['description'] = ai_summary
-                                    break
-                            save_knowledge_config(config)
-                        
-                        flash(f'Knowledge base "{title}" added and processed successfully!', 'success')
-                    else:
-                        update_embedding_status(kb_id, "failed")
-                        flash(f'Knowledge base "{title}" added but processing failed', 'warning')
+                    _start_kb_processing_job(
+                        kb_id=kb_id,
+                        kb_type="url",
+                        source_path=source_url,
+                        embedding_provider=embedding_provider,
+                        generate_summary=generate_summary,
+                    )
+                    flash(
+                        f'Knowledge base "{title}" added. Processing started in background.',
+                        "success",
+                    )
                     
                 else:
                     # Handle file upload
@@ -773,31 +804,19 @@ def knowledge_bases():
                         embedding_provider=embedding_provider
                     )
                     
-                    # Process the knowledge base
-                    from app.utils.knowledge_processor import process_knowledge_base
-                    update_embedding_status(kb_id, "processing")
-                    
-                    # Generate AI summary if description is empty
+                    # Process asynchronously to avoid Gunicorn request timeouts.
                     generate_summary = not description.strip()
-                    success, ai_summary = process_knowledge_base(kb_id, "file", upload_path, generate_summary=generate_summary,
-                                                                 embedding_provider=embedding_provider)
-                    
-                    if success:
-                        update_embedding_status(kb_id, "completed")
-                        
-                        # Update description with AI summary if generated
-                        if ai_summary and generate_summary:
-                            config = load_knowledge_config()
-                            for kb in config.get('knowledge_bases', []):
-                                if kb.get('id') == kb_id:
-                                    kb['description'] = ai_summary
-                                    break
-                            save_knowledge_config(config)
-                        
-                        flash(f'Knowledge base "{title}" uploaded and processed successfully!', 'success')
-                    else:
-                        update_embedding_status(kb_id, "failed")
-                        flash(f'Knowledge base "{title}" uploaded but processing failed', 'warning')
+                    _start_kb_processing_job(
+                        kb_id=kb_id,
+                        kb_type="file",
+                        source_path=upload_path,
+                        embedding_provider=embedding_provider,
+                        generate_summary=generate_summary,
+                    )
+                    flash(
+                        f'Knowledge base "{title}" uploaded. Processing started in background.',
+                        "success",
+                    )
                     
             except Exception:
                 logger.exception("knowledge_bases upload action failed")
@@ -839,19 +858,20 @@ def knowledge_bases():
                         if new_embedding_provider != old_embedding_provider:
                             save_knowledge_config(config)
                             flash(f'Embedding provider changed to {new_embedding_provider}. Reprocessing knowledge base...', 'info')
-                            # Trigger reprocess with new provider
-                            from app.utils.knowledge_processor import process_knowledge_base
-                            try:
-                                process_knowledge_base(
-                                    kb_id=kb_id,
-                                    kb_type=kb.get('type'),
-                                    source=kb.get('source'),
-                                    embedding_provider=new_embedding_provider
-                                )
-                                flash('Knowledge base reprocessed successfully', 'success')
-                            except Exception:
-                                logger.exception("knowledge_bases embedding reprocess failed")
-                                flash('Reprocessing failed.', 'error')
+                            # Trigger async reprocess with new provider.
+                            kb_type = kb.get("type", "document")
+                            processor_type = "file" if kb_type == "document" else kb_type
+                            _start_kb_processing_job(
+                                kb_id=kb_id,
+                                kb_type=processor_type,
+                                source_path=kb.get("source"),
+                                embedding_provider=new_embedding_provider,
+                                generate_summary=False,
+                            )
+                            flash(
+                                "Reprocessing started in background with new embedding provider.",
+                                "success",
+                            )
                         
                         break
                 
@@ -886,15 +906,18 @@ def knowledge_bases():
                 
                 if kb_info:
                     try:
-                        from app.utils.knowledge_processor import process_knowledge_base
                         kb_type = kb_info.get('type', 'document')
                         # Convert 'document' to 'file' for the processor
                         processor_type = "file" if kb_type == "document" else kb_type
-                        success, _ = process_knowledge_base(kb_id, processor_type, kb_info['source'])
-                        if success:
-                            flash('Knowledge base reprocessed successfully!', 'success')
-                        else:
-                            flash('Knowledge base reprocessing failed!', 'error')
+                        embedding_provider = kb_info.get("embedding_provider", "openai")
+                        _start_kb_processing_job(
+                            kb_id=kb_id,
+                            kb_type=processor_type,
+                            source_path=kb_info.get("source"),
+                            embedding_provider=embedding_provider,
+                            generate_summary=False,
+                        )
+                        flash("Knowledge base reprocessing started in background!", "success")
                     except Exception:
                         logger.exception("knowledge_bases manual reprocess failed")
                         flash('Error reprocessing knowledge base.', 'error')
