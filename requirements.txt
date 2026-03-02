@@ -208,7 +208,7 @@ pydantic-core==2.41.5
     # via pydantic
 pyparsing==3.3.2
     # via pip-requirements-parser
-pypdf==6.7.3
+pypdf==6.7.4
     # via -r requirements.in
 python-dateutil==2.9.0.post0
     # via arrow
