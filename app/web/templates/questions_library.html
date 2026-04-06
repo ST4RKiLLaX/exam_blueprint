@@ -42,6 +42,20 @@
     .dark #editQuestionModal #cancelEditBtn:hover { background-color: rgb(75 85 99); }
     .dark #editQuestionModal .bg-gray-100 { background-color: rgb(55 65 81); }
     .dark #editQuestionModal .hover\:bg-gray-200:hover { background-color: rgb(75 85 99); }
+    .dark #yamlExportModal .bg-white { background-color: rgb(31 41 55); }
+    .dark #yamlExportModal .text-gray-900 { color: rgb(243 244 246); }
+    .dark #yamlExportModal .text-gray-700 { color: rgb(209 213 219); }
+    .dark #yamlExportModal .border-gray-200 { border-color: rgb(75 85 99); }
+    .dark #yamlExportModal #yamlExportPre {
+        background-color: rgb(17 24 39);
+        color: rgb(229 231 235);
+        border-color: rgb(75 85 99);
+    }
+    .dark #yamlExportModal #yamlExportCloseBtn {
+        background-color: rgb(55 65 81);
+        color: rgb(243 244 246);
+    }
+    .dark #yamlExportModal #yamlExportCloseBtn:hover { background-color: rgb(75 85 99); }
 </style>
 {% endblock %}
 
@@ -161,10 +175,22 @@
     </div>
 </div>
 
+<div id="yamlExportModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+    <div class="bg-white border border-gray-200 rounded-lg shadow-xl w-full max-w-3xl p-6 space-y-4">
+        <h2 class="text-xl font-semibold text-gray-900">Question YAML</h2>
+        <pre id="yamlExportPre" class="max-h-96 overflow-auto text-sm font-mono p-4 rounded-lg border border-gray-200 bg-gray-50 text-gray-800 whitespace-pre-wrap break-words"></pre>
+        <div class="flex justify-end gap-2 pt-2">
+            <button type="button" id="yamlExportCloseBtn" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">Close</button>
+            <button type="button" id="yamlExportCopyBtn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Copy</button>
+        </div>
+    </div>
+</div>
+
 <script>
     let currentPage = 1;
     let totalPages = 1;
     const pageSize = 20;
+    let currentYamlExportText = '';
 
     function escapeHtml(value) {
         return String(value || '')
@@ -234,6 +260,88 @@
         }));
 
         return { questionText, options };
+    }
+
+    function yamlEscapeSingleQuoted(value) {
+        return String(value).replace(/'/g, "''");
+    }
+
+    function yamlSingleQuoted(value) {
+        return "'" + yamlEscapeSingleQuoted(value) + "'";
+    }
+
+    function questionToYaml(question) {
+        const normalized = normalizeQuestionAndOptions(question);
+        const optionTexts = normalized.options.map((o) => o.text);
+        if (!optionTexts.length) {
+            return {
+                ok: false,
+                error: 'Cannot export YAML: this question has no choices.',
+            };
+        }
+        const answerIdx = normalized.options.findIndex((o) => o.is_correct);
+        if (answerIdx < 0) {
+            return {
+                ok: false,
+                error:
+                    'Cannot export YAML: set a correct answer in Edit before exporting.',
+            };
+        }
+        const idKey = 'q' + String(question.id);
+        const explanation =
+            question.explanation != null ? String(question.explanation) : '';
+        const optionsFlow =
+            '[' +
+            optionTexts.map((t) => yamlSingleQuoted(t)).join(', ') +
+            ']';
+        const lines = [
+            'questions:',
+            '  - id: ' + yamlSingleQuoted(idKey),
+            "    type: 'choice'",
+            '    text: ' + yamlSingleQuoted(normalized.questionText),
+            '    options: ' + optionsFlow,
+            '    answer: ' + answerIdx,
+            '    explanation: ' + yamlSingleQuoted(explanation),
+        ];
+        return { ok: true, yaml: lines.join('\n') };
+    }
+
+    function openYamlExportModal(question) {
+        const result = questionToYaml(question);
+        if (!result.ok) {
+            alert(result.error);
+            return;
+        }
+        currentYamlExportText = result.yaml;
+        document.getElementById('yamlExportPre').textContent = result.yaml;
+        document.getElementById('yamlExportModal').classList.remove('hidden');
+    }
+
+    function closeYamlExportModal() {
+        document.getElementById('yamlExportModal').classList.add('hidden');
+        currentYamlExportText = '';
+        document.getElementById('yamlExportPre').textContent = '';
+    }
+
+    async function copyYamlExport() {
+        if (!currentYamlExportText) {
+            alert('Nothing to copy.');
+            return;
+        }
+        if (
+            !navigator.clipboard ||
+            typeof navigator.clipboard.writeText !== 'function'
+        ) {
+            alert('Clipboard is not available in this browser.');
+            return;
+        }
+        try {
+            await navigator.clipboard.writeText(currentYamlExportText);
+        } catch (err) {
+            const msg =
+                err && err.message ? err.message : String(err);
+            alert('Could not copy to clipboard: ' + msg);
+        }
     }
 
     function renderOptionsEditor(options) {
@@ -366,8 +474,9 @@
                     <td class="px-4 py-3 text-sm text-gray-700">${escapeHtml(q.status || 'active')}</td>
                     <td class="px-4 py-3 text-sm text-gray-500">${escapeHtml((q.created_at || '').replace('T', ' ').slice(0, 19))}</td>
                     <td class="px-4 py-3 text-sm">
-                        <button class="mr-2 px-2 py-1 bg-blue-100 text-blue-800 rounded hover:bg-blue-200">Edit</button>
-                        <button class="px-2 py-1 bg-red-100 text-red-800 rounded hover:bg-red-200">Delete</button>
+                        <button type="button" class="question-action-edit mr-2 px-2 py-1 bg-blue-100 text-blue-800 rounded hover:bg-blue-200">Edit</button>
+                        <button type="button" class="question-action-yaml mr-2 px-2 py-1 bg-gray-100 text-gray-800 rounded hover:bg-gray-200">YAML</button>
+                        <button type="button" class="question-action-delete px-2 py-1 bg-red-100 text-red-800 rounded hover:bg-red-200">Delete</button>
                     </td>
                 </tr>
             `;
@@ -378,8 +487,11 @@
         questions.forEach((q, idx) => {
             const row = rows[idx];
             if (!row) return;
-            const [editBtn, delBtn] = row.querySelectorAll('button');
+            const editBtn = row.querySelector('.question-action-edit');
+            const yamlBtn = row.querySelector('.question-action-yaml');
+            const delBtn = row.querySelector('.question-action-delete');
             if (editBtn) editBtn.onclick = () => openEditModal(q);
+            if (yamlBtn) yamlBtn.onclick = () => openYamlExportModal(q);
             if (delBtn) delBtn.onclick = () => deleteQuestion(q.id);
         });
     }
@@ -472,6 +584,8 @@
     });
     document.getElementById('cancelEditBtn').addEventListener('click', closeEditModal);
     document.getElementById('saveEditBtn').addEventListener('click', saveEdit);
+    document.getElementById('yamlExportCloseBtn').addEventListener('click', closeYamlExportModal);
+    document.getElementById('yamlExportCopyBtn').addEventListener('click', copyYamlExport);
     document.getElementById('addOptionBtn').addEventListener('click', () => {
         const existing = collectOptionsFromEditor();
         const nextLabel = String.fromCharCode(65 + existing.length);
