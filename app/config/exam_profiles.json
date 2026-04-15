@@ -732,6 +732,266 @@
         "agent_ids": [],
         "kb_ids": []
       }
+    },
+    {
+      "description": "CompTIA Network+ N10-009 — practical networking, implementation, operations, security, and troubleshooting across modern wired and wireless environments.",
+      "difficulty_profile": {
+        "display_names": {
+          "1": "Foundational Knowledge",
+          "2": "Scenario Application",
+          "3": "Troubleshooting Judgment"
+        },
+        "enabled_levels": [
+          "1",
+          "2",
+          "3"
+        ],
+        "weights": {
+          "1": 0.2,
+          "2": 0.45,
+          "3": 0.35
+        }
+      },
+      "domains": [
+        {
+          "id": "networking_concepts",
+          "keywords": [
+            "OSI model",
+            "TCP/IP model",
+            "IPv4",
+            "IPv6",
+            "subnetting",
+            "CIDR",
+            "routing",
+            "switching",
+            "ports and protocols",
+            "DNS",
+            "DHCP",
+            "NAT",
+            "PAT",
+            "VLAN",
+            "VPN",
+            "SDN",
+            "SD-WAN",
+            "cloud connectivity",
+            "network appliances",
+            "load balancer"
+          ],
+          "name": "Networking Concepts",
+          "priority": "high"
+        },
+        {
+          "id": "network_implementations",
+          "keywords": [
+            "router configuration",
+            "switch configuration",
+            "wireless access point",
+            "WLAN",
+            "SSID",
+            "802.11 standards",
+            "antenna placement",
+            "VLAN implementation",
+            "trunking",
+            "STP",
+            "LACP",
+            "physical installation",
+            "cabling",
+            "fiber",
+            "copper",
+            "transceivers",
+            "WAN links",
+            "QoS",
+            "site survey",
+            "network deployment"
+          ],
+          "name": "Network Implementations",
+          "priority": "medium"
+        },
+        {
+          "id": "network_operations",
+          "keywords": [
+            "documentation",
+            "network diagrams",
+            "asset inventory",
+            "baseline",
+            "monitoring",
+            "SNMP",
+            "syslog",
+            "NTP",
+            "SLA",
+            "change management",
+            "patching",
+            "backups",
+            "disaster recovery",
+            "high availability",
+            "business continuity",
+            "remote access",
+            "configuration management",
+            "alerting",
+            "performance metrics",
+            "capacity planning"
+          ],
+          "name": "Network Operations",
+          "priority": "medium"
+        },
+        {
+          "id": "network_security",
+          "keywords": [
+            "network hardening",
+            "ACL",
+            "firewall",
+            "IDS",
+            "IPS",
+            "segmentation",
+            "zero trust",
+            "802.1X",
+            "NAC",
+            "AAA",
+            "RADIUS",
+            "TACACS+",
+            "VPN security",
+            "wireless security",
+            "WPA3",
+            "port security",
+            "physical security",
+            "secure management",
+            "least privilege",
+            "network attacks"
+          ],
+          "name": "Network Security",
+          "priority": "medium"
+        },
+        {
+          "id": "network_troubleshooting",
+          "keywords": [
+            "troubleshooting methodology",
+            "establish theory",
+            "test theory",
+            "verify functionality",
+            "packet loss",
+            "latency",
+            "DNS failure",
+            "DHCP issue",
+            "IP conflict",
+            "duplex mismatch",
+            "cable fault",
+            "wireless interference",
+            "routing loop",
+            "VLAN mismatch",
+            "connectivity issue",
+            "performance issue",
+            "command output interpretation",
+            "tool selection",
+            "packet capture",
+            "root cause"
+          ],
+          "name": "Network Troubleshooting",
+          "priority": "high"
+        }
+      ],
+      "guidance_suffix": "Ensure each question evaluates practical networking knowledge, implementation judgment, or troubleshooting discipline rather than trivia. Level 1 questions may test foundational knowledge directly, but should still reflect real support and administration contexts.",
+      "kb_structure": {
+        "domain_type": "objective_domain",
+        "outline_type": "outline",
+        "priority_kb_flag": "is_priority_kb"
+      },
+      "name": "Network+ N10-009",
+      "profile_id": "networkplus_n10_009",
+      "question_types": [
+        {
+          "difficulty_level": "1",
+          "guidance": "Test direct recall of core networking facts, terms, and technologies. Keep the stem short and unambiguous. Distractors should be plausible near-miss concepts, not random wrong answers.",
+          "id": "definition",
+          "phrase": "What is the definition of"
+        },
+        {
+          "difficulty_level": "1",
+          "guidance": "Test recognition and basic understanding of a protocol, device, cable, topology, or concept. One option should be clearly correct if the learner knows the material.",
+          "id": "identify_correct",
+          "phrase": "Which statement is TRUE about"
+        },
+        {
+          "difficulty_level": "2",
+          "guidance": "Present a practical networking scenario. The correct answer should match the stated requirement, symptom, or deployment constraint without requiring hidden assumptions.",
+          "id": "scenario_apply",
+          "phrase": "In this scenario, which solution fits BEST?"
+        },
+        {
+          "difficulty_level": "2",
+          "guidance": "Frame the options as dependent steps in a practical workflow such as implementation, validation, or troubleshooting. The correct answer should be the clear prerequisite action.",
+          "id": "process_first",
+          "phrase": "What should be done FIRST?"
+        },
+        {
+          "difficulty_level": "2",
+          "guidance": "Frame the options as the next logical step after a prerequisite has already been completed. The answer should reflect orderly networking process, not random tool use.",
+          "id": "process_next",
+          "phrase": "What should be done NEXT?"
+        },
+        {
+          "difficulty_level": "2",
+          "guidance": "Frame options as competing technologies, media, or configurations. The correct answer should best satisfy the stated business or technical requirement.",
+          "id": "requirement_selection",
+          "phrase": "Which technology BEST meets the requirement?"
+        },
+        {
+          "difficulty_level": "3",
+          "guidance": "Present realistic symptoms and require identification of the most likely root cause. Distractors should reflect common layer confusion, premature conclusions, or symptom-only thinking.",
+          "id": "troubleshooting_cause",
+          "phrase": "What is the MOST likely cause?"
+        },
+        {
+          "difficulty_level": "3",
+          "guidance": "Present a troubleshooting scenario with plausible next steps. The correct answer should reflect disciplined isolation, validation, and efficient fault domain narrowing.",
+          "id": "troubleshooting_next",
+          "phrase": "Which action should be taken NEXT?"
+        },
+        {
+          "difficulty_level": "3",
+          "guidance": "Frame answers as competing defensible options. The correct answer should best balance requirements, performance, supportability, and operational practicality.",
+          "id": "comparative",
+          "phrase": "Which is BEST/MOST appropriate?"
+        },
+        {
+          "difficulty_level": "2",
+          "guidance": "Frame answers as security controls or hardening steps in a network context. The correct answer should directly address the stated risk without overengineering the solution.",
+          "id": "security_control",
+          "phrase": "Which control MOST effectively addresses the issue?"
+        }
+      ],
+      "reasoning_modes": [
+        {
+          "description": "Use structured troubleshooting methodology. Frame questions around symptoms, fault isolation, validating assumptions, using the right tool, and confirming restoration of service.",
+          "id": "troubleshooting",
+          "name": "Troubleshooting"
+        },
+        {
+          "description": "Use requirement matching. Frame questions around selecting the best protocol, topology, medium, device, or wireless solution for a stated need, constraint, or environment.",
+          "id": "requirements_based",
+          "name": "Requirements Based"
+        },
+        {
+          "description": "Use lifecycle or workflow thinking. Frame questions around planning, implementing, validating, documenting, monitoring, and maintaining networks in the correct sequence.",
+          "id": "process",
+          "name": "Process"
+        },
+        {
+          "description": "Use trade-off evaluation. Frame questions around comparing multiple viable solutions and selecting the one that best fits performance, cost, coverage, manageability, or security constraints.",
+          "id": "comparative_analysis",
+          "name": "Comparative Analysis"
+        },
+        {
+          "description": "Use a practical security lens. Frame questions around network hardening, segmentation, access control, wireless protection, secure management, and reducing attack surface while preserving connectivity.",
+          "id": "security_minded",
+          "name": "Security Minded"
+        }
+      ],
+      "usage": {
+        "agent_ids": [],
+        "agents_count": 0,
+        "kb_count": 0,
+        "kb_ids": []
+      }
     }
   ]
 }
