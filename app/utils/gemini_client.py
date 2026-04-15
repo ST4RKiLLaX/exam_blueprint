@@ -13,11 +13,14 @@ except ImportError:
 from app.config.provider_config import get_provider_api_key
 
 class GeminiClient:
-    def __init__(self, api_key: Optional[str] = None, key_name: str = "default"):
+    def __init__(self, api_key: Optional[str] = None, key_name: Optional[str] = None):
         if genai is None:
             raise ImportError("google-genai package not installed")
         
-        self.api_key = api_key or get_provider_api_key("gemini", key_name)
+        selected_key_name = key_name
+        if selected_key_name in (None, "", "default"):
+            selected_key_name = None
+        self.api_key = api_key or get_provider_api_key("gemini", selected_key_name)
         if not self.api_key:
             raise ValueError("No Gemini API key configured")
         
@@ -73,7 +76,7 @@ class GeminiClient:
         Generate embeddings using Gemini with official google-genai SDK.
         
         Args:
-            model: Embedding model name (e.g., "text-embedding-004")
+            model: Embedding model name (e.g., "gemini-embedding-001")
             content: Text to embed
             
         Returns:

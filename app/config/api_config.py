@@ -2,17 +2,46 @@
 API Key configuration management with secure storage
 """
 import json
+import logging
 import os
+import time
 from datetime import datetime
 from cryptography.fernet import Fernet
-from typing import Optional, Dict, Any, List, Tuple
+from typing import Callable, Dict, Any, List, Optional, Tuple
 import base64
 import stat
 
+logger = logging.getLogger(__name__)
+
 CONFIG_FILE = os.path.join(os.path.dirname(__file__), "api_config.json")
 KEY_FILE = os.path.join(os.path.dirname(__file__), "api_encryption.key")
+MIGRATION_LOCK_FILE = os.path.join(
+    os.path.dirname(__file__), ".key_migration_startup.lock"
+)
 KEY_FILE_MODE = 0o600
 DEFAULT_PROVIDER_KEY_NAME = "default"
+
+_STARTUP_MIGRATION_DONE = False
+
+
+class KeyResolutionError(Exception):
+    """Base class for key resolution failures."""
+
+
+class ProviderUnknownError(KeyResolutionError):
+    """Requested provider does not exist in configured provider registry."""
+
+
+class KeyNotFoundError(KeyResolutionError):
+    """No key found for the requested provider/key-name selection."""
+
+
+class KeyDecryptError(KeyResolutionError):
+    """Stored encrypted key could not be decrypted."""
+
+
+class KeyAmbiguousError(KeyResolutionError):
+    """Multiple key candidates exist and selection is ambiguous."""
 
 
 def _ensure_key_file_permissions():
@@ -55,14 +84,23 @@ def _decrypt_api_key(encrypted_key: str) -> str:
         encrypted_bytes = base64.b64decode(encrypted_key.encode())
         decrypted = fernet.decrypt(encrypted_bytes)
         return decrypted.decode()
-    except Exception:
+    except Exception as exc:
+        raise KeyDecryptError("Failed to decrypt stored API key") from exc
+
+
+def _mask_key_preview(api_key: str) -> str:
+    if not api_key:
         return ""
+    if len(api_key) > 11:
+        return f"{api_key[:7]}...{api_key[-4:]}"
+    return "****"
 
 def load_api_config() -> Dict[str, Any]:
     """Load API configuration from file"""
     default_config = {
         "openai_api_key_encrypted": "",
         "provider_api_keys_encrypted": {},
+        "provider_active_key_names": {},
         "api_key_preview": "",
         "last_updated": None,
         "last_tested": None,
@@ -158,6 +196,27 @@ def _migrate_legacy_openai_storage(config: Dict[str, Any]) -> bool:
 
     return changed
 
+
+def _normalize_provider_active_map(config: Dict[str, Any]) -> Tuple[Dict[str, str], bool]:
+    raw = config.get("provider_active_key_names", {})
+    changed = False
+    if not isinstance(raw, dict):
+        return {}, True
+    out: Dict[str, str] = {}
+    for provider, key_name in raw.items():
+        if (
+            isinstance(provider, str)
+            and provider.strip()
+            and isinstance(key_name, str)
+            and key_name.strip()
+        ):
+            out[provider.strip()] = key_name.strip()
+        else:
+            changed = True
+    if out != raw:
+        changed = True
+    return out, changed
+
 def save_api_config(config: Dict[str, Any]) -> bool:
     """Save API configuration to file"""
     try:
@@ -168,35 +227,134 @@ def save_api_config(config: Dict[str, Any]) -> bool:
         print(f"Error saving API config: {e}")
         return False
 
+
+def _acquire_startup_lock(
+    lock_file: str, stale_after_s: float = 30.0, wait_s: float = 2.0
+) -> Optional[int]:
+    deadline = time.time() + max(0.0, wait_s)
+    while True:
+        try:
+            fd = os.open(lock_file, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+            os.write(fd, str(os.getpid()).encode("utf-8"))
+            return fd
+        except FileExistsError:
+            try:
+                age = time.time() - os.path.getmtime(lock_file)
+                if age > stale_after_s:
+                    os.remove(lock_file)
+                    continue
+            except FileNotFoundError:
+                continue
+            except Exception:
+                pass
+            if time.time() >= deadline:
+                return None
+            time.sleep(0.05)
+
+
+def _release_startup_lock(lock_file: str, fd: Optional[int]) -> None:
+    if fd is None:
+        return
+    try:
+        os.close(fd)
+    except Exception:
+        pass
+    try:
+        os.remove(lock_file)
+    except FileNotFoundError:
+        pass
+    except Exception:
+        logger.warning("Could not remove migration lock file: %s", lock_file)
+
+
+def run_guarded_startup_migration(lock_file: str, migration_fn: Callable[[], bool]) -> bool:
+    """
+    Run one migration guarded by a lock file.
+    Returns True when this process ran migration_fn, False when skipped.
+    """
+    fd = _acquire_startup_lock(lock_file)
+    if fd is None:
+        return False
+    try:
+        migration_fn()
+        return True
+    finally:
+        _release_startup_lock(lock_file, fd)
+
+
+def run_startup_api_key_migration() -> bool:
+    """
+    Guarded, idempotent startup migration for api_config.json.
+    No migration writes should happen in ordinary read paths.
+    """
+    global _STARTUP_MIGRATION_DONE
+    if _STARTUP_MIGRATION_DONE:
+        return False
+
+    def _migrate_once() -> bool:
+        config = load_api_config()
+        changed = _migrate_legacy_openai_storage(config)
+        if changed:
+            save_api_config(config)
+        return changed
+
+    ran = run_guarded_startup_migration(MIGRATION_LOCK_FILE, _migrate_once)
+    _STARTUP_MIGRATION_DONE = True
+    return ran
+
+def resolve_provider_key(
+    provider: str, key_name: Optional[str] = None, purpose: Optional[str] = None
+) -> Dict[str, str]:
+    """
+    Resolve key deterministically.
+
+    Precedence:
+    1) explicit key_name (exact match required)
+    2) provider active key setting
+    """
+    provider_id = _validate_provider_id(provider)
+    requested = key_name.strip() if isinstance(key_name, str) and key_name.strip() else None
+    names = list_provider_api_key_names_encrypted(provider_id)
+    if not names:
+        raise KeyNotFoundError(f"No API keys configured for provider '{provider_id}'")
+
+    if requested:
+        value = get_provider_api_key_encrypted(provider_id, requested)
+        if not value:
+            raise KeyNotFoundError(
+                f"Provider '{provider_id}' key '{requested}' not found or unavailable"
+            )
+        return {
+            "key_value": value,
+            "key_name_used": requested,
+            "resolution_code": "explicit",
+            "purpose": purpose or "",
+        }
+
+    active_key_name = get_active_provider_key_name(provider_id)
+    if not active_key_name:
+        raise KeyNotFoundError(
+            f"No active key configured for provider '{provider_id}'. Set a default key in Settings."
+        )
+    value = get_provider_api_key_encrypted(provider_id, active_key_name)
+    if not value:
+        raise KeyNotFoundError(
+            f"Active key '{active_key_name}' for provider '{provider_id}' is missing or unavailable."
+        )
+    return {
+        "key_value": value,
+        "key_name_used": active_key_name,
+        "resolution_code": "active",
+        "purpose": purpose or "",
+    }
+
+
 def get_openai_api_key() -> Optional[str]:
     """
-    Get the current OpenAI API key from unified encrypted provider storage.
-
-    Uses `default` when present. For backward compatibility with earlier UI key
-    naming variations, falls back to a single available OpenAI key.
+    Legacy wrapper for OpenAI default resolution.
     """
-    default_key = get_provider_api_key_encrypted("openai", DEFAULT_PROVIDER_KEY_NAME)
-    if default_key:
-        return default_key
-
-    fallback_names = list_provider_api_key_names_encrypted("openai")
-    if not fallback_names:
-        return None
-
-    # Prefer legacy-like variants first, then fall back to first configured key.
-    preferred_candidates = ["default OpenAI", "openai", "default-openai"]
-    for candidate in preferred_candidates:
-        if candidate in fallback_names:
-            key_value = get_provider_api_key_encrypted("openai", candidate)
-            if key_value:
-                return key_value
-
-    if len(fallback_names) == 1:
-        key_value = get_provider_api_key_encrypted("openai", fallback_names[0])
-        if key_value:
-            return key_value
-
-    return None
+    resolved = resolve_provider_key("openai", key_name=None, purpose="legacy_openai_default")
+    return resolved["key_value"]
 
 def set_openai_api_key(api_key: str) -> bool:
     """Set and encrypt the OpenAI API key"""
@@ -211,15 +369,15 @@ def set_openai_api_key(api_key: str) -> bool:
         openai_map[DEFAULT_PROVIDER_KEY_NAME] = _encrypt_api_key(api_key)
         provider_map["openai"] = openai_map
         
-        # Create preview (first 7 chars + "..." + last 4 chars)
-        if len(api_key) > 11:
-            preview = f"{api_key[:7]}...{api_key[-4:]}"
-        else:
-            preview = "sk-...****"
+        preview = _mask_key_preview(api_key) or "sk-...****"
         
         config.update({
             "provider_api_keys_encrypted": provider_map,
             "openai_api_key_encrypted": "",
+            "provider_active_key_names": {
+                **(_normalize_provider_active_map(config)[0]),
+                "openai": DEFAULT_PROVIDER_KEY_NAME,
+            },
             "api_key_preview": preview,
             "last_updated": datetime.now().isoformat(),
             "test_status": "unknown"
@@ -300,6 +458,10 @@ def delete_openai_api_key() -> bool:
             "last_updated": datetime.now().isoformat(),
             "test_status": "deleted"
         })
+        active_map, _ = _normalize_provider_active_map(config)
+        if active_map.get("openai") == DEFAULT_PROVIDER_KEY_NAME:
+            del active_map["openai"]
+            config["provider_active_key_names"] = active_map
         
         return save_api_config(config)
     except Exception as e:
@@ -309,11 +471,7 @@ def delete_openai_api_key() -> bool:
 def get_api_key_info() -> Dict[str, Any]:
     """Get API key information for display"""
     config = load_api_config()
-
-    if _migrate_legacy_openai_storage(config):
-        save_api_config(config)
-
-    provider_map = config.get("provider_api_keys_encrypted", {})
+    provider_map, _ = _normalize_provider_encrypted_map(config)
     if not isinstance(provider_map, dict):
         provider_map = {}
 
@@ -349,6 +507,40 @@ def get_api_key_info() -> Dict[str, Any]:
     }
 
 
+def get_active_provider_key_name(provider: str) -> Optional[str]:
+    provider_id = _validate_provider_id(provider)
+    config = load_api_config()
+    active_map, _ = _normalize_provider_active_map(config)
+    return active_map.get(provider_id)
+
+
+def set_active_provider_key_name(provider: str, key_name: str) -> bool:
+    provider_id = _validate_provider_id(provider)
+    selected_key_name = _validate_key_name(key_name)
+    available = list_provider_api_key_names_encrypted(provider_id)
+    if selected_key_name not in available:
+        raise KeyNotFoundError(
+            f"Provider '{provider_id}' key '{selected_key_name}' not found"
+        )
+    config = load_api_config()
+    active_map, _ = _normalize_provider_active_map(config)
+    active_map[provider_id] = selected_key_name
+    config["provider_active_key_names"] = active_map
+    config["last_updated"] = datetime.now().isoformat()
+    return save_api_config(config)
+
+
+def clear_active_provider_key_name(provider: str) -> bool:
+    provider_id = _validate_provider_id(provider)
+    config = load_api_config()
+    active_map, _ = _normalize_provider_active_map(config)
+    if provider_id in active_map:
+        del active_map[provider_id]
+    config["provider_active_key_names"] = active_map
+    config["last_updated"] = datetime.now().isoformat()
+    return save_api_config(config)
+
+
 def _validate_provider_id(provider: str) -> str:
     if not isinstance(provider, str) or not provider.strip():
         raise ValueError("provider must be a non-empty string")
@@ -365,9 +557,7 @@ def list_provider_api_key_names_encrypted(provider: str) -> List[str]:
     """List key names configured for a provider."""
     provider_id = _validate_provider_id(provider)
     config = load_api_config()
-    if _migrate_legacy_openai_storage(config):
-        save_api_config(config)
-    provider_map = config.get("provider_api_keys_encrypted", {})
+    provider_map, _ = _normalize_provider_encrypted_map(config)
     keys_map = provider_map.get(provider_id, {})
     if not isinstance(keys_map, dict):
         return []
@@ -379,9 +569,7 @@ def get_provider_api_key_encrypted(provider: str, key_name: str = DEFAULT_PROVID
     provider_id = _validate_provider_id(provider)
     selected_key_name = _validate_key_name(key_name)
     config = load_api_config()
-    if _migrate_legacy_openai_storage(config):
-        save_api_config(config)
-    provider_map = config.get("provider_api_keys_encrypted", {})
+    provider_map, _ = _normalize_provider_encrypted_map(config)
     provider_keys = provider_map.get(provider_id, {})
     if not isinstance(provider_keys, dict):
         return None
@@ -439,7 +627,14 @@ def delete_provider_api_key_encrypted(
                 encrypted_keys.pop(provider_id, None)
         else:
             encrypted_keys.pop(provider_id, None)
+        active_map, _ = _normalize_provider_active_map(config)
+        active_name = active_map.get(provider_id)
+        if selected_key_name is None:
+            active_map.pop(provider_id, None)
+        elif active_name == selected_key_name:
+            active_map.pop(provider_id, None)
         config["provider_api_keys_encrypted"] = encrypted_keys
+        config["provider_active_key_names"] = active_map
         config["last_updated"] = datetime.now().isoformat()
         return save_api_config(config)
     except Exception as e:

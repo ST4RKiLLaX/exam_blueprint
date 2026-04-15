@@ -6,18 +6,27 @@ from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional, Tuple
 
 from app.config.api_config import (
-    delete_openai_api_key,
+    clear_active_provider_key_name,
     delete_provider_api_key_encrypted,
-    get_openai_api_key,
-    get_provider_api_key_encrypted,
+    DEFAULT_PROVIDER_KEY_NAME,
+    get_active_provider_key_name,
+    KeyResolutionError,
+    ProviderUnknownError,
+    resolve_provider_key,
+    run_guarded_startup_migration,
     list_provider_api_key_names_encrypted,
-    set_openai_api_key,
+    _mask_key_preview,
     set_provider_api_key_encrypted,
+    set_active_provider_key_name,
 )
 
 PROVIDER_CONFIG_PATH = os.path.join(os.path.dirname(__file__), "providers.json")
+PROVIDER_MIGRATION_LOCK_FILE = os.path.join(
+    os.path.dirname(__file__), ".provider_config_migration_startup.lock"
+)
 MODEL_SYNC_INTERVAL = timedelta(hours=24)
 _AUTO_MODEL_SYNC_RUNNING = False
+_STARTUP_PROVIDER_MIGRATION_DONE = False
 
 REQUIRED_PROVIDER_FIELDS = (
     "name",
@@ -55,9 +64,9 @@ DEFAULT_PROVIDER_REGISTRY = {
             "gemini-2.5-flash",
             "gemini-2.5-flash-lite",
         ],
-        "embedding_models": ["text-embedding-004"],
-        "default_embedding_model": "text-embedding-004",
-        "embedding_dimensions": 768,
+        "embedding_models": ["gemini-embedding-001", "gemini-embedding-2-preview"],
+        "default_embedding_model": "gemini-embedding-001",
+        "embedding_dimensions": 3072,
         "supports_responses_api": [],
         "supports_thinking": ["gemini-3-pro-preview", "gemini-2.5-pro"],
     },
@@ -129,17 +138,6 @@ def _fetch_gemini_generation_models(api_key: str) -> List[str]:
             model_names.append(raw_name.replace("models/", ""))
     return _normalize_generation_model_names(model_names, "gemini")
 
-def _get_sync_key_name(provider_id: str, provider_data: Dict) -> Optional[str]:
-    configured_names = list_provider_api_key_names_encrypted(provider_id)
-    if not configured_names:
-        return None
-    requested = provider_data.get("models_sync_key_name", "default")
-    if requested in configured_names:
-        return requested
-    if "default" in configured_names:
-        return "default"
-    return configured_names[0]
-
 def _sync_provider_models_internal(
     config: Dict, provider_ids: Optional[List[str]] = None, force: bool = False
 ) -> Dict[str, object]:
@@ -169,19 +167,24 @@ def _sync_provider_models_internal(
             summary["skipped_count"] = summary["skipped_count"] + 1
             continue
 
-        key_name = _get_sync_key_name(provider_id, provider_data)
-        if not key_name:
+        raw_requested = provider_data.get("models_sync_key_name")
+        requested_key_name = (
+            raw_requested.strip()
+            if isinstance(raw_requested, str) and raw_requested.strip()
+            else None
+        )
+        try:
+            resolved_key = resolve_provider_key(
+                provider_id,
+                key_name=requested_key_name,
+                purpose="model_sync",
+            )
+            key_name = resolved_key["key_name_used"]
+            api_key = resolved_key["key_value"]
+        except KeyResolutionError as error:
             provider_data["models_last_sync_status"] = "warning"
-            provider_data["models_last_sync_error"] = "No configured API key for sync"
+            provider_data["models_last_sync_error"] = str(error)
             results[provider_id] = {"status": "warning", "reason": "no_key"}
-            summary["failure_count"] = summary["failure_count"] + 1
-            continue
-
-        api_key = get_provider_api_key_encrypted(provider_id, key_name)
-        if not api_key:
-            provider_data["models_last_sync_status"] = "warning"
-            provider_data["models_last_sync_error"] = f"Configured key '{key_name}' unavailable"
-            results[provider_id] = {"status": "warning", "reason": "key_unavailable"}
             summary["failure_count"] = summary["failure_count"] + 1
             continue
 
@@ -304,14 +307,6 @@ def save_provider_config(config: Dict) -> None:
     with open(PROVIDER_CONFIG_PATH, "w", encoding="utf-8") as f:
         json.dump(config, f, indent=2, ensure_ascii=False)
 
-def _mask_key_preview(api_key: str) -> str:
-    if not api_key:
-        return ""
-    if len(api_key) > 11:
-        return f"{api_key[:7]}...{api_key[-4:]}"
-    return "****"
-
-
 def _migrate_plaintext_provider_keys(config: Dict) -> bool:
     """
     Migrate plaintext provider keys from providers.json to encrypted storage.
@@ -326,10 +321,9 @@ def _migrate_plaintext_provider_keys(config: Dict) -> bool:
 
         legacy_plaintext = provider_config.get("api_key")
         if isinstance(legacy_plaintext, str) and legacy_plaintext.strip():
-            if provider_id == "openai":
-                set_openai_api_key(legacy_plaintext.strip())
-            else:
-                set_provider_api_key_encrypted(provider_id, legacy_plaintext.strip())
+            set_provider_api_key_encrypted(
+                provider_id, legacy_plaintext.strip(), DEFAULT_PROVIDER_KEY_NAME
+            )
             provider_config["enabled"] = True
             changed = True
 
@@ -338,6 +332,33 @@ def _migrate_plaintext_provider_keys(config: Dict) -> bool:
             changed = True
 
     return changed
+
+
+def run_startup_provider_config_migration() -> bool:
+    """
+    Guarded, idempotent startup migration for providers.json legacy plaintext keys.
+    No read path should mutate files.
+    """
+    global _STARTUP_PROVIDER_MIGRATION_DONE
+    if _STARTUP_PROVIDER_MIGRATION_DONE:
+        return False
+
+    def _migrate_once() -> bool:
+        if not os.path.exists(PROVIDER_CONFIG_PATH):
+            return False
+        try:
+            with open(PROVIDER_CONFIG_PATH, "r", encoding="utf-8") as f:
+                cfg = json.load(f)
+        except Exception:
+            return False
+        changed = _migrate_plaintext_provider_keys(cfg)
+        if changed:
+            save_provider_config(cfg)
+        return changed
+
+    ran = run_guarded_startup_migration(PROVIDER_MIGRATION_LOCK_FILE, _migrate_once)
+    _STARTUP_PROVIDER_MIGRATION_DONE = True
+    return ran
 
 
 def load_provider_config(run_auto_sync: bool = True) -> Dict:
@@ -377,9 +398,6 @@ def load_provider_config(run_auto_sync: bool = True) -> Dict:
                 provider_config[field] = value
                 changed = True
 
-    if _migrate_plaintext_provider_keys(config):
-        changed = True
-
     # Strict schema validation for all configured providers.
     for provider_id, provider_data in providers.items():
         _validate_provider_structure(provider_id, provider_data)
@@ -416,13 +434,17 @@ def get_provider_metadata(provider: str) -> Dict:
     return get_provider_registry().get(provider, {})
 
 
-def get_provider_api_key(provider: str, key_name: str = "default") -> Optional[str]:
-    """Get decrypted API key for a provider/key-name pair."""
-    if provider not in load_provider_config().get("providers", {}):
-        raise ValueError(f"Unknown provider: {provider}")
-    if provider == "openai" and key_name == "default":
-        return get_openai_api_key()
-    return get_provider_api_key_encrypted(provider, key_name)
+def get_provider_api_key(provider: str, key_name: Optional[str] = None) -> Optional[str]:
+    """Resolver-backed wrapper for provider key retrieval."""
+    providers = load_provider_config(run_auto_sync=False).get("providers", {})
+    if provider not in providers:
+        raise ProviderUnknownError(f"Unknown provider: {provider}")
+    resolved = resolve_provider_key(
+        provider,
+        key_name=key_name,
+        purpose="provider_api_key",
+    )
+    return resolved["key_value"]
 
 
 def list_provider_key_names(provider: str) -> List[str]:
@@ -431,7 +453,7 @@ def list_provider_key_names(provider: str) -> List[str]:
         raise ValueError(f"Unknown provider: {provider}")
     return list_provider_api_key_names_encrypted(provider)
 
-def get_provider_key_rows(provider: str) -> List[Dict[str, str]]:
+def get_provider_key_rows(provider: str) -> List[Dict[str, object]]:
     """List provider keys with description and masked preview."""
     config = load_provider_config()
     providers = config.get("providers", {})
@@ -443,14 +465,22 @@ def get_provider_key_rows(provider: str) -> List[Dict[str, str]]:
     if not isinstance(key_descriptions, dict):
         key_descriptions = {}
 
-    rows: List[Dict[str, str]] = []
+    active_key_name = get_active_provider_key_name(provider)
+    rows: List[Dict[str, object]] = []
     for key_name in list_provider_key_names(provider):
-        key_value = get_provider_api_key(provider, key_name) or ""
+        row_error = ""
+        try:
+            key_value = get_provider_api_key(provider, key_name) or ""
+        except KeyResolutionError as exc:
+            key_value = ""
+            row_error = str(exc)
         rows.append(
             {
                 "key_name": key_name,
                 "description": str(key_descriptions.get(key_name, "")),
                 "key_preview": _mask_key_preview(key_value),
+                "is_default": key_name == active_key_name,
+                "error": row_error,
             }
         )
     return rows
@@ -484,7 +514,23 @@ def remove_provider_key_description(provider: str, key_name: str) -> None:
         save_provider_config(config)
 
 
-def set_provider_api_key(provider: str, api_key: str, key_name: str = "default") -> None:
+def set_provider_default_key(provider: str, key_name: str) -> None:
+    """Mark one existing key as the active/default key for provider."""
+    providers = load_provider_config(run_auto_sync=False).get("providers", {})
+    if provider not in providers:
+        raise ValueError(f"Unknown provider: {provider}")
+    names = list_provider_key_names(provider)
+    if key_name not in names:
+        raise ValueError(f"Key '{key_name}' not found for provider '{provider}'")
+    set_active_provider_key_name(provider, key_name)
+
+
+def set_provider_api_key(
+    provider: str,
+    api_key: str,
+    key_name: str = "default",
+    make_default: bool = False,
+) -> None:
     """Set encrypted API key for a provider/key-name pair."""
     config = load_provider_config()
     providers = config.setdefault("providers", {})
@@ -492,16 +538,15 @@ def set_provider_api_key(provider: str, api_key: str, key_name: str = "default")
         raise ValueError(f"Unknown provider: {provider}")
     provider_settings = providers[provider]
 
-    if provider == "openai" and key_name == "default":
-        if api_key:
-            set_openai_api_key(api_key)
-        else:
-            delete_openai_api_key()
+    selected_key_name = key_name or DEFAULT_PROVIDER_KEY_NAME
+    if api_key:
+        set_provider_api_key_encrypted(provider, api_key, selected_key_name)
+        if make_default:
+            set_active_provider_key_name(provider, selected_key_name)
     else:
-        if api_key:
-            set_provider_api_key_encrypted(provider, api_key, key_name)
-        else:
-            delete_provider_api_key_encrypted(provider, key_name)
+        delete_provider_api_key_encrypted(provider, selected_key_name)
+        if get_active_provider_key_name(provider) == selected_key_name:
+            clear_active_provider_key_name(provider)
 
     provider_settings["enabled"] = bool(list_provider_key_names(provider))
     provider_settings.pop("api_key", None)
@@ -513,15 +558,11 @@ def delete_provider_api_key(provider: str, key_name: Optional[str] = None) -> No
     providers = load_provider_config().get("providers", {})
     if provider not in providers:
         raise ValueError(f"Unknown provider: {provider}")
-    if provider == "openai" and (key_name is None or key_name == "default"):
-        if key_name is None:
-            delete_provider_api_key_encrypted(provider, None)
-        else:
-            delete_openai_api_key()
-    else:
-        delete_provider_api_key_encrypted(provider, key_name)
-        if key_name:
-            remove_provider_key_description(provider, key_name)
+    delete_provider_api_key_encrypted(provider, key_name)
+    if key_name and get_active_provider_key_name(provider) == key_name:
+        clear_active_provider_key_name(provider)
+    if key_name:
+        remove_provider_key_description(provider, key_name)
 
     config = load_provider_config()
     provider_settings = config.setdefault("providers", {}).setdefault(provider, {"enabled": False})
@@ -556,6 +597,30 @@ def get_enabled_providers() -> List[str]:
         if is_provider_enabled(provider_id):
             enabled.append(provider_id)
     return enabled
+
+
+def get_effective_key_diagnostics() -> List[Dict[str, str]]:
+    """
+    Minimal admin diagnostics showing effective logical key selection per provider.
+    Never returns secret values.
+    """
+    diagnostics: List[Dict[str, str]] = []
+    config = load_provider_config(run_auto_sync=False)
+    for provider_id in config.get("providers", {}):
+        row: Dict[str, str] = {
+            "provider_id": provider_id,
+            "configured_default_key_name": get_active_provider_key_name(provider_id) or "",
+        }
+        try:
+            resolved = resolve_provider_key(provider_id, key_name=None, purpose="diagnostics")
+            row["key_name_used"] = resolved.get("key_name_used", "")
+            row["resolution_code"] = resolved.get("resolution_code", "")
+        except KeyResolutionError as exc:
+            row["key_name_used"] = ""
+            row["resolution_code"] = "unresolved"
+            row["error"] = str(exc)
+        diagnostics.append(row)
+    return diagnostics
 
 
 # Backward-compatible alias used by other modules.

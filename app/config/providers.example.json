@@ -37,10 +37,11 @@
         "gemini-2.5-flash-lite"
       ],
       "embedding_models": [
-        "text-embedding-004"
+        "gemini-embedding-001",
+        "gemini-embedding-2-preview"
       ],
-      "default_embedding_model": "text-embedding-004",
-      "embedding_dimensions": 768,
+      "default_embedding_model": "gemini-embedding-001",
+      "embedding_dimensions": 3072,
       "supports_responses_api": [],
       "supports_thinking": [
         "gemini-3-pro-preview",

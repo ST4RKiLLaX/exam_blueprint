@@ -25,10 +25,18 @@ from app.models.chat_session import chat_session_manager
 from app.models.user import db, User, Role
 from app.models.audit_log import AuditLog
 from app.models.question_record import QuestionRecord
+from app.config.api_config import run_startup_api_key_migration
+from app.config.provider_config import run_startup_provider_config_migration
 
 app = Flask(__name__)
 logger = logging.getLogger(__name__)
 security_logger = logging.getLogger("security")
+
+try:
+    run_startup_api_key_migration()
+    run_startup_provider_config_migration()
+except Exception:
+    logger.exception("startup key migration failed")
 
 
 def _api_error(message: str = "An unexpected error occurred. Please try again.", status: int = 500, include_success: bool = True):
@@ -1655,7 +1663,7 @@ def settings():
             else:
                 try:
                     from app.config.provider_config import set_provider_api_key
-                    set_provider_api_key("openai", api_key, "default")
+                    set_provider_api_key("openai", api_key, "default", make_default=True)
                     flash('API key updated successfully!', 'success')
                 except Exception:
                     logger.exception("settings update_api_key failed")
@@ -1666,7 +1674,7 @@ def settings():
             if gemini_key and gemini_key != "••••••••":
                 try:
                     from app.config.provider_config import set_provider_api_key
-                    set_provider_api_key("gemini", gemini_key, "default")
+                    set_provider_api_key("gemini", gemini_key, "default", make_default=True)
                     flash('Gemini API key updated successfully!', 'success')
                 except Exception:
                     logger.exception("settings update_gemini_key failed")
@@ -1679,6 +1687,7 @@ def settings():
             key_name = request.form.get("key_name", "").strip() or "default"
             key_description = request.form.get("key_description", "").strip()
             api_key = request.form.get("api_key", "").strip()
+            make_default = request.form.get("make_default") == "on"
 
             if not provider_id:
                 flash("Provider is required", "error")
@@ -1695,7 +1704,12 @@ def settings():
                     if provider_id not in registry:
                         flash(f"Unknown provider: {provider_id}", "error")
                     else:
-                        set_provider_api_key(provider_id, api_key, key_name)
+                        set_provider_api_key(
+                            provider_id,
+                            api_key,
+                            key_name,
+                            make_default=make_default,
+                        )
                         set_provider_key_description(provider_id, key_name, key_description)
                         flash('API key updated successfully!', 'success')
                 except Exception:
@@ -1707,6 +1721,7 @@ def settings():
             key_name = request.form.get("key_name", "").strip()
             key_description = request.form.get("key_description", "").strip()
             api_key = request.form.get("api_key", "").strip()
+            make_default = request.form.get("make_default") == "on"
 
             if not provider_id:
                 flash("Provider is required", "error")
@@ -1717,6 +1732,7 @@ def settings():
                     from app.config.provider_config import (
                         list_provider_key_names,
                         set_provider_api_key,
+                        set_provider_default_key,
                         set_provider_key_description,
                     )
                     if key_name not in list_provider_key_names(provider_id):
@@ -1724,6 +1740,8 @@ def settings():
                     else:
                         if api_key:
                             set_provider_api_key(provider_id, api_key, key_name)
+                        if make_default:
+                            set_provider_default_key(provider_id, key_name)
                         set_provider_key_description(provider_id, key_name, key_description)
                         flash("Provider key updated successfully!", "success")
                 except Exception:
@@ -1742,8 +1760,10 @@ def settings():
         
         elif action == "delete_api_key":
             try:
+                from app.config.api_config import get_active_provider_key_name
                 from app.config.provider_config import delete_provider_api_key
-                delete_provider_api_key("openai", "default")
+                selected_key_name = get_active_provider_key_name("openai") or "default"
+                delete_provider_api_key("openai", selected_key_name)
                 flash('API key deleted successfully!', 'success')
             except Exception:
                 logger.exception("settings delete_api_key failed")
@@ -1764,6 +1784,22 @@ def settings():
                 except Exception:
                     logger.exception("settings delete_provider_key failed")
                     flash("Error deleting provider key.", "error")
+
+        elif action == "set_default_provider_key":
+            provider_id = request.form.get("provider_id", "").strip()
+            key_name = request.form.get("key_name", "").strip()
+            if not provider_id:
+                flash("Provider is required", "error")
+            elif not key_name:
+                flash("Key name is required", "error")
+            else:
+                try:
+                    from app.config.provider_config import set_provider_default_key
+                    set_provider_default_key(provider_id, key_name)
+                    flash("Default key updated successfully!", "success")
+                except Exception as exc:
+                    logger.exception("settings set_default_provider_key failed")
+                    flash(f"Error setting default key: {exc}", "error")
 
         elif action == "sync_provider_models":
             provider_id = request.form.get("provider_id", "").strip()
@@ -1804,6 +1840,7 @@ def settings():
     from app.config.exam_profile_config import get_all_profiles
     from app.config.api_config import get_api_key_info
     from app.config.provider_config import (
+        get_effective_key_diagnostics,
         load_provider_config,
         get_provider_key_rows,
     )
@@ -1832,6 +1869,7 @@ def settings():
     provider_key_rows = []
     all_provider_key_rows = []
     selected_provider_sync = {}
+    effective_key_diagnostics = []
     if selected_provider:
         try:
             provider_key_rows = get_provider_key_rows(selected_provider)
@@ -1864,7 +1902,13 @@ def settings():
                 "key_name": row.get("key_name", ""),
                 "description": row.get("description", ""),
                 "key_preview": row.get("key_preview", ""),
+                "is_default": bool(row.get("is_default")),
+                "error": row.get("error", ""),
             })
+    try:
+        effective_key_diagnostics = get_effective_key_diagnostics()
+    except Exception:
+        effective_key_diagnostics = []
     
     return render_template("settings.html", 
                          current_model=current_model,
@@ -1878,7 +1922,8 @@ def settings():
                          selected_provider=selected_provider,
                          provider_key_rows=provider_key_rows,
                          all_provider_key_rows=all_provider_key_rows,
-                         selected_provider_sync=selected_provider_sync)
+                         selected_provider_sync=selected_provider_sync,
+                         effective_key_diagnostics=effective_key_diagnostics)
 
 # Chat API endpoints for chatbot functionality
 def _validate_session_ownership(session_id: str):

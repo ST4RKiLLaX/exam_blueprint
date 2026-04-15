@@ -1,4 +1,5 @@
 import os
+from typing import Optional
 import numpy as np
 from openai import OpenAI
 from dotenv import load_dotenv
@@ -154,11 +155,14 @@ def truncate_history_by_tokens(history: list, max_tokens: int, encoding_name: st
     return selected_messages
 
 # Initialize OpenAI client with API key from config
-def _get_openai_client(provider_key_name: str = "default"):
+def _get_openai_client(provider_key_name: Optional[str] = None):
     """Get OpenAI client with proper API key"""
     try:
         from app.config.provider_config import get_provider_api_key
-        api_key = get_provider_api_key("openai", provider_key_name)
+        selected_key_name = provider_key_name
+        if selected_key_name in (None, "", "default"):
+            selected_key_name = None
+        api_key = get_provider_api_key("openai", selected_key_name)
         if not api_key:
             raise ValueError("No API key configured")
         return OpenAI(api_key=api_key)
@@ -392,7 +396,14 @@ def search_agent_knowledge_bases(query, agent, top_k=3):
     for provider, kbs in provider_groups.items():
         try:
             # Generate query embedding for this provider
-            query_embedding = create_embedding(query, provider=provider)
+            provider_key_name = "default"
+            if getattr(agent, "provider", None) == provider:
+                provider_key_name = getattr(agent, "provider_key_name", "default")
+            query_embedding = create_embedding(
+                query,
+                provider=provider,
+                key_name=provider_key_name,
+            )
             
             # Search all KBs in this provider group
             for kb in kbs:

@@ -5,7 +5,7 @@ import time
 import ipaddress
 import socket
 import logging
-from typing import Iterable, Iterator, List
+from typing import Iterable, Iterator, List, Optional
 from urllib.parse import urlparse
 
 import faiss
@@ -34,7 +34,12 @@ logger = logging.getLogger(__name__)
 
 load_dotenv()
 
-def create_embedding(text: str, provider: str = "openai", model: str = None) -> np.ndarray:
+def create_embedding(
+    text: str,
+    provider: str = "openai",
+    model: str = None,
+    key_name: Optional[str] = None,
+) -> np.ndarray:
     """
     Create embedding using specified provider.
     
@@ -48,18 +53,24 @@ def create_embedding(text: str, provider: str = "openai", model: str = None) -> 
     """
     from app.config.provider_config import get_provider_metadata
     provider_metadata = get_provider_metadata(provider)
+    selected_key_name = key_name
+    if selected_key_name in (None, "", "default"):
+        selected_key_name = None
     
     if provider == "openai":
-        from app.config.api_config import get_openai_api_key
-        client = OpenAI(api_key=get_openai_api_key())
+        from app.config.provider_config import get_provider_api_key
+        api_key = get_provider_api_key("openai", selected_key_name)
+        if not api_key:
+            raise ValueError("No OpenAI API key configured")
+        client = OpenAI(api_key=api_key)
         model = model or provider_metadata.get("default_embedding_model", EMBEDDING_MODEL)
         response = client.embeddings.create(input=text, model=model)
         return np.array(response.data[0].embedding, dtype="float32")
     
     elif provider == "gemini":
         from app.utils.gemini_client import GeminiClient
-        client = GeminiClient()
-        model = model or provider_metadata.get("default_embedding_model", "text-embedding-004")
+        client = GeminiClient(key_name=selected_key_name)
+        model = model or provider_metadata.get("default_embedding_model", "gemini-embedding-001")
         response = client.embed_content(model=model, content=text)
         return np.array(response.data[0]["embedding"], dtype="float32")
     
@@ -69,8 +80,8 @@ def create_embedding(text: str, provider: str = "openai", model: str = None) -> 
 def _get_openai_client():
     """Get OpenAI client with proper API key"""
     try:
-        from app.config.api_config import get_openai_api_key
-        api_key = get_openai_api_key()
+        from app.config.provider_config import get_provider_api_key
+        api_key = get_provider_api_key("openai")
         if not api_key:
             raise ValueError("No API key configured")
         return OpenAI(api_key=api_key)
@@ -319,7 +330,13 @@ def chunk_text(
     if token_buffer:
         yield encoding.decode(token_buffer)
 
-def create_embeddings(chunks: List[str], batch_size: int = 32, provider: str = "openai", model: str = None) -> np.ndarray:
+def create_embeddings(
+    chunks: List[str],
+    batch_size: int = 32,
+    provider: str = "openai",
+    model: str = None,
+    key_name: Optional[str] = None,
+) -> np.ndarray:
     """
     Create embeddings for text chunks in batches.
     
@@ -346,18 +363,19 @@ def create_embeddings(chunks: List[str], batch_size: int = 32, provider: str = "
     # For OpenAI, we can batch but use individual calls for consistency
     for idx, chunk in enumerate(chunks, 1):
         try:
-            vector = create_embedding(chunk, provider=provider, model=model)
+            vector = create_embedding(
+                chunk,
+                provider=provider,
+                model=model,
+                key_name=key_name,
+            )
             if embedding_dim is None:
                 embedding_dim = vector.shape[0]
             embeddings.append(vector)
         except Exception as e:
-            print(f"Error creating embedding for chunk: {e}")
-            if embedding_dim is None:
-                from app.config.provider_config import get_provider_metadata
-                embedding_dim = get_provider_metadata(provider).get(
-                    "embedding_dimensions", DEFAULT_EMBEDDING_DIM
-                )
-            embeddings.append(np.zeros(embedding_dim, dtype="float32"))
+            raise RuntimeError(
+                f"Embedding failed for provider '{provider}' at chunk {idx}/{total_chunks}: {e}"
+            ) from e
 
         print(f"🧠 Embedded {idx}/{total_chunks} chunks")
 
