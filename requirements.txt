@@ -192,7 +192,7 @@ propcache==0.4.1
     #   yarl
 py-serializable==2.1.0
     # via cyclonedx-python-lib
-pyasn1==0.6.2
+pyasn1==0.6.3
     # via
     #   pyasn1-modules
     #   rsa
